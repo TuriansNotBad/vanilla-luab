@@ -1,0 +1,30 @@
+
+-- shapeshift spells
+SPELL_DRD_CAT_FORM         = 768;
+SPELL_DRD_BEAR_FORM        = 5487;
+
+-- bear spells
+SPELL_DRD_ENRAGE           = 5229;
+SPELL_DRD_MAUL             = 9881;
+SPELL_DRD_SWIPE            = 9908;
+SPELL_DRD_DEMORALIZING_ROAR= 9898;
+SPELL_DRD_BASH             = 8983;
+SPELL_DRD_FAERIE_FIRE_BEAR = 17389;
+
+-- cat spells
+SPELL_DRD_SHRED            = 9830;
+SPELL_DRD_CLAW             = 9850;
+SPELL_DRD_RIP              = 9896;
+SPELL_DRD_FEROCIOUS_BITE   = Builds.Spell("1.12.1", 22829, 31018);;
+SPELL_DRD_COWER            = 9892;
+SPELL_DRD_FAERIE_FIRE_CAT  = 17392;
+
+-- caster spells
+SPELL_DRD_WRATH            = 9912;
+
+-- buffs
+SPELL_DRD_THORNS           = 9910;
+SPELL_DRD_MARK_OF_THE_WILD = 9885;
+SPELL_DRD_GIFT_OF_THE_WILD = 21850;
+SPELL_DRD_FAERIE_FIRE      = 9907;
+SPELL_DRD_FAERIE_FIRE_FERAL= 17392;

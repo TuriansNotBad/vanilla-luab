@@ -1,0 +1,29 @@
+talents = {
+	["Restoration"] = {
+		{"Improved Mark of the Wild", 0, 821}, {"Furor", 0, 822},
+		{"Nature's Focus", 0, 823}, {"Improved Healing Touch", 0, 824}, {"Improved Enrage", 0, 826},
+		{"Combat Endurance", 0, 843}, {"Gift of Nature", 0, 828}, {"Intensity", 0, 827},
+		{"Reflection", 0, 829}, {"Improved Rejuvenation", 0, 830},
+		{"Nature's Swiftness", 0, 831}, {"Subtlety", 0, 841}, {"Improved Tranquility", 0, 842},
+		{"Improved Regrowth", 0, 825},
+		{"Innervate", 0, 844},
+	},
+	["Balance"] = {
+		{"Improved Wrath", 0, 762}, {"Nature's Grasp", 0, 761}, {"Improved Nature's Grasp", 0, 921},
+		{"Improved Entangling Roots", 0, 787}, {"Improved Moonfire", 0, 763}, {"Nature's Reach", 0, 764}, {"Swiftshifting", 0, 781},
+		{"Improved Starfire", 0, 784}, {"Omen of Clarity", 0, 788},
+		{"Improved Thorns", 0, 782}, {"Moonglow", 0, 783},
+		{"Moonfury", 0, 790}, {"Nature's Grace", 0, 789}, {"Weapon Balance", 0, 791},
+		{"Vengeance", 0, 792},
+		{"Hurricane", 0, 793},
+	},
+	["Feral Combat"] = {
+		{"Ferocity", 0, 796}, {"Improved Demoralizing Roar", 0, 795},
+		{"Improved Bash", 0, 797}, {"Sharpened Claws", 0, 798},
+		{"Improved Prowl", 0, 799}, {"Feral Charge", 0, 804}, {"Blood Frenzy", 0, 800}, {"Primal Fury", 0, 801},
+		{"Improved Shred", 0, 802}, {"Predatory Strikes", 0, 803}, {"Faerie Fire (Cat)", 0, 1162}, {"Faerie Fire (Bear)", 0, 1161},
+		{"Thick Hide", 0, 794}, {"Feline Swiftness", 0, 807},
+		{"Strength of the Wild", 0, 808}, {"Improved Ravage", 0, 805},
+		{"Primal Instinct", 0, 809}, {"Improved Pounce", 0, 806},
+	},
+}

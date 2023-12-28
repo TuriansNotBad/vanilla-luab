@@ -1,0 +1,59 @@
+talents = {
+	["Restoration"] = {
+		{"Improved Mark of the Wild", 0, 821}, {"Furor", 0, 822},
+		{"Nature's Focus", 0, 823}, {"Improved Healing Touch", 0, 824}, {"Improved Enrage", 0, 826},
+		{"Combat Endurance", 0, 843}, {"Gift of Nature", 0, 828}, {"Intensity", 0, 827},
+		{"Reflection", 0, 829}, {"Improved Rejuvenation", 0, 830},
+		{"Nature's Swiftness", 0, 831}, {"Subtlety", 0, 841}, {"Improved Tranquility", 0, 842},
+		{"Improved Regrowth", 0, 825},
+		{"Innervate", 0, 844},
+	},
+	["Balance"] = {
+		{"Improved Wrath", 0, 762}, {"Nature's Grasp", 0, 761}, {"Improved Nature's Grasp", 0, 921},
+		{"Improved Entangling Roots", 0, 787}, {"Improved Moonfire", 0, 763}, {"Nature's Reach", 0, 764}, {"Swiftshifting", 0, 781},
+		{"Improved Starfire", 0, 784}, {"Omen of Clarity", 0, 788},
+		{"Improved Thorns", 0, 782}, {"Moonglow", 0, 783},
+		{"Moonfury", 0, 790}, {"Nature's Grace", 0, 789}, {"Weapon Balance", 0, 791},
+		{"Vengeance", 0, 792},
+		{"Hurricane", 0, 793},
+	},
+	["Feral Combat"] = {
+		{"Ferocity", 0, 796}, {"Improved Demoralizing Roar", 0, 795},
+		{"Improved Bash", 0, 797}, {"Sharpened Claws", 0, 798},
+		{"Improved Prowl", 0, 799}, {"Feral Charge", 0, 804}, {"Blood Frenzy", 0, 800}, {"Primal Fury", 0, 801},
+		{"Improved Shred", 0, 802}, {"Predatory Strikes", 0, 803}, {"Faerie Fire (Cat)", 0, 1162}, {"Faerie Fire (Bear)", 0, 1161},
+		{"Thick Hide", 0, 794}, {"Feline Swiftness", 0, 807},
+		{"Strength of the Wild", 0, 808}, {"Improved Ravage", 0, 805},
+		{"Primal Instinct", 0, 809}, {"Improved Pounce", 0, 806},
+	},
+}
+
+talents = {
+	["Protection"] = {
+		{"Shield Specialization", 0, 1601}, {"Anticipation", 0, 138},
+		{"Improved Bloodrage", 0, 142}, {"Toughness", 0, 140}, {"Iron Will", 0, 141},
+		{"Last Stand", 0, 153}, {"Improved Shield Block", 0, 145}, {"Improved Revenge", 0, 147}, {"Defiance", 0, 144},
+		{"Improved Sunder Armor", 0, 146}, {"Improved Disarm", 0, 151}, {"Improved Taunt", 0, 143},
+		{"Improved Shield Wall", 0, 150}, {"Concussion Blow", 0, 152}, {"Improved Shield Bash", 0, 149},
+		{"One-Handed Weapon Specialization", 0, 702},
+		{"Shield Slam", 0, 148},
+	},
+	["Arms"] = {
+		{"Improved Heroic Strike", 0, 124}, {"Deflection", 0, 130}, {"Improved Rend", 0, 127},
+		{"Improved Charge", 0, 126}, {"Tactical Mastery", 0, 641}, {"Improved Thunder Clap", 0, 128},
+		{"Improved Overpower", 0, 131}, {"Anger Management", 0, 137}, {"Deep Wounds", 0, 121},
+		{"Two-Handed Weapon Specialization", 0, 136}, {"Impale", 0, 662},
+		{"Axe Specialization", 0, 132}, {"Sweeping Strikes", 0, 133}, {"Mace Specialization", 0, 125}, {"Sword Specialization", 0, 123},
+		{"Polearm Specialization", 0, 134}, {"Improved Hamstring", 0, 129},
+		{"Mortal Strike", 0, 135},
+	},
+	["Fury"] = {
+		{"Booming Voice", 0, 158}, {"Cruelty", 0, 157},
+		{"Improved Demoralizing Shout", 0, 161}, {"Unbridled Wrath", 0, 159},
+		{"Improved Cleave", 0, 166}, {"Piercing Howl", 0, 160}, {"Blood Craze", 0, 661}, {"Improved Battle Shout", 0, 154}, 
+		{"Dual Wield Specialization", 0, 1581}, {"Improved Execute", 0, 1542}, {"Enrage", 0, 155},
+		{"Improved Slam", 0, 168}, {"Death Wish", 0, 165}, {"Improved Intercept", 0, 1543},
+		{"Improved Berserker Rage", 0, 1541}, {"Flurry", 0, 156},
+		{"Bloodthirst", 0, 167},
+	},
+}
