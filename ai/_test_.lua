@@ -1,8 +1,8 @@
 local t_agentInfo = {
-	-- {"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	-- {"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
-	-- {"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
-	-- {"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
+	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
+	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
+	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
+	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 };
@@ -83,12 +83,12 @@ end
 
 function Hive_Init(hive)
 	local t_12 = {
-		-- {"Adowwar",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
-		-- {"Adowpriest",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
+		{"Adowwar",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
+		{"Adowpriest",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 		{"Adowmage",LOGIC_ID_Party,"LvlDps"}, -- mage
-		-- {"Adowrogue",LOGIC_ID_Party,"LvlDps"}, -- rogue
+		{"Adowrogue",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	};
-	hive:LoadInfoFromLuaTbl(t_12);
+	hive:LoadInfoFromLuaTbl(t_agentInfo);
 	local data = hive:GetData();
 	data.ccAgents = {};
 	data.buffs = {};

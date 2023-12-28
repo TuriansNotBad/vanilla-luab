@@ -95,6 +95,7 @@ t_agentSpecs[CLASS_MAGE].LvlDps = {
 t_agentSpecs[CLASS_PRIEST] = {};
 t_agentSpecs[CLASS_PRIEST].LvlHeal = {
 	BattleGoalID = GOAL_PriestLevelHeal_Battle,
+	TalentInfo = "t_LevelPriestHealerSpec",
 };
 
 --[[*****************************************************

@@ -251,7 +251,7 @@ function FeralLevelDps_Update(ai, goal)
 			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
 				goal:ClearSubGoal();
 			end
-			AI_Replenish(agent, goal, 30.0, 30.0, FORM_NONE);
+			AI_Replenish(agent, goal, 0.0, 99.0, FORM_NONE);
 			return GOAL_RESULT_Continue;
 		end
 		

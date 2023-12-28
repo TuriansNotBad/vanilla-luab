@@ -69,7 +69,7 @@ function PriestLevelHeal_Activate(ai, goal)
 		OffhandType = {"Holdable"},
 		RangedType = {"Wand"},
 	};
-	-- AI_SpecGenerateGear(ai, info, gsi)
+	AI_SpecGenerateGear(ai, info, gsi, nil, true)
 	
 	local classTbl = t_agentSpecs[ agent:GetClass() ];
 	local specTbl = classTbl[ ai:GetSpec() ];
@@ -78,7 +78,7 @@ function PriestLevelHeal_Activate(ai, goal)
 	
 	local talentInfo = _ENV[ specTbl.TalentInfo ];
 	
-	-- AI_SpecApplyTalents(ai, level, talentInfo.talents );
+	AI_SpecApplyTalents(ai, level, talentInfo.talents );
 	-- print();
 	-- DebugPlayer_PrintTalentsNice(agent, true);
 	-- print();
@@ -332,7 +332,7 @@ function PriestLevelHeal_Update(ai, goal)
 			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
 				goal:ClearSubGoal();
 			end
-			AI_Replenish(agent, goal, 30.0, 30.0);
+			AI_Replenish(agent, goal, 0.0, 99.0);
 			return GOAL_RESULT_Continue;
 		end
 		

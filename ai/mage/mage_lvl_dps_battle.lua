@@ -48,10 +48,10 @@ function MageLevelDps_Activate(ai, goal)
 	
 	local talentInfo = _ENV[ specTbl.TalentInfo ];
 	
-	-- AI_SpecApplyTalents(ai, level, talentInfo.talents );
-	print();
-	DebugPlayer_PrintTalentsNice(agent, true);
-	print();
+	AI_SpecApplyTalents(ai, level, talentInfo.talents );
+	-- print();
+	-- DebugPlayer_PrintTalentsNice(agent, true);
+	-- print();
 	
 	local data = ai:GetData();
 	
@@ -232,7 +232,7 @@ function MageLevelDps_Update(ai, goal)
 			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
 				goal:ClearSubGoal();
 			end
-			AI_Replenish(agent, goal, 30.0, 30.0);
+			AI_Replenish(agent, goal, 0.0, 99.0);
 			return GOAL_RESULT_Continue;
 		end
 		

@@ -1,0 +1,29 @@
+talents = {
+	["Discipline"] = {
+		{"Unbreakable Will", 0, 342}, {"Wand Specialization", 0, 345},
+		{"Silent Resolve", 0, 352}, {"Improved Power Word: Fortitude", 0, 344}, {"Improved Power Word: Shield", 0, 343}, {"Martyrdom", 0, 321},
+		{"Inner Focus", 0, 348}, {"Meditation", 0, 347},
+		{"Improved Inner Fire", 0, 346}, {"Mental Agility", 0, 341}, {"Improved Mana Burn", 0, 350},
+		{"Mental Strength", 0, 1201}, {"Divine Spirit", 0, 351},
+		{"Force of Will", 0, 1202},
+		{"Power Infusion", 0, 322},
+	},
+	["Holy"] = {
+		{"Healing Focus", 0, 410}, {"Improved Renew", 0, 406}, {"Holy Specialization", 0, 401},
+		{"Spell Warding", 0, 411}, {"Divine Fury", 0, 1181},
+		{"Holy Nova", 0, 442}, {"Blessed Recovery", 0, 1636}, {"Inspiration", 0, 361},
+		{"Holy Reach", 0, 1635}, {"Improved Healing", 0, 408}, {"Searing Light", 0, 403},
+		{"Improved Prayer of Healing", 0, 413}, {"Spirit of Redemption", 0, 1561}, {"Spiritual Guidance", 0, 402},
+		{"Spiritual Healing", 0, 404},
+		{"Lightwell", 0, 1637},
+	},
+	["Shadow"] = {
+		{"Spirit Tap", 0, 465}, {"Blackout", 0, 464},
+		{"Shadow Affinity", 0, 466}, {"Improved Shadow Word: Pain", 0, 482}, {"Shadow Focus", 0, 463},
+		{"Improved Psychic Scream", 0, 542}, {"Improved Mind Blast", 0, 481}, {"Mind Flay", 0, 501},
+		{"Improved Fade", 0, 483}, {"Shadow Reach", 0, 881}, {"Shadow Weaving", 0, 461},
+		{"Silence", 0, 541}, {"Vampiric Embrace", 0, 484}, {"Improved Vampiric Embrace", 0, 1638},
+		{"Darkness", 0, 462},
+		{"Shadowform", 0, 521},
+	},
+}
