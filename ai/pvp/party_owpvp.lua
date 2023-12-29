@@ -69,11 +69,11 @@ local spawns = {
 			-- WAR_DU_ToBarr2 = {lvl=1, r=35, name = set.seven, l=LOGIC_ID_InvaderPvp, x=332.10,y=-3914.81,z=32.53, zone = ZIDDurotar, map = MIDKalimdor},
 		},
 		[ZIDMulgore] = {
-			WAR_MLG_ToBarrens1	 = {lvl = 1, r=30, name = set.one,   l=LOGIC_ID_WarriorPvp, x=-2306.68,y=-1502.17,z=47.13, zone = ZIDMulgore, map = MIDKalimdor},
-			WAR_MLG_ToBarrens2	 = {lvl = 1, r=30, name = set.two,   l=LOGIC_ID_WarriorPvp, x=-2390.25,y=-1437.63,z=25.71, zone = ZIDMulgore, map = MIDKalimdor},
-			WAR_MLG_NearLake	 = {lvl = 1, r=30, name = set.three, l=LOGIC_ID_WarriorPvp, x=-2043.68,y=-221.40,z=-9.89, zone = ZIDMulgore, map = MIDKalimdor},
-			WAR_MLG_NearThunder	 = {lvl = 1, r=30, name = set.four,  l=LOGIC_ID_WarriorPvp, x=-1591.32,y=168.79,z=-6.86, zone = ZIDMulgore, map = MIDKalimdor},
-			WAR_MLG_RedRocks	 = {lvl = 1, r=30, name = set.five,  l=LOGIC_ID_WarriorPvp, x=-1168.95,y=-1134.47,z=29.79, zone = ZIDMulgore, map = MIDKalimdor},
+			WAR_MLG_ToBarrens1	 = {lvl = 1, r=30, name = set.one,   l=LOGIC_ID_InvaderPvp, x=-2306.68,y=-1502.17,z=47.13, zone = ZIDMulgore, map = MIDKalimdor},
+			WAR_MLG_ToBarrens2	 = {lvl = 1, r=30, name = set.two,   l=LOGIC_ID_InvaderPvp, x=-2390.25,y=-1437.63,z=25.71, zone = ZIDMulgore, map = MIDKalimdor},
+			WAR_MLG_NearLake	 = {lvl = 1, r=30, name = set.three, l=LOGIC_ID_InvaderPvp, x=-2043.68,y=-221.40,z=-9.89, zone = ZIDMulgore, map = MIDKalimdor},
+			WAR_MLG_NearThunder	 = {lvl = 1, r=30, name = set.four,  l=LOGIC_ID_InvaderPvp, x=-1591.32,y=168.79,z=-6.86, zone = ZIDMulgore, map = MIDKalimdor},
+			WAR_MLG_RedRocks	 = {lvl = 1, r=30, name = set.five,  l=LOGIC_ID_InvaderPvp, x=-1168.95,y=-1134.47,z=29.79, zone = ZIDMulgore, map = MIDKalimdor},
 		},
 	},
 	

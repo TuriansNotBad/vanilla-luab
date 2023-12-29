@@ -54,21 +54,40 @@ function FeralLevelDps_Activate(ai, goal)
 	
 	ai:SetRole(ROLE_MDPS);
 	
+	-- learn proficiencies
+	agent:LearnSpell(Proficiency.Mace);
+	agent:LearnSpell(Proficiency.Mace2H);
+	
+	-- spec it
+	local classTbl = t_agentSpecs[ agent:GetClass() ];
+	local specTbl = classTbl[ ai:GetSpec() ];
+	
 	local gsi = GearSelectionInfo(
-		0.0003, 0, -- armor, damage
+		0.0003, 1e-6, -- armor, damage
 		GearSelectionWeightTable(ItemStat.Strength, 5, ItemStat.Intellect, 1), -- stats
 		GearSelectionWeightTable(), -- auras
 		SpellSchoolMask.Arcane --| SpellSchoolMask.Nature
 	);
 	local info = {
 		ArmorType = {"Cloth", "Leather"},
-		WeaponType = {"Mace", "Mace2H", "Staff", "Fist", "Dagger"},
+		WeaponType = {"Mace2H", "Staff"},
 		-- OffhandType = {"Holdable"},
 	};
-	AI_SpecGenerateGear(ai, info, gsi, nil, true);
+	if (specTbl.Copy == true) then
+		ai:EquipDestroyAll();
+		ai:EquipCopyFromMaster();
+		ai:UpdateVisibilityForMaster();
+	else
+		if (level >= 29) then
+			info.WeaponType = {};
+			AI_SpecGenerateGear(ai, info, gsi, nil, true);
+			ai:EquipItem(ITEMID_MANUAL_CROWD_PUMMELER, 0, 0);
+			ai:UpdateVisibilityForMaster();
+		else
+			AI_SpecGenerateGear(ai, info, gsi, nil, true);
+		end
+	end
 	
-	local classTbl = t_agentSpecs[ agent:GetClass() ];
-	local specTbl = classTbl[ ai:GetSpec() ];
 	local talentInfo = _ENV[ specTbl.TalentInfo ];
 	AI_SpecApplyTalents(ai, level, talentInfo.talents);
 	-- print();
@@ -127,8 +146,9 @@ function FeralLevelDps_Activate(ai, goal)
 		local type = BUFF_SINGLE;
 		if (data.motw == data.gift) then
 			type = BUFF_PARTY;
+			partyData:RegisterBuff(agent, "ST: Mark of the Wild", 1, data.mark, BUFF_SINGLE, 5*6e4, {party = false, notauras = {21850, 21849}});
 		end
-		partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.motw, type, 5*6e4);
+		partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.motw, type, 5*6e4, {party = true});
 		partyData:RegisterBuff(agent, "Thorns", 1, data.thorns, BUFF_SINGLE, 3*6e4, {role = ROLE_TANK});
 	end
 
@@ -441,10 +461,10 @@ function DruidLowLevelRotation(ai, agent, goal, data, target)
 	end
 	
 	-- spammable
-	-- if (agent:CastSpell(target, data.wrath, false) == CAST_OK) then
-		-- print("Wrath", agent:GetName(), target:GetName());
-		-- return true;
-	-- end
+	if (agent:CastSpell(target, data.wrath, false) == CAST_OK) then
+		print("Wrath", agent:GetName(), target:GetName());
+		return true;
+	end
 	
 	return false;
 end

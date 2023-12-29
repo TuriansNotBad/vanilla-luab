@@ -24,7 +24,7 @@ local function GetBestCandidate(ai, list, candidates, gsi, num)
 	table.sort(candidates, function(a,b) return a[2] > b[2]; end);
 	for i,v in ipairs(candidates) do
 		local item = Item_GetItemFromId(v[1]);
-		io.write(v[1] .. " " .. item:GetName() .. ", score=" .. v[2] .. " " .. tostring(v[3]) .. "    "); -- item:Print();--item:GetUtility(ai, gsi);-- .. "\n");
+		-- io.write(v[1] .. " " .. item:GetName() .. ", score=" .. v[2] .. " " .. tostring(v[3]) .. "    "); --item:Print();--item:GetUtility(ai, gsi);-- .. "\n");
 	end
 	
 	local result = candidates[1];
@@ -190,7 +190,7 @@ function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint)
 		
 	end
 	agent:SetHealthPct(100.0);
-	agent:SetPowerPct(agent:GetPowerType(), 100.0);
+	agent:SetPowerPct(POWER_MANA, 100.0);
 	agent:SetGameMaster(false);
 	ai:UpdateVisibilityForMaster();
 	

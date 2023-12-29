@@ -49,14 +49,36 @@ local function GetBuffAgentsTbl(data, target, key)
 	return t;
 end
 
-local function GetClosestBuffAgent(data, target, key)
+local function filter_check(filter, ai, agent, caster)
+	if (nil == filter) then
+		return true;
+	end
+	if (filter.role and ai:GetRole() ~= filter.role) then
+		return false;
+	end
+	if (filter.party ~= nil and filter.party ~= caster:IsInSameSubGroup(agent)) then
+		return false;
+	end
+	if (filter.notauras) then
+		for i = 1, #filter.notauras do
+			if (agent:HasAura(filter.notauras[i])) then
+				return false;
+			end
+		end
+	end
+	return true;
+end
+
+local function GetClosestBuffAgent(data, targetai, target, key, filter)
 	local t = GetBuffAgentsTbl(data, target, key);
 	for i = 1, #t do
 		local agent = t[i];
 		local ai = agent:GetAI();
 		local cmd = ai:CmdType();
 		if (cmd == CMD_FOLLOW or cmd == CMD_NONE) then
-			return agent;
+			if (filter_check(filter, targetai, target, agent)) then
+				return agent;
+			end
 		end
 	end
 end
@@ -159,16 +181,6 @@ function Hive_Update(hive)
 	
 end
 
-local function filter_check(filter, ai, agent)
-	if (nil == filter) then
-		return true;
-	end
-	if (filter.role and ai:GetRole() ~= filter.role) then
-		return false;
-	end
-	return true;
-end
-
 local function IssueBuffCommands(hive, data, agents)
 	for i = 1, #agents do
 		
@@ -178,10 +190,9 @@ local function IssueBuffCommands(hive, data, agents)
 		for key,buff in next, data.buffs do
 			if (agent:IsAlive()
 			and agent:GetAuraTimeLeft(buff.spellid) < buff.time
-			and false == AI_HasBuffAssigned(agent:GetGuid(), key, buff.type)
-			and filter_check(buff.filter, ai, agent))
+			and false == AI_HasBuffAssigned(agent:GetGuid(), key, buff.type))
 			then
-				local ally = GetClosestBuffAgent(data, agent, key);
+				local ally = GetClosestBuffAgent(data, ai, agent, key, buff.filter);
 				if (ally) then
 					local allyAi = ally:GetAI();
 					-- if (allyAi:CmdType() == CMD_FOLLOW) then
