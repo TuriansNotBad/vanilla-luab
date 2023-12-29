@@ -213,8 +213,8 @@ function AI_SpecApplyTalents(ai, level, alltalents, bNoCost, dontLearn)
 	-- find client appropriate spec
 	local talents;
 	for i = 1, #alltalents do
-		talents = alltalents[i][2];
 		if (CVER >= alltalents[i][1]) then
+			talents = alltalents[i][2];
 			break;
 		end
 	end
