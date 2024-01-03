@@ -23,7 +23,7 @@ local function CmdHealReset(ai, agent, goal, interrupt, complete)
 	goal:SetNumber(0, 0); -- reset saved target health
 	goal:SetNumber(1, 0); -- reset saved spell effect
 	if (complete) then
-		print "CMD Complete"
+		print "CMDHeal Complete"
 		ai:CmdComplete();
 	end
 	return GOAL_RESULT_Continue;
@@ -83,16 +83,18 @@ function PriestLevelHeal_Activate(ai, goal)
 	-- DebugPlayer_PrintTalentsNice(agent, true);
 	-- print();
 	
-	local data = ai:GetData();
-	data.gheal = ai:GetSpellMaxRankForMe(SPELL_PRI_GREATER_HEAL);
-	data.renew = ai:GetSpellMaxRankForMe(SPELL_PRI_RENEW);
-	data.fheal = ai:GetSpellMaxRankForMe(SPELL_PRI_FLASH_HEAL);
-	data.heal  = ai:GetSpellMaxRankForMe(SPELL_PRI_HEAL);
-	data.lheal = ai:GetSpellMaxRankForMe(SPELL_PRI_LESSER_HEAL);
-	data.hot   = data.renew;
+	local data  = ai:GetData();
+	data.gheal    = ai:GetSpellMaxRankForMe(SPELL_PRI_GREATER_HEAL);
+	data.renew    = ai:GetSpellMaxRankForMe(SPELL_PRI_RENEW);
+	data.fheal    = ai:GetSpellMaxRankForMe(SPELL_PRI_FLASH_HEAL);
+	data.heal     = ai:GetSpellMaxRankForMe(SPELL_PRI_HEAL);
+	data.lheal    = ai:GetSpellMaxRankForMe(SPELL_PRI_LESSER_HEAL);
+	data.hot      = data.renew;
 	
-	data.pwf   = ai:GetSpellMaxRankForMe(SPELL_PRI_POWER_WORD_FORTITUDE);
-	data.aepwf = ai:GetSpellMaxRankForMe(SPELL_PRI_PRAYER_OF_FORTITUDE);
+	data.fearward = ai:GetSpellMaxRankForMe(SPELL_PRI_FEAR_WARD);
+	data.dispel   = ai:GetSpellMaxRankForMe(SPELL_PRI_DISPEL_MAGIC);
+	data.pwf      = ai:GetSpellMaxRankForMe(SPELL_PRI_POWER_WORD_FORTITUDE);
+	data.aepwf    = ai:GetSpellMaxRankForMe(SPELL_PRI_PRAYER_OF_FORTITUDE);
 	
 	data.fortitude = level >= 48 and data.aepwf or data.pwf;
 	
@@ -118,6 +120,10 @@ function PriestLevelHeal_Activate(ai, goal)
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
 	
+	data.dispels = {
+		Magic = data.dispel,
+	};
+	
 	local party = ai:GetPartyIntelligence();
 	if (party) then
 		local partyData = party:GetData();
@@ -126,6 +132,17 @@ function PriestLevelHeal_Activate(ai, goal)
 			type = BUFF_PARTY;
 		end
 		partyData:RegisterBuff(agent, "Power Word: Fortitude", 1, data.fortitude, type, 5*6e4);
+		if (agent:GetRace() == RACE_DWARF and level >= 20) then
+			local filter = {
+				role = {[ROLE_TANK] = true, [ROLE_HEALER] = true},
+				dungeon = {fear = true},
+			};
+			partyData:RegisterBuff(agent, "Fear Ward", 1, data.fearward, BUFF_SINGLE, 3*6e4, filter, true);
+			partyData:RegisterBuff(agent, "Fear Ward NC", 1, data.fearward, BUFF_SINGLE, 3*6e4, {dungeon = {fear = true}});
+		end
+		if (level >= 18) then
+			partyData:RegisterDispel(agent, "Magic");
+		end
 	end
 	
 end
@@ -142,6 +159,8 @@ function PriestLevelHeal_Update(ai, goal)
 	
 	local party = ai:GetPartyIntelligence();
 	local agent = ai:GetPlayer();
+	local data = ai:GetData();
+	local partyData = party:GetData();
 	
 	if (false == agent:IsAlive()) then
 		goal:ClearSubGoal();
@@ -188,7 +207,6 @@ function PriestLevelHeal_Update(ai, goal)
 		if (ai:CmdState() == CMD_STATE_WAITING) then
 			ai:CmdSetInProgress();
 		end
-		local partyData = party:GetData();
 		local targets = partyData.attackers;
 		if (not targets[1]) then
 			agent:AttackStop();
@@ -212,7 +230,7 @@ function PriestLevelHeal_Update(ai, goal)
 			return GOAL_RESULT_Continue;
 		end
 		
-		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable()) then
+		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable() or target:GetVictim() == agent) then
 			Dps_RangedChase(ai, agent, target);
 		else
 			local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not partyData.reverse);
@@ -251,7 +269,6 @@ function PriestLevelHeal_Update(ai, goal)
 			return CmdHealReset(ai, agent, goal, agent:IsInCombat(), true);
 		end
 		
-		local data = ai:GetData();
 		local hp = target:GetHealthPct();
 		local hpdiff = target:GetMaxHealth() - target:GetHealth();
 		ai:SetHealTarget(guid);
@@ -287,14 +304,12 @@ function PriestLevelHeal_Update(ai, goal)
 		
 		PriestPotions(agent, goal, data);
 		
-		local partyData = ai:GetPartyIntelligence():GetData();
 		local maxThreat = GetAEThreat(agent, partyData.attackers);
 		local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat);
 		
 		-- threat check not passed or just have no mana
 		-- or if healing nontank hpdiff isn't low enough
 		if (nil == spell) then
-			print("No spell chosen for target " .. target:GetName());
 			return GOAL_RESULT_Continue;
 		end
 		
@@ -332,7 +347,9 @@ function PriestLevelHeal_Update(ai, goal)
 			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
 				goal:ClearSubGoal();
 			end
-			AI_Replenish(agent, goal, 0.0, 99.0);
+			if (#partyData.attackers == 0) then
+				AI_Replenish(agent, goal, 0.0, 99.0);
+			end
 			return GOAL_RESULT_Continue;
 		end
 		
@@ -348,6 +365,30 @@ function PriestLevelHeal_Update(ai, goal)
 		end
 		
 		goal:AddSubGoal(GOAL_COMMON_Buff, 20.0, guid, spellid, key);
+		
+	elseif (cmd == CMD_DISPEL) then
+		
+		if (ai:CmdState() == CMD_STATE_WAITING) then
+			ai:CmdSetInProgress();
+			CmdHealReset(ai, agent, goal, true);
+		end
+		
+		-- give buffs!
+		local guid, key = ai:CmdArgs();
+		if (goal:GetSubGoalNum() > 0) then
+			return GOAL_RESULT_Continue;
+		end
+		
+		local target = GetPlayerByGuid(guid);
+		if (nil == target or false == target:IsAlive()) then
+			ai:CmdComplete();
+			goal:ClearSubGoal();
+			return GOAL_RESULT_Continue;
+		end
+		
+		local spellid = data.dispels[key];
+		-- AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Dispel", true);
+		goal:AddSubGoal(GOAL_COMMON_CastAlone, 10.0, guid, spellid, "Dispel", 5.0);
 	end
 
 	return GOAL_RESULT_Continue;
@@ -379,19 +420,20 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 	end
 	
 	-- renew if not super urgent
-	if (data.renew and agent:IsInCombat()) then
+	if (data.renew and agent:IsInCombat() and hp > 35) then
 		if (target:GetAttackersNum() == 0) then
 			if (not target:HasAura(data.renew)) then
 				return data.renew, agent:GetSpellDamageAndThreat(target, data.renew, true, false);
 			else
 				CmdHealReset(ai, agent, goal, false, true); -- do not linger
 			end
+			Print(agent:GetName(), "failed to pick renew, target already has = ", target:HasAura(data.renew));
 			return nil, nil, nil;
 		end
 	end
 	
 	-- find weakest spell
-	for i = 1, #heals do
+	for i = #heals, 1, -1 do
 		local id = heals[i];
 		if (agent:GetPowerCost(id) < agent:GetPower(POWER_MANA)) then
 			local value, threat = agent:GetSpellDamageAndThreat(target, id, true, false);
@@ -407,6 +449,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 		return heals[1], agent:GetSpellDamageAndThreat(target, heals[1], true, false);
 	end
 	
+	Print(agent:GetName(), "failed to pick any heal spell, threat/mana/targethp check fail", agent:GetPowerPct(POWER_MANA), target:GetHealthPct());
 	return nil, nil, nil;
 	
 end

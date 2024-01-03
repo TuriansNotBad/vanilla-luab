@@ -5,12 +5,13 @@ local t_agentInfo = {
 	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
+	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
 };
 
 local Hive_FormationRectGetAngle;
 
 local function GetBuffAgentsTbl(data, target, key)
-	local data = data.buffs[key];
+	data = data[key];
 	local t = {};
 	if (not data) then
 		return t;
@@ -19,7 +20,7 @@ local function GetBuffAgentsTbl(data, target, key)
 		local agent = GetPlayerByGuid(data[i]);
 		if (nil == agent) then
 			table.remove(data, i);
-		else
+		elseif (agent:IsAlive() and (data.spellid == nil or (agent:HasEnoughPowerFor(data.spellid, true) and agent:IsSpellReady(data.spellid)))) then
 			table.insert(t, agent);
 		end
 	end
@@ -31,12 +32,12 @@ local function GetBuffAgentsTbl(data, target, key)
 	-- but at the very least pick an agent that has enough mana to cast
 	-- and isn't on cooldown if that's a consideration, ever?
 	local function sort(a, b)
-		if (a:HasEnoughPowerFor(data.spellid, false) and false == b:HasEnoughPowerFor(data.spellid, false)) then
-			return true;
-		end
-		if (b:HasEnoughPowerFor(data.spellid, false) and false == a:HasEnoughPowerFor(data.spellid, false)) then
-			return false;
-		end
+		-- if (a:HasEnoughPowerFor(data.spellid, false) and false == b:HasEnoughPowerFor(data.spellid, false)) then
+			-- return true;
+		-- end
+		-- if (b:HasEnoughPowerFor(data.spellid, false) and false == a:HasEnoughPowerFor(data.spellid, false)) then
+			-- return false;
+		-- end
 		if (a:GetStandState() == STAND_STATE_STAND and b:GetStandState() ~= STAND_STATE_STAND) then
 			return true;
 		end
@@ -49,11 +50,28 @@ local function GetBuffAgentsTbl(data, target, key)
 	return t;
 end
 
-local function filter_check(filter, ai, agent, caster)
+local function filter_check(filter, ai, agent, caster, encounter)
 	if (nil == filter) then
 		return true;
 	end
-	if (filter.role and ai:GetRole() ~= filter.role) then
+	if (filter.dungeon) then
+		local dungeon = t_dungeons[agent:GetMapId()];
+		if (not dungeon or not dungeon.encounters) then
+			return false;
+		end
+		if (filter.dungeon.fear ~= dungeon.encounters.fear) then
+			return false;
+		end
+	end
+	if (filter.encounter) then
+		if (not encounter) then
+			return false;
+		end
+		if (filter.encounter.fear ~= encounter.fear) then
+			return false;
+		end
+	end
+	if (filter.role and filter.role[ai:GetRole()] ~= true) then
 		return false;
 	end
 	if (filter.party ~= nil and filter.party ~= caster:IsInSameSubGroup(agent)) then
@@ -69,28 +87,60 @@ local function filter_check(filter, ai, agent, caster)
 	return true;
 end
 
-local function GetClosestBuffAgent(data, targetai, target, key, filter)
+local function GetClosestBuffAgent(data, targetai, target, key, filter, encounter)
 	local t = GetBuffAgentsTbl(data, target, key);
 	for i = 1, #t do
 		local agent = t[i];
 		local ai = agent:GetAI();
 		local cmd = ai:CmdType();
-		if (cmd == CMD_FOLLOW or cmd == CMD_NONE) then
-			if (filter_check(filter, targetai, target, agent)) then
+		local healLowPrio = cmd == CMD_HEAL and Healer_GetHealPriority(ai:GetHealTarget(), agent:GetPowerPct(POWER_MANA)) < 3;
+		if (cmd == CMD_FOLLOW or cmd == CMD_NONE or cmd == CMD_ENGAGE or healLowPrio) then
+			if (filter_check(filter, targetai, target, agent, encounter)) then
 				return agent;
 			end
 		end
 	end
 end
 
-local function RegisterBuff(data, agent, key, str, spellid, type, time, filter)
+local function GetClosestDispelAgent(data, targetai, target, key, friendly)
+	if (not data[key]) then
+		return;
+	end
+	local t = GetBuffAgentsTbl(data, target, key);
+	for i = 1, #t do
+		local agent = t[i];
+		local ai = agent:GetAI();
+		local cmd = ai:CmdType();
+		local healLowPrio = cmd == CMD_HEAL and Healer_GetHealPriority(ai:GetHealTarget(), agent:GetPowerPct(POWER_MANA)) < 3;
+		-- Print(cmd, cmd == CMD_HEAL and Healer_GetHealPriority(ai:GetHealTarget(), agent:GetPowerPct(POWER_MANA)));
+		if (cmd == CMD_FOLLOW or cmd == CMD_NONE or cmd == CMD_ENGAGE or healLowPrio) then
+			local aidata = ai:GetData();
+			local spellid = aidata.dispels[key];
+			local valid = friendly or (not target:IsImmuneToSpell(spellid) and agent:CanAttack(target));
+			if (spellid and valid and agent:HasEnoughPowerFor(spellid, true) and agent:IsSpellReady(spellid)) then
+				return agent;
+			end
+		end
+	end
+end
+
+local function RegisterBuff(data, agent, key, str, spellid, type, time, filter, combat)
 	local data = data.buffs;
 	data[key] = data[key] or {str = -1, spellid = 0, type = BUFF_SINGLE, time = 0};
 	if (table.ifind(data[key], agent:GetGuid()) ~= 0 or str < data[key].str) then
 		return;
 	end
 	if (str > data[key].str) then
-		data[key] = {str = str, spellid = spellid, type = type, time = time, filter = filter};
+		data[key] = {str = str, spellid = spellid, type = type, time = time, filter = filter, combat = combat};
+	end
+	table.insert(data[key], agent:GetGuid());
+end
+
+local function RegisterDispel(data, agent, key)
+	local data = data.dispel;
+	data[key] = data[key] or {};
+	if (table.ifind(data[key], agent:GetGuid()) ~= 0) then
+		return;
 	end
 	table.insert(data[key], agent:GetGuid());
 end
@@ -114,12 +164,37 @@ function Hive_Init(hive)
 	local data = hive:GetData();
 	data.ccAgents = {};
 	data.buffs = {};
+	data.dispel = {};
 	data.RegisterBuff = RegisterBuff;
 	data.RegisterCC = RegisterCC;
+	data.RegisterDispel = RegisterDispel;
 	data.HasTank = HasTank;
 	-- local item = Item_GetItemFromId(12048);
 	-- item:PrintRandomEnchants();
 	-- Items_PrintItemsOfType(ItemClass.Weapon, ItemSubclass.WeaponAxe2, -1);
+end
+
+local function FillTrackedForMap(agent, tracked)
+	local t = t_dungeons[agent:GetMapId()];
+	if (t == nil or t.trackedunit == nil) then
+		return;
+	end
+	t = t.trackedunit;
+	for i,npcinfo in ipairs(t) do
+		local unit = GetUnitByGuidEx(agent, npcinfo.e, npcinfo.c);
+		if (unit and unit:IsAlive()) then
+			table.insert(tracked, unit);
+		end
+	end
+end
+
+local function FillTrackedAttackers(attackers, tracked)
+	for i,unit in ipairs(tracked) do
+		local t = unit:GetAttackers();
+		for j,attacker in ipairs(t) do
+			table.insert(attackers, attacker);
+		end
+	end
 end
 
 function Hive_Update(hive)
@@ -136,6 +211,7 @@ function Hive_Update(hive)
 	data.tracked = {};
 	data.healTargets = {};
 	data.cc = hive:GetCC();
+	data._needTremor = nil;
 	
 	local ownerGuid = hive:GetOwnerGuid()
 	local ownerVictim;
@@ -156,8 +232,28 @@ function Hive_Update(hive)
 		end
 	end
 	
+	-- fill tracked
+	do
+		local agent = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
+		if (agent) then
+			FillTrackedForMap(agent, data.tracked);
+			FillTrackedAttackers(data.attackers, data.tracked);
+			data.dungeon = GetDungeon(agent:GetMapId());
+			data.encounter = GetEncounter(agent:GetMapId(), data.attackers);
+			if (data.encounter) then
+				if (data.encounter.fear) then
+					data._needTremor = true;
+				end
+				-- print(data.encounter.name, data._needTremor);
+			end
+		end
+	end
+	
 	for i = 1, #data.agents do
 		local ai = data.agents[i];
+		if (ai == nil) then
+			print(i, #data.agents, "ai was nil while sorting agents by roles...");
+		end
 		-- ai:GetPlayer():SetHealthPct(100.0);
 		-- ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
 		-- ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);
@@ -181,25 +277,28 @@ function Hive_Update(hive)
 	
 end
 
-local function IssueBuffCommands(hive, data, agents)
+local function IssueBuffCommands(hive, data, agents, iscombat)
 	for i = 1, #agents do
 		
 		local ai = agents[i];
 		local agent = ai.GetPlayer and ai:GetPlayer() or ai;
 		
-		for key,buff in next, data.buffs do
-			if (agent:IsAlive()
-			and agent:GetAuraTimeLeft(buff.spellid) < buff.time
-			and false == AI_HasBuffAssigned(agent:GetGuid(), key, buff.type))
-			then
-				local ally = GetClosestBuffAgent(data, ai, agent, key, buff.filter);
-				if (ally) then
-					local allyAi = ally:GetAI();
-					-- if (allyAi:CmdType() == CMD_FOLLOW) then
-						AI_PostBuff(ally:GetGuid(), agent:GetGuid(), key, true);
-						hive:CmdBuff(allyAi, agent:GetGuid(), buff.spellid, key);
-						Print("CmdBuff issued to", ally:GetName(), key, agent:GetName());
-					-- end
+		if (agent:IsPlayer()) then
+			for key,buff in next, data.buffs do
+				if ((not iscombat == not buff.combat)
+				and agent:IsAlive()
+				and agent:GetAuraTimeLeft(buff.spellid) < buff.time
+				and false == AI_HasBuffAssigned(agent:GetGuid(), key, buff.type))
+				then
+					local ally = GetClosestBuffAgent(data.buffs, ai, agent, key, buff.filter, data.encounter);
+					if (ally) then
+						local allyAi = ally:GetAI();
+						-- if (allyAi:CmdType() == CMD_FOLLOW) then
+							AI_PostBuff(ally:GetGuid(), agent:GetGuid(), key, true);
+							hive:CmdBuff(allyAi, agent:GetGuid(), buff.spellid, key);
+							Print("CmdDBuff issued to", ally:GetName(), key, agent:GetName());
+						-- end
+					end
 				end
 			end
 		end
@@ -265,6 +364,37 @@ function Hive_OOCUpdate(hive, data)
 		
 	end
 	
+end
+
+function IssueDispelCommands(hive, data, agents, friendly)
+	
+	for i = 1, #agents do
+		
+		local ai = agents[i];
+		local agent = ai.GetPlayer and ai:GetPlayer() or ai;
+		
+		if (agent:IsAlive() and data._needTremor ~= true) then
+			data._needTremor = agent:HasAuraWithMechanics(Mask(MECHANIC_CHARM) | Mask(MECHANIC_FEAR) | Mask(MECHANIC_SLEEP));
+		end
+		
+		if (agent:IsPlayer() and agent:IsAlive() and false == AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
+			
+			local dispelTbl = agent:GetDispelsTbl(not friendly);
+			for key in next,dispelTbl do
+				local ally = GetClosestDispelAgent(data.dispel, ai, agent, key, friendly);
+				if (ally) then
+					local allyAi = ally:GetAI();
+					-- if (allyAi:CmdType() == CMD_FOLLOW) then
+						AI_PostBuff(ally:GetGuid(), agent:GetGuid(), "Dispel", true);
+						hive:CmdDispel(allyAi, agent:GetGuid(), key);
+						Print("CmdDispel issued to", ally:GetName(), key, agent:GetName());
+					-- end
+				end
+			end
+			
+		end
+		
+	end
 end
 
 function Hive_CombatUpdate(hive, data)
@@ -370,6 +500,11 @@ function Hive_CombatUpdate(hive, data)
 			end
 		end
 	end
+	
+	IssueDispelCommands(hive, data, data.agents, true);
+	IssueDispelCommands(hive, data, data.tracked, true);
+	IssueBuffCommands(hive, data, data.agents, true);
+	IssueBuffCommands(hive, data, data.tracked, true);
 	
 	for i = 1, #data.healers do
 	

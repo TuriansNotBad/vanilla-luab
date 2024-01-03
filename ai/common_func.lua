@@ -145,3 +145,30 @@ function AI_CancelAgentBuffs(ai)
 	AI_CancelAuraSpellChain(ai, SPELL_PRI_POWER_WORD_FORTITUDE);
 	AI_CancelAuraSpellChain(ai, SPELL_PRI_PRAYER_OF_FORTITUDE);
 end
+
+function AI_HasMotionAura(agent)
+	return agent:HasAuraType(AURA_MOD_FEAR);
+end
+
+function GetDungeon(map)
+	local data = t_dungeons[map];
+	if (nil == data) then
+		return;
+	end
+	return data.encounters;
+end
+
+function GetEncounter(map, attackers)
+	local data = GetDungeon(map);
+	if (nil == data) then
+		return;
+	end
+	for i,attacker in ipairs(attackers) do
+		for i,encounter in ipairs(data) do
+			-- print(encounter.name, attacker:GetName());
+			if (encounter.name == attacker:GetName()) then
+				return encounter;
+			end
+		end
+	end
+end

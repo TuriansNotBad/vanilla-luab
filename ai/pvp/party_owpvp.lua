@@ -126,7 +126,6 @@ function OpenWorldPVP_CleanUp(ai)
 	self:CleanUpEx(ai, nil);
 end
 
-
 function OpenWorldPVP_Update(party)
 	
 	local ownerGuid = party:GetOwnerGuid();

@@ -4,7 +4,7 @@
 		<blank>
 *********************************************************************************************]]
 
-local function Healer_GetHealPriority(target, mp, hot)
+function Healer_GetHealPriority(target, mp, hot)
 	
 	if (not target) then
 		return 0;
@@ -46,8 +46,9 @@ function Healer_ShouldHealTarget(ai, target)
 	local mp 		= agent:GetPowerPct(POWER_MANA)/100.0;
 	local curTarget = ai:GetHealTarget();
 	local data 		= ai:GetData();
+	local cmd       = ai:CmdType();
 	
-	if (false == agent:IsAlive()) then
+	if (false == agent:IsAlive() or cmd == CMD_DISPEL) then
 		return 0.0;
 	end
 	
@@ -58,6 +59,11 @@ function Healer_ShouldHealTarget(ai, target)
 	
 	-- avoid switching constantly
 	if (ai:CmdType() == CMD_HEAL and not ai:CmdIsRequirementMet()) then
+		if (curTarget and not curTarget:IsTanking()) then
+			if (target:IsTanking() and target:GetHealthPct() < 25.0) then
+				return mp;
+			end
+		end
 		return 0.0;
 	end
 	

@@ -220,7 +220,8 @@ function AI_SpecApplyTalents(ai, level, alltalents, bNoCost, dontLearn)
 	end
 	
 	if (nil == talents) then
-		error("No talents defined for spec " .. ai:GetSpec() .. " of agent " .. ai:GetPlayer():GetName());
+		-- error("No talents defined for spec " .. ai:GetSpec() .. " of agent " .. ai:GetPlayer():GetName());
+		return;
 	end
 	
 	local agent = ai:GetPlayer();

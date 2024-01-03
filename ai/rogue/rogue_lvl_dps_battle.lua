@@ -73,7 +73,7 @@ function RogueLevelDps_Activate(ai, goal)
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
 	
-	local _,threat = agent:GetSpellDamageAndThreat(agent, data.backstab, false, true, 1);
+	local _,threat = agent:GetSpellDamageAndThreat(agent, data.sstrike, false, true, 1);
 	ai:SetStdThreat(threat);
 
 end
@@ -137,7 +137,12 @@ function RogueLevelDps_Update(ai, goal)
 			return GOAL_RESULT_Continue;
 		end
 		
-		local target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
+		if (goal:GetSubGoalNum() > 0) then
+			return GOAL_RESULT_Continue;
+		end
+		
+		-- local target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
+		local target = Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, true, 10.0);
 		-- too high threat
 		if (not target or not target:IsAlive()) then
 			agent:AttackStop();
@@ -148,7 +153,7 @@ function RogueLevelDps_Update(ai, goal)
 			return GOAL_RESULT_Continue;
 		end
 		
-		if (agent:IsNonMeleeSpellCasted() or goal:GetSubGoalNum() > 0) then
+		if (agent:IsNonMeleeSpellCasted()) then
 			return GOAL_RESULT_Continue;
 		end
 		
@@ -188,6 +193,15 @@ function RogueDpsRotation(ai, agent, goal, data, target)
 	
 	if (target:GetDistance(agent) > 5.0) then
 		return false;
+	end
+	
+	if (level >= 12
+	and agent:IsSpellReady(data.kick)
+	and target:IsCastingInterruptableSpell()
+	and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
+		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), data.kick, "Interrupt", 0.0);
+		AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
+		return true;
 	end
 	
 	if (cp > 2 and data._hasBladeFlurry and false == agent:HasAura(SPELL_ROG_BLADE_FLURRY) and 15000 < agent:GetAuraTimeLeft(data.sndice)) then

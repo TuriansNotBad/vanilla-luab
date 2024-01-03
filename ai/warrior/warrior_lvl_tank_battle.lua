@@ -56,9 +56,9 @@ function WarriorLevelTank_Activate(ai, goal)
 	local talentInfo = _ENV[ specTbl.TalentInfo ];
 	
 	AI_SpecApplyTalents(ai, level, talentInfo.talents );
-	print();
-	DebugPlayer_PrintTalentsNice(agent, true);
-	print();
+	-- print();
+	-- DebugPlayer_PrintTalentsNice(agent, true);
+	-- print();
 	
 	local data = ai:GetData();
 	data.sunder  = ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR);
@@ -282,9 +282,9 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	local rage = agent:GetPowerPct(POWER_RAGE);
 	local hp = agent:GetHealthPct();
 	local party = ai:GetPartyIntelligence();
+	local partyData = party:GetData();
 	
-	if (data.grenade and party and agent:GetDistance(target) < 10.0 and false == target:IsMoving()) then
-		local partyData = party:GetData();
+	if (data.grenade and party and agent:GetDistance(target) < 10.0 and false == target:IsMoving() and false == agent:IsMoving()) then
 		
 		if (level >= 10 and goal:IsFinishTimer(0) and hp > 50) then
 			
@@ -311,8 +311,12 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	-- Potions
 	WarriorTankPotions(agent, goal, data);
 	
-	if (agent:GetDistance(target) > 5.0) then
+	if (false == agent:CanReachWithMelee(target)) then
 		return false;
+	end
+	
+	if (agent:GetAttackersNum() > 3 and false == agent:HasAura(11350)) then
+		agent:CastSpell(agent, 11350, true);
 	end
 	
 	-- Taunt

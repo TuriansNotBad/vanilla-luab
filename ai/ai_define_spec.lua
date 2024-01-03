@@ -100,7 +100,18 @@ t_agentSpecs[CLASS_PRIEST].LvlHeal = {
 };
 
 --[[*****************************************************
-	Rogue
+	SHAMAN
+*******************************************************]]
+
+-- Shaman general info
+t_agentSpecs[CLASS_SHAMAN] = {};
+t_agentSpecs[CLASS_SHAMAN].LvlDps = {
+	BattleGoalID = GOAL_ShamanLevelDps_Battle,
+	TalentInfo = "t_LevelShamanDpsSpec",
+};
+
+--[[*****************************************************
+	ROGUE
 *******************************************************]]
 
 -- Priest general info

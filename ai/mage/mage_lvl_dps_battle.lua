@@ -199,7 +199,7 @@ function MageLevelDps_Update(ai, goal)
 			return GOAL_RESULT_Continue;
 		end
 		
-		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable()) then
+		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable() or target:GetVictim() == agent) then
 			Dps_RangedChase(ai, agent, target);
 		else
 			local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not partyData.reverse);

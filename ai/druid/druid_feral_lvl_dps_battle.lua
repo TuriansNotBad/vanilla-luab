@@ -149,7 +149,7 @@ function FeralLevelDps_Activate(ai, goal)
 			partyData:RegisterBuff(agent, "ST: Mark of the Wild", 1, data.mark, BUFF_SINGLE, 5*6e4, {party = false, notauras = {21850, 21849}});
 		end
 		partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.motw, type, 5*6e4, {party = true});
-		partyData:RegisterBuff(agent, "Thorns", 1, data.thorns, BUFF_SINGLE, 3*6e4, {role = ROLE_TANK});
+		partyData:RegisterBuff(agent, "Thorns", 1, data.thorns, BUFF_SINGLE, 3*6e4, {role = {[ROLE_TANK] = true}});
 	end
 
 end

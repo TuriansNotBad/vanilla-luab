@@ -1,0 +1,13 @@
+
+SPELL_SHA_LIGHTNING_BOLT          = 15208;
+
+-- shocks
+SPELL_SHA_EARTH_SHOCK             = 10414;
+
+-- weapon enhance
+SPELL_SHA_FLAMETONGUE_WEAPON      = 16342;
+
+-- totems
+SPELL_SHA_TREMOR_TOTEM            = 8143;
+SPELL_SHA_STRENGTH_OF_EARTH_TOTEM = Builds.Spell("1.9.4", 10442, 25361);
+SPELL_SHA_WINDFURY_TOTEM          = 10614;

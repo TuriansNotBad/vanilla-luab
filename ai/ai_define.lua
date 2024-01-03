@@ -25,6 +25,7 @@ CMD_HEAL   = 5;
 CMD_PULL   = 6;
 CMD_CC     = 7;
 CMD_BUFF   = 8;
+CMD_DISPEL = 9;
 
 -- Teams
 TEAM_HORDE    = 67;
@@ -110,6 +111,12 @@ FORM_STEALTH            = 0x1E;
 FORM_MOONKIN            = 0x1F;
 FORM_SPIRITOFREDEMPTION = 0x20;
 
+-- Totems
+TOTEM_FIRE   = 0;
+TOTEM_EARTH  = 1;
+TOTEM_WATER  = 2;
+TOTEM_AIR    = 3;
+
 -- Generic Spell IDs
 SPELL_GEN_SHOOT_BOW   = 2480;
 SPELL_GEN_PUMMELER    = 13494;
@@ -123,6 +130,11 @@ AURA_MOD_DAMAGE_DONE          = 13;
 AURA_MOD_SHAPESHIFT           = 36;
 AURA_MOD_HEALING_DONE         = 135;
 AURA_MOD_HEALING_DONE_PERCENT = 136;
+
+-- Spell Mechanics
+MECHANIC_CHARM =  1;
+MECHANIC_FEAR  =  5;
+MECHANIC_SLEEP = 10;
 
 -- Spell Cast Result
 CAST_OK = 255;
@@ -286,3 +298,7 @@ Builds = {
 		return CVER >= Builds[key] and f(target, id1, c) or false;
 	end,
 };
+
+function Mask(value)
+	return 1 << (value - 1);
+end
