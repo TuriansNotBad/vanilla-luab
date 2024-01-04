@@ -17,7 +17,7 @@ function Party_GetCCTarget(spellid, party, attackers, minCount, allowNonRanged)
 		local attacker = attackers[i];
 		-- print(i, attacker:GetAttackersN());
 		-- Print(spell:CheckCreatureType(attacker), Unit_IsCrowdControlled(attacker), party:IsCC(attacker), attacker:IsRanged(), contender, allowNonRanged)
-		if (spell:CheckCreatureType(attacker) and not Unit_IsCrowdControlled(attacker) and not party:IsCC(attacker)) then
+		if (spell:CheckCreatureType(attacker) and not Unit_IsCrowdControlled(attacker) and not party:IsCC(attacker) and not attacker:IsImmuneToSpell(spellid)) then
 			
 			if (attacker:IsRanged()) then
 				return attacker;

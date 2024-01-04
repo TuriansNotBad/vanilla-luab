@@ -120,6 +120,6 @@ t_dungeons[36].encounters = {
 	{name = "Gilnid"},
 	{name = "Mr. Smite"},
 	{name = "Captain Greenskin"},
-	{name = "Edwin Van Cleef"},
+	{name = "Edwin VanCleef"},
 	{name = "Cookie"},
 };
