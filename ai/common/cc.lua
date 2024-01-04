@@ -64,8 +64,8 @@ function Cc_Update(ai, goal)
 		local result = agent:CastSpell(target, spell, false);
 		if (CAST_OK == result) then
 			Print(agent:GetName(), "ccd", target:GetName(), "with spell", spell, GetSpellName(spell));
-		else
-			Print("CC result", result);
+		-- else
+			-- Print("CC result", result);
 		end
 	end
 	

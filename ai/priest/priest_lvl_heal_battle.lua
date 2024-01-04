@@ -145,6 +145,9 @@ function PriestLevelHeal_Activate(ai, goal)
 		end
 	end
 	
+	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
+	ai:SetStdThreat(2.0*threat);
+	
 end
 
 --[[*****************************************************
@@ -304,7 +307,12 @@ function PriestLevelHeal_Update(ai, goal)
 		
 		PriestPotions(agent, goal, data);
 		
-		local maxThreat = GetAEThreat(agent, partyData.attackers);
+		local maxThreat;
+		if (target:IsTanking() and hp < 30) then
+			maxThreat = 1000.0;
+		else
+			maxThreat = GetAEThreat(ai, agent, partyData.attackers);
+		end
 		local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat);
 		
 		-- threat check not passed or just have no mana
@@ -401,9 +409,9 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 	-- pick the strongest spell that makes sense
 	if (target:IsTanking()) then
 		-- emergency heal?
-		if (hp < 30) then
-			return data.fheal, agent:GetSpellDamageAndThreat(target, data.fheal, true, false);
-		end
+		-- if (hp < 30) then
+			-- return data.fheal, agent:GetSpellDamageAndThreat(target, data.fheal, true, false);
+		-- end
 		-- find first spell that we've enough mana for
 		for i = #heals, 1, -1 do
 			local id = heals[i];
@@ -518,12 +526,12 @@ function PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, cas
 	
 end
 
-function GetAEThreat(agent, targets)
+function GetAEThreat(ai, agent, targets)
 	local minDiff = 99999999;
 	for idx,target in ipairs(targets) do
 		if (not Unit_IsCrowdControlled(target)) then
 			local _,tankThreat = target:GetHighestThreat();
-			local diff  = tankThreat - target:GetThreat(agent);
+			local diff = (tankThreat - ai:GetStdThreat()) - target:GetThreat(agent);
 			if (diff < minDiff) then
 				minDiff = diff;
 			end

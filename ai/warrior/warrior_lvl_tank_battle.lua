@@ -83,6 +83,7 @@ function WarriorLevelTank_Activate(ai, goal)
 		threat = threat * 1.3;
 	end
 	ai:SetStdThreat(threat);
+	Print("Tank std threat, x2", ai:GetStdThreat(), ai:GetStdThreat() * 2);
 	
 	ai:SetAmmo(ITEMID_ROUGH_ARROW);
 	data.PullRotation = WarriorPullRotation;
@@ -97,6 +98,7 @@ function WarriorLevelTank_Update(ai, goal)
 	local data = ai:GetData();
 	local agent = ai:GetPlayer();
 	local party = ai:GetPartyIntelligence();
+	local partyData = party:GetData();
 	
 	local cmd = ai:CmdType();
 	if (cmd == -1 or nil == party) then
@@ -160,6 +162,7 @@ function WarriorLevelTank_Update(ai, goal)
 			ai:CmdSetInProgress();
 			ai:UnsetAbsAngle();
 			data.tankrot = nil;
+			Print(agent:GetName(), "CMD_TANK begin.");
 		end
 		
 		local guid = ai:CmdArgs();
@@ -170,6 +173,7 @@ function WarriorLevelTank_Update(ai, goal)
 			ai:CmdComplete();
 			agent:ClearMotion();
 			agent:AttackStop();
+			Print(agent:GetName(), "CMD_TANK complete.", type(target), target and not target:IsAlive(), target and party:IsCC(target), #partyData.attackers);
 			return GOAL_RESULT_Continue;
 		end
 		

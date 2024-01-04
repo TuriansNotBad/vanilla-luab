@@ -192,7 +192,9 @@ local function FillTrackedAttackers(attackers, tracked)
 	for i,unit in ipairs(tracked) do
 		local t = unit:GetAttackers();
 		for j,attacker in ipairs(t) do
-			table.insert(attackers, attacker);
+			if (table.ifind(attackers, attacker) == 0) then
+				table.insert(attackers, attacker);
+			end
 		end
 	end
 end
@@ -456,10 +458,14 @@ function Hive_CombatUpdate(hive, data)
 					if (false == target:IsInCombat() and true == hive:CanPullTarget(target) and ai:GetPlayer():IsInDungeon()) then
 						if (ai:CmdType() ~= CMD_PULL) then
 							hive:CmdPull(ai, target:GetGuid());
+							break;
 						end
 					else
-						hive:CmdTank(ai, target:GetGuid(), threatTarget);
-						break;
+						-- if (ai:CmdType() ~= CMD_TANK) then
+							Print(ai:CmdType(), ai:GetPlayer():GetName(), target:GetName(), "been issued CMD_TANK.");
+							hive:CmdTank(ai, target:GetGuid(), threatTarget);
+							break;
+						-- end
 					end
 				end
 			end

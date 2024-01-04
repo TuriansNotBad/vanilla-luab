@@ -83,8 +83,8 @@ function MageLevelDps_Activate(ai, goal)
 		data.armor = data.mageA;
 	end
 	
-	local _,threat = agent:GetSpellDamageAndThreat(agent, data.frostbolt, false, true, 1);;
-	ai:SetStdThreat(threat);
+	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
+	ai:SetStdThreat(2.0*threat);
 	
 	local party = ai:GetPartyIntelligence();
 	if (party) then

@@ -73,8 +73,8 @@ function RogueLevelDps_Activate(ai, goal)
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
 	
-	local _,threat = agent:GetSpellDamageAndThreat(agent, data.sstrike, false, true, 1);
-	ai:SetStdThreat(threat);
+	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
+	ai:SetStdThreat(2.0*threat);
 
 end
 

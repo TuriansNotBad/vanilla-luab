@@ -112,7 +112,7 @@ function Pull_Update(ai, goal)
 		if (goal:GetNumber(8) == 1) then
 			pullDist = 80;
 		end
-		if (agent:GetDistance(x,y,z) < pullDist) then
+		if (agent:GetDistance(x,y,z) < pullDist and target:GetVictim() == agent) then
 			if (0 == goal:GetNumber(SN_FLAG)) then
 				goal:AddSubGoal(GOAL_COMMON_FollowCLineRev, 15, not partyData.reverse);
 				goal:SetNumber(SN_FLAG, 1);
