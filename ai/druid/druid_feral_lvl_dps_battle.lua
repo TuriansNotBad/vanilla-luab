@@ -146,9 +146,9 @@ function FeralLevelDps_Activate(ai, goal)
 		local type = BUFF_SINGLE;
 		if (data.motw == data.gift) then
 			type = BUFF_PARTY;
-			partyData:RegisterBuff(agent, "ST: Mark of the Wild", 1, data.mark, BUFF_SINGLE, 5*6e4, {party = false, notauras = {21850, 21849}});
+			partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.mark, BUFF_SINGLE, 5*6e4, {party = true, notauras = {21850, 21849}});
 		end
-		partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.motw, type, 5*6e4, {party = true});
+		partyData:RegisterBuff(agent, "ST: Mark of the Wild", 1, data.motw, type, 5*6e4, {party = false});
 		partyData:RegisterBuff(agent, "Thorns", 1, data.thorns, BUFF_SINGLE, 3*6e4, {role = {[ROLE_TANK] = true}});
 	end
 
@@ -164,7 +164,7 @@ function FeralLevelDps_Update(ai, goal)
 	local party = ai:GetPartyIntelligence();
 	
 	local cmd = ai:CmdType();
-	if (cmd == -1 or nil == party) then
+	if (cmd == CMD_NONE or nil == party) then
 		return GOAL_RESULT_Continue;
 	end
 	
@@ -437,7 +437,7 @@ function DruidBearRotation(ai, agent, goal, data, target)
 		print("Maul", agent:GetName(), target:GetName());
 		return true;
 	end
-
+	
 end
 
 function DruidLowLevelRotation(ai, agent, goal, data, target)

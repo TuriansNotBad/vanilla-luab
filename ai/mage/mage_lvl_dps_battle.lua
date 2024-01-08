@@ -110,7 +110,7 @@ function MageLevelDps_Update(ai, goal)
 	local partyData = party:GetData();
 	
 	local cmd = ai:CmdType();
-	if (cmd == -1 or nil == party) then
+	if (cmd == CMD_NONE or nil == party) then
 		return GOAL_RESULT_Continue;
 	end
 	

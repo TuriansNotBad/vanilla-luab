@@ -6,6 +6,8 @@ local t_agentInfo = {
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
+	-- {"Man",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
+	-- {"Cynt",LOGIC_ID_Party,"LvlDps"}, -- mage
 };
 
 local Hive_FormationRectGetAngle;
@@ -253,9 +255,6 @@ function Hive_Update(hive)
 	
 	for i = 1, #data.agents do
 		local ai = data.agents[i];
-		if (ai == nil) then
-			print(i, #data.agents, "ai was nil while sorting agents by roles...");
-		end
 		-- ai:GetPlayer():SetHealthPct(100.0);
 		-- ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
 		-- ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);

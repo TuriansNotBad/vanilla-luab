@@ -85,7 +85,7 @@ function ShamanLevelDps_Update(ai, goal)
 	local party = ai:GetPartyIntelligence();
 	
 	local cmd = ai:CmdType();
-	if (cmd == -1 or nil == party) then
+	if (cmd == CMD_NONE or nil == party) then
 		return GOAL_RESULT_Continue;
 	end
 	local partyData = party:GetData();

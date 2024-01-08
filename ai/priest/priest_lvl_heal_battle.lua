@@ -156,7 +156,7 @@ end
 function PriestLevelHeal_Update(ai, goal)
 
 	local cmd = ai:CmdType();
-	if (cmd == -1) then
+	if (cmd == CMD_NONE) then
 		return GOAL_RESULT_Continue;
 	end
 	
