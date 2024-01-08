@@ -48,7 +48,7 @@ function Healer_ShouldHealTarget(ai, target)
 	local data 		= ai:GetData();
 	local cmd       = ai:CmdType();
 	
-	if (false == agent:IsAlive() or cmd == CMD_DISPEL) then
+	if (false == agent:IsAlive() or cmd == CMD_DISPEL or agent:GetStandState() ~= STAND_STATE_STAND) then
 		return 0.0;
 	end
 	

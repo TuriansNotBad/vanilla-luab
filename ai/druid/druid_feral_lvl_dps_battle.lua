@@ -146,9 +146,16 @@ function FeralLevelDps_Activate(ai, goal)
 		local type = BUFF_SINGLE;
 		if (data.motw == data.gift) then
 			type = BUFF_PARTY;
-			partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.mark, BUFF_SINGLE, 5*6e4, {party = true, notauras = {21850, 21849}});
 		end
-		partyData:RegisterBuff(agent, "ST: Mark of the Wild", 1, data.motw, type, 5*6e4, {party = false});
+		-- Prior to patch 1.3 Gift of the Wild only applied to your party
+		if (CVER < Builds["1.3.1"]) then
+			if (data.motw == data.gift) then
+				partyData:RegisterBuff(agent, "ST: Mark of the Wild", 1, data.mark, BUFF_SINGLE, 5*6e4, {party = false, notauras = {21850, 21849}});
+			end
+			partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.motw, type, 5*6e4, {party = type == BUFF_PARTY or nil});
+		else
+			partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.motw, type, 5*6e4);
+		end
 		partyData:RegisterBuff(agent, "Thorns", 1, data.thorns, BUFF_SINGLE, 3*6e4, {role = {[ROLE_TANK] = true}});
 	end
 

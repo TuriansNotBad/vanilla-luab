@@ -131,7 +131,15 @@ function PriestLevelHeal_Activate(ai, goal)
 		if (data.fortitude == data.aepwf) then
 			type = BUFF_PARTY;
 		end
-		partyData:RegisterBuff(agent, "Power Word: Fortitude", 1, data.fortitude, type, 5*6e4);
+		-- Prior to patch 1.3 Prayer of Fortitude only applied to your party
+		if (CVER < Builds["1.3.1"]) then
+			if (data.fortitude == data.aepwf) then
+				partyData:RegisterBuff(agent, "ST: Power Word: Fortitude", 1, data.pwf, BUFF_SINGLE, 5*6e4, {party = false, notauras = {21564, 21562}});
+			end
+			partyData:RegisterBuff(agent, "Power Word: Fortitude", 1, data.fortitude, type, 5*6e4, {party = type == BUFF_PARTY or nil});
+		else
+			partyData:RegisterBuff(agent, "Power Word: Fortitude", 1, data.fortitude, type, 5*6e4);
+		end
 		if (agent:GetRace() == RACE_DWARF and level >= 20) then
 			local filter = {
 				role = {[ROLE_TANK] = true, [ROLE_HEALER] = true},
