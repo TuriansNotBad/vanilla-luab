@@ -7,6 +7,20 @@
 -- Balance druid dps build for leveling PI.
 t_LevelPriestHealerSpec = {
 	talents = {
+		{Builds["1.2.4"], {
+			-- holy
+			{"Improved Renew", 5, 406},
+			{"Spiritual Healing", 5, 404},
+			{"Subtlety", 5, 402},
+			{"Improved Healing", 5, 408}, {"Holy Specialization", 5, 401},
+			{"Master Healer", 5, 411},
+			-- disc
+			{"Unbreakable Will", 5, 342},
+			{"Improved Power Word: Fortitude", 2, 344}, {"Wand Specialization", 3, 345},
+			{"Mental Agility", 5, 341},
+			{"Mental Strength", 5, 1201},
+			{"Inner Focus", 1, 348},
+		},},
 		{Builds["1.12.1"], {
 			{"Improved Renew", 3, 406}, {"Holy Specialization", 2, 401},
 			{"Divine Fury", 5, 1181},

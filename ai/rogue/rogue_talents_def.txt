@@ -1,5 +1,35 @@
 talents = {
 	["Subtlety"] = {
+		{"Rapid Concealment", 0, 243}, {"Master of Deception", 0, 241}, {"Camouflage", 0, 244},
+		{"Elusiveness", 0, 247}, {"Opportunity", 0, 261},
+		{"Initiative", 0, 245}, {"Ghostly Strike", 0, 303}, {"Improved Garrote", 0, 264}, {"Improved Ambush", 0, 263},
+		{"Improved Vanish", 0, 267}, {"Improved Rupture", 0, 1123}, {"Improved Sap", 0, 262},
+		{"Preparation", 0, 284}, {"Improved Cheap Shot", 0, 265}, {"Improved Distract", 0, 266},
+		{"Setup", 0, 246}, {"Hemorrhage", 0, 681},
+		{"Premeditation", 0, 381},
+	},
+	["Combat"] = {
+		{"Improved Gouge", 0, 203}, {"Improved Sinister Strike", 0, 201}, {"Lightning Reflexes", 0, 186},
+		{"Improved Backstab", 0, 202}, {"Deflection", 0, 187}, {"Precision", 0, 181},
+		{"Improved Evasion", 0, 204}, {"Riposte", 0, 301}, {"Improved Sprint", 0, 222},
+		{"Improved Kick", 0, 206}, {"Dagger Specialization", 0, 182}, {"Dual Wield Specialization", 0, 221},
+		{"Mace Specialization", 0, 184}, {"Blade Flurry", 0, 223}, {"Sword Specialization", 0, 242}, {"Fist Weapon Specialization", 0, 183},
+		{"Throwing Weapon Specialization", 0, 185}, {"Aggression", 0, 1122},
+		{"Adrenaline Rush", 0, 205},
+	},
+	["Assassination"] = {
+		{"Improved Eviscerate", 0, 276}, {"Remorseless Attacks", 0, 272}, {"Malice", 0, 270},
+		{"Ruthlessness", 0, 273}, {"Murder", 0, 274}, {"Improved Slice and Dice", 0, 277},
+		{"Relentless Strikes", 0, 281}, {"Improved Expose Armor", 0, 278}, {"Lethality", 0, 269},
+		{"Vile Poisons", 0, 682}, {"Improved Instant Poison", 0, 268},
+		{"Improved Kidney Shot", 0, 279}, {"Cold Blood", 0, 280}, {"Improved Deadly Poison", 0, 302},
+		{"Seal Fate", 0, 283},
+		{"Vigor", 0, 382},
+	},
+}
+
+talents = {
+	["Subtlety"] = {
 		{"Master of Deception", 0, 241}, {"Opportunity", 0, 261},
 		{"Sleight of Hand", 0, 1700}, {"Elusiveness", 0, 247}, {"Camouflage", 0, 244},
 		{"Initiative", 0, 245}, {"Ghostly Strike", 0, 303}, {"Improved Ambush", 0, 263},

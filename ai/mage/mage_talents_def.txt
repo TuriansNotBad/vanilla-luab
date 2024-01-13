@@ -1,6 +1,36 @@
 talents = {
 	["Arcane"] = {
 		{"Arcane Subtlety", 0, 74}, {"Arcane Focus", 0, 76}, {"Improved Arcane Missiles", 0, 80},
+		{"Wand Specialization", 0, 78}, {"Arcane Concentration", 0, 75},
+		{"Improved Dampen Magic", 0, 82}, {"Improved Arcane Explosion", 0, 81}, {"Evocation", 0, 85},
+		{"Improved Mana Shield", 0, 83}, {"Improved Counterspell", 0, 88}, {"Arcane Meditation", 0, 1142},
+		{"Presence of Mind", 0, 86}, {"Arcane Mind", 0, 77},
+		{"Arcane Instability", 0, 421},
+		{"Arcane Power", 0, 87},
+	},
+	["Frost"] = {
+		{"Improved Frostbolt", 0, 37}, {"Permafrost", 0, 65},
+		{"Ice Shards", 0, 73}, {"Winter's Chill", 0, 68}, {"Improved Frost Nova", 0, 62},
+		{"Piercing Ice", 0, 61}, {"Cold Snap", 0, 69}, {"Improved Blizzard", 0, 63},
+		{"Arctic Reach", 0, 741}, {"Frost Channeling", 0, 66}, {"Shatter", 0, 67}, {"Improved Frost Ward", 0, 70},
+		{"Ice Block", 0, 72}, {"Improved Cone of Cold", 0, 64},
+		{"Frostbite", 0, 38},
+		{"Ice Barrier", 0, 71},
+	},
+	["Fire"] = {
+		{"Improved Fireball", 0, 26}, {"Impact", 0, 30},
+		{"Ignite", 0, 34}, {"Improved Fire Blast", 0, 27}, {"Flame Throwing", 0, 28},
+		{"Incinerate", 0, 1141}, {"Pyroblast", 0, 29}, {"Improved Flamestrike", 0, 31}, {"Burning Soul", 0, 23},
+		{"Improved Scorch", 0, 25}, {"Improved Fire Ward", 0, 24},
+		{"Critical Mass", 0, 33}, {"Blast Wave", 0, 32},
+		{"Fire Power", 0, 35},
+		{"Combustion", 0, 36},
+	},
+}
+
+talents = {
+	["Arcane"] = {
+		{"Arcane Subtlety", 0, 74}, {"Arcane Focus", 0, 76}, {"Improved Arcane Missiles", 0, 80},
 		{"Wand Specialization", 0, 78}, {"Magic Absorption", 0, 1650}, {"Arcane Concentration", 0, 75},
 		{"Magic Attunement", 0, 82}, {"Improved Arcane Explosion", 0, 81}, {"Arcane Resilience", 0, 85},
 		{"Improved Mana Shield", 0, 83}, {"Improved Counterspell", 0, 88}, {"Arcane Meditation", 0, 1142},

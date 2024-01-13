@@ -59,6 +59,12 @@ local set = (owner:GetTeam() == TEAM_ALLIANCE) and h or a;
 local spawns = {
 	--  
 	[MIDKalimdor] = {
+		[ZIDBarrens] = {
+			WAR_MLG_Crossroads	 = {lvl = 1, r=30, name = set.one,   l=LOGIC_ID_InvaderPvp, x=-175.09,y=-2737.14,z=93.54,  zone = ZIDBarrens, map = MIDKalimdor},
+			WAR_MLG_Dreadmist	 = {lvl = 1, r=15, name = set.two,   l=LOGIC_ID_InvaderPvp, x=240.51,y=-2222.44,z=212.12,  zone = ZIDBarrens, map = MIDKalimdor},
+			WAR_MLG_Wailing		 = {lvl = 1, r=30, name = set.three, l=LOGIC_ID_InvaderPvp, x=-847.11,y=-2039.75,z=80.77,  zone = ZIDBarrens, map = MIDKalimdor},
+			WAR_MLG_Blackthorne	 = {lvl = 1, r=30, name = set.four,  l=LOGIC_ID_InvaderPvp, x=-3768.34,y=-2000.35,z=94.25, zone = ZIDBarrens, map = MIDKalimdor},
+		},
 		[ZIDDurotar] = {
 			WarriorVoT     = {lvl=1, r=35, name = set.one, l=LOGIC_ID_InvaderPvp, x=-200.311, y=-4364.804, z=66.808, zone = ZIDDurotar, map = MIDKalimdor},
 			WAR_DU_Road1   = {lvl=1, r=35, name = set.two, l=LOGIC_ID_InvaderPvp, x=-462.05,y=-4732.43,z=36.71, zone = ZIDDurotar, map = MIDKalimdor},
