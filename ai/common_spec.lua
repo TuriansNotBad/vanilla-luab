@@ -215,6 +215,7 @@ function AI_SpecApplyTalents(ai, level, alltalents, bNoCost, dontLearn)
 	for i = 1, #alltalents do
 		if (CVER >= alltalents[i][1]) then
 			talents = alltalents[i][2];
+		else
 			break;
 		end
 	end

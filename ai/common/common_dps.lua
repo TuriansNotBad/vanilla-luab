@@ -20,7 +20,7 @@ end
 
 function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threatCheck, maxInterruptDist)
 	local hpTarget;
-	local minDiff = ai:GetStdThreat() * 2;
+	local minDiff = ai:GetStdThreat();
 	for i = 1, #targets do
 		local target = targets[i];
 		local _,tankThreat = target:GetHighestThreat();
