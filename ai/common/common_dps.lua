@@ -6,7 +6,7 @@
 
 function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 	
-	local minDiff = ai:GetStdThreat() * 2;
+	local minDiff = ai:GetStdThreat();
 	for i = 1, #targets do
 		local target = targets[i];
 		local _,tankThreat = target:GetHighestThreat();
@@ -31,7 +31,7 @@ function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threat
 			and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
 				return target;
 			end
-			if (diff > minDiff) then
+			if (hpTarget == nil and diff > minDiff) then
 				hpTarget = target;
 			end
 		end
@@ -83,15 +83,80 @@ function Dps_RangedChase(ai, agent, target)
 	
 end
 
-function Dps_MeleeChase(ai, agent, target)
+function Dps_MeleeChase(ai, agent, target, bAttack)
 	if (AI_HasMotionAura(agent)) then
 		return;
 	end
-	if (agent:GetVictim() ~= target or agent:GetMotionType() ~= MOTION_CHASE or ai:GetChaseDist() > 2.0) then
+	
+	local isOnWrongTarget = (bAttack and agent:GetVictim() ~= target) or (false == bAttack and ai:GetChaseTarget() ~= target);
+	if (isOnWrongTarget or agent:GetMotionType() ~= MOTION_CHASE or ai:GetChaseDist() > 2.0) then
 		agent:AttackStop();
 		agent:ClearMotion();
-		agent:Attack(target);
+		if (bAttack) then
+			agent:Attack(target);
+		end
 		agent:MoveChase(target, 1.5, 2.0, 1.5, math.rad(math.random(160, 200)), math.pi/4.0, false, true);
 		return;
 	end
+end
+
+function Dps_MeleeOnEngageUpdate(ai, agent, goal, party, data, interruptR, fnThreatActions)
+
+	-- do combat!
+	if (ai:CmdState() == CMD_STATE_WAITING) then
+		Print(agent:GetName(), agent:GetClass(), "CMD_ENGAGE default update");
+		ai:CmdSetInProgress();
+	end
+	
+	local partyData = party:GetData();
+	local targets = partyData.attackers;
+	if (not targets[1]) then
+		agent:AttackStop();
+		agent:ClearMotion();
+		ai:CmdComplete();
+		goal:ClearSubGoal();
+		return GOAL_RESULT_Continue;
+	end
+	
+	if (goal:GetSubGoalNum() > 0) then
+		return GOAL_RESULT_Continue;
+	end
+	
+	local target;
+	if (interruptR) then
+		target = Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon(), interruptR);
+	else
+		target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
+	end
+	local bAllowThreatActions = target ~= nil;
+	print(bAllowThreatActions)
+	-- use tank's target if threat is too high
+	if (nil == target and partyData:HasTank()) then
+		local tank = partyData.tanks[1];
+		target = tank:GetPlayer():GetVictim();
+	end
+	
+	-- still nothing
+	if (nil == target or not target:IsAlive()) then
+		agent:AttackStop();
+		agent:ClearMotion();
+		agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+		agent:InterruptSpell(CURRENT_MELEE_SPELL);
+		-- Print("No target for", agent:GetName());
+		return GOAL_RESULT_Continue;
+	end
+	
+	if (agent:IsNonMeleeSpellCasted()) then
+		return GOAL_RESULT_Continue;
+	end
+	
+	if (bAllowThreatActions) then
+		fnThreatActions(ai, agent, goal, data, target);
+	else
+		agent:AttackStop();
+		Dps_MeleeChase(ai, agent, target, false);
+	end
+	
+	return GOAL_RESULT_Continue;
+
 end

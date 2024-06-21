@@ -73,8 +73,8 @@ function RogueLevelDps_Activate(ai, goal)
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
 	
-	local _,threat = agent:GetSpellDamageAndThreat(agent, data.backstab, false, true, 1);
-	ai:SetStdThreat(threat);
+	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
+	ai:SetStdThreat(threat * 2);
 
 end
 
@@ -122,49 +122,17 @@ function RogueLevelDps_Update(ai, goal)
 		
 	elseif (cmd == CMD_ENGAGE) then
 	
-		-- do combat!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			print("rogue cmd_engage");
-			ai:CmdSetInProgress();
-		end
-		local partyData = party:GetData();
-		local targets = partyData.attackers;
-		if (not targets[1]) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		-- local target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
-		local target = Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, true, 10.0);
-		-- too high threat
-		if (not target or not target:IsAlive()) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			agent:InterruptSpell(CURRENT_MELEE_SPELL);
-			-- Print("No target for", agent:GetName());
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		-- Potions
-		RoguePotions(agent, goal, data);
-		RogueDpsRotation(ai, agent, goal, ai:GetData(), target);
+		return Dps_MeleeOnEngageUpdate(ai, agent, goal, party, data, 10.0, RogueThreatActions);
 	
 	end
 
 	return GOAL_RESULT_Continue;
 	
+end
+
+function RogueThreatActions(ai, agent, goal, data, target)
+	RoguePotions(agent, goal, data);
+	RogueDpsRotation(ai, agent, goal, ai:GetData(), target);
 end
 
 function RoguePotions(agent, goal, data)
@@ -184,7 +152,7 @@ function RogueDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	Dps_MeleeChase(ai, agent, target);
+	Dps_MeleeChase(ai, agent, target, true);
 	
 	local level = agent:GetLevel();
 	local cp = agent:GetComboPoints();
