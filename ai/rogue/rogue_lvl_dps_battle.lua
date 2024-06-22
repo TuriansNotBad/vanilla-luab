@@ -122,7 +122,7 @@ function RogueLevelDps_Update(ai, goal)
 		
 	elseif (cmd == CMD_ENGAGE) then
 	
-		return Dps_MeleeOnEngageUpdate(ai, agent, goal, party, data, 10.0, RogueThreatActions);
+		return Dps_OnEngageUpdate(ai, agent, goal, party, data, false, 10.0, RogueThreatActions);
 	
 	end
 
@@ -151,8 +151,6 @@ function RogueDpsRotation(ai, agent, goal, data, target)
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
 	end
-	
-	Dps_MeleeChase(ai, agent, target, true);
 	
 	local level = agent:GetLevel();
 	local cp = agent:GetComboPoints();

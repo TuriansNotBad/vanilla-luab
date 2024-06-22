@@ -169,53 +169,8 @@ function MageLevelDps_Update(ai, goal)
 		end
 		
 	elseif (cmd == CMD_ENGAGE) then
-	
-		-- do combat!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			print("mage cmd_engage");
-			ai:CmdSetInProgress();
-		end
-		local partyData = party:GetData();
-		local targets = partyData.attackers;
-		if (not targets[1]) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
 		
-		local target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
-		-- too high threat
-		if (not target or not target:IsAlive()) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			-- Print("No target for", agent:GetName());
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (agent:IsNonMeleeSpellCasted() or goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable() or target:GetVictim() == agent) then
-			Dps_RangedChase(ai, agent, target);
-		else
-			local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not partyData.reverse);
-			if (x) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, x, y, z);
-				print("Move To", x, y, z);
-			else
-				Dps_RangedChase(ai, agent, target);
-			end
-		end
-		
-		if (agent:IsMoving()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		MageDpsRotation(ai, agent, goal, ai:GetData(), target);
+		Dps_OnEngageUpdate(ai, agent, goal, party, data, true, nil, MageDpsRotation);
 	
 	elseif (cmd == CMD_BUFF) then
 		

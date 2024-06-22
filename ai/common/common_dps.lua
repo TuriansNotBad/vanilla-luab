@@ -100,7 +100,7 @@ function Dps_MeleeChase(ai, agent, target, bAttack)
 	end
 end
 
-function Dps_MeleeOnEngageUpdate(ai, agent, goal, party, data, interruptR, fnThreatActions)
+function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, fnThreatActions)
 
 	-- do combat!
 	if (ai:CmdState() == CMD_STATE_WAITING) then
@@ -109,6 +109,7 @@ function Dps_MeleeOnEngageUpdate(ai, agent, goal, party, data, interruptR, fnThr
 	end
 	
 	local partyData = party:GetData();
+	-- party has no attackers
 	local targets = partyData.attackers;
 	if (not targets[1]) then
 		agent:AttackStop();
@@ -129,7 +130,7 @@ function Dps_MeleeOnEngageUpdate(ai, agent, goal, party, data, interruptR, fnThr
 		target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
 	end
 	local bAllowThreatActions = target ~= nil;
-	print(bAllowThreatActions)
+	
 	-- use tank's target if threat is too high
 	if (nil == target and partyData:HasTank()) then
 		local tank = partyData.tanks[1];
@@ -150,11 +151,29 @@ function Dps_MeleeOnEngageUpdate(ai, agent, goal, party, data, interruptR, fnThr
 		return GOAL_RESULT_Continue;
 	end
 	
+	-- movement
+	if (bRanged) then
+		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable() or target:GetVictim() == agent) then
+			Dps_RangedChase(ai, agent, target);
+		else
+			local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not partyData.reverse);
+			if (x) then
+				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, x, y, z);
+				print("Move To", x, y, z);
+				return GOAL_RESULT_Continue;
+			else
+				Dps_RangedChase(ai, agent, target);
+			end
+		end
+	else
+		Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+	end
+	
+	-- attacks
 	if (bAllowThreatActions) then
 		fnThreatActions(ai, agent, goal, data, target);
 	else
 		agent:AttackStop();
-		Dps_MeleeChase(ai, agent, target, false);
 	end
 	
 	return GOAL_RESULT_Continue;
