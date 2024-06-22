@@ -40,7 +40,7 @@ function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threat
 	
 end
 
-function Dps_RangedChase(ai, agent, target)
+function Dps_RangedChase(ai, agent, target, bAttack)
 	
 	local defD = 12.0;
 	local defMinD = 0.0;
@@ -48,10 +48,13 @@ function Dps_RangedChase(ai, agent, target)
 	local defMinT = defD - defMinD;
 	local defMaxT = defMaxD - defD;
 	
-	if (agent:GetVictim() ~= target or agent:GetMotionType() ~= MOTION_CHASE) then
+	local isOnWrongTarget = (bAttack and agent:GetVictim() ~= target) or (false == bAttack and ai:GetChaseTarget() ~= target);
+	if (isOnWrongTarget or agent:GetMotionType() ~= MOTION_CHASE) then
 		agent:AttackStop();
 		agent:ClearMotion();
-		agent:Attack(target);
+		if (bAttack) then
+			agent:Attack(target);
+		end
 		agent:MoveChase(target, defD, defMinT, defMaxT, math.rad(math.random(160, 200)), math.pi/4.0, true, false);
 		return;
 	end
@@ -154,7 +157,7 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 	-- movement
 	if (bRanged) then
 		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable() or target:GetVictim() == agent) then
-			Dps_RangedChase(ai, agent, target);
+			Dps_RangedChase(ai, agent, target, bAllowThreatActions);
 		else
 			local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not partyData.reverse);
 			if (x) then
@@ -162,7 +165,7 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 				print("Move To", x, y, z);
 				return GOAL_RESULT_Continue;
 			else
-				Dps_RangedChase(ai, agent, target);
+				Dps_RangedChase(ai, agent, target, bAllowThreatActions);
 			end
 		end
 	else
