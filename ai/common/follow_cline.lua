@@ -45,7 +45,7 @@ function GotoCLinePos_Activate(ai, goal)
 	-- get previous segment on the line
 	local partyData = party:GetData();
 	if (target) then
-		local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not goal:GetParam(1));
+		local x,y,z = party:GetCLinePInLosAtD(agent, target, target, 10, 15, 1, not goal:GetParam(1));
 		if (x) then
 			goal:SetNumber(SN_X, x);
 			goal:SetNumber(SN_Y, y);

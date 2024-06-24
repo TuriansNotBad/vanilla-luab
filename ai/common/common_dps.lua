@@ -42,9 +42,9 @@ end
 
 function Dps_RangedChase(ai, agent, target, bAttack)
 	
-	local defD = 12.0;
+	local defD = 18.0;
 	local defMinD = 0.0;
-	local defMaxD = 15.0;
+	local defMaxD = 21.0;
 	local defMinT = defD - defMinD;
 	local defMaxT = defMaxD - defD;
 	
@@ -156,18 +156,11 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 	
 	-- movement
 	if (bRanged) then
-		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable() or target:GetVictim() == agent) then
+	
+		if (false == AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target)) then
 			Dps_RangedChase(ai, agent, target, bAllowThreatActions);
-		else
-			local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not partyData.reverse);
-			if (x) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, x, y, z);
-				print("Move To", x, y, z);
-				return GOAL_RESULT_Continue;
-			else
-				Dps_RangedChase(ai, agent, target, bAllowThreatActions);
-			end
 		end
+		
 	else
 		Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
 	end

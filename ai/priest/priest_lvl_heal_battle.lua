@@ -213,45 +213,9 @@ function PriestLevelHeal_Update(ai, goal)
 		end
 		
 	elseif (cmd == CMD_ENGAGE) then
-	
-		-- do combat!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-		end
-		local targets = partyData.attackers;
-		if (not targets[1]) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
 		
-		local target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
-		-- too high threat
-		if (not target or not target:IsAlive()) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			-- Print("No target for", agent:GetName());
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (agent:IsNonMeleeSpellCasted() or goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (target:GetDistance(agent) > 5.0 or false == ai:IsCLineAvailable() or target:GetVictim() == agent) then
-			Dps_RangedChase(ai, agent, target);
-		else
-			local x,y,z = party:GetCLinePInLosAtD(agent, target, 10, 15, 1, not partyData.reverse);
-			if (x) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, x, y, z);
-				print("Move To", x, y, z);
-			else
-				Dps_RangedChase(ai, agent, target);
-			end
-		end
+		-- todo: chase tank instead of lowest hp enemy?
+		return Dps_OnEngageUpdate(ai, agent, goal, party, data, true, nil, AI_DummyActions);
 	
 	elseif (cmd == CMD_HEAL) then
 		
@@ -286,11 +250,21 @@ function PriestLevelHeal_Update(ai, goal)
 		
 		-- interrupt preheals
 		if (agent:IsNonMeleeSpellCasted()) then
+			
+			-- reposition check
+			if (PriestLevelHeal_ShouldInterruptPrecast(agent, target, isTank, hpdiff)) then
+				if (AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target)) then
+					PriestLevelHeal_InterruptCurrentHealingSpell(ai, agent, goal);
+					return GOAL_RESULT_Continue;
+				end
+			end
+			
 			if (not PriestLevelHeal_InterruptPrecastHeals(agent, goal, target, isTank, hpdiff)
 				and not PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, goal:GetNumber(0), goal:GetNumber(1)))
 			then
 				return GOAL_RESULT_Continue;
 			end
+			
 		end
 		
 		-- heal spell cast
@@ -326,6 +300,7 @@ function PriestLevelHeal_Update(ai, goal)
 		-- threat check not passed or just have no mana
 		-- or if healing nontank hpdiff isn't low enough
 		if (nil == spell) then
+			AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target);
 			return GOAL_RESULT_Continue;
 		end
 		
@@ -482,12 +457,16 @@ function PriestLevelHeal_ShouldInterruptPrecast(agent, target, precastable, hpdi
 	return false;
 end
 
+function PriestLevelHeal_InterruptCurrentHealingSpell(ai, agent, goal)
+	agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+	goal:SetNumber(0, 0); -- reset saved target health
+	goal:SetNumber(1, 0); -- reset saved spell effect
+end
+
 function PriestLevelHeal_InterruptPrecastHeals(agent, goal, target, precastable, hpdiff)
 	if (PriestLevelHeal_ShouldInterruptPrecast(agent, target, precastable, hpdiff) and agent:GetSpellCastLeft() < 250) then
 		print"Interrupt precast"
-		agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-		goal:SetNumber(0, 0); -- reset saved target health
-		goal:SetNumber(1, 0); -- reset saved spell effect
+		PriestLevelHeal_InterruptCurrentHealingSpell(ai, agent, goal);
 		return true;
 	end
 	return false;
@@ -523,9 +502,7 @@ function PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, cas
 		if (newSpell ~= spell) then
 			fmtprint("Spell %s %d interrupted due to batching diff=%.2f, eff=%.2f, new=%d",
 				GetSpellName(spell), spell, hpdiff, castEffect, newSpell and newSpell or 0);
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			goal:SetNumber(0, 0); -- reset saved target health
-			goal:SetNumber(1, 0); -- reset saved spell effect
+			PriestLevelHeal_InterruptCurrentHealingSpell(ai, agent, goal);
 			return true;
 		end
 		

@@ -58,6 +58,25 @@ function AI_Replenish(agent, goal, hpThresh, mpThresh, form)
 
 end
 
+function AI_DistanceIfNeeded(ai, agent, goal, party, dist2close, atkTarget)
+	if (ai:IsCLineAvailable() and 0 == agent:GetAttackersNum()) then
+		local data = party:GetData();
+		local enemy = Unit_GetFirstEnemyInR(agent, dist2close, false, data.attackers);
+		if (enemy) then
+			local seekDist = atkTarget and 18 - enemy:GetDistance(atkTarget) or 15;
+			if (seekDist - 3 > 2) then
+				local x,y,z = party:GetCLinePInLosAtD(agent, enemy, atkTarget or enemy, seekDist - 3, seekDist, 1, not data.reverse);
+				if (x) then
+					goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, x, y, z);
+					print(agent:GetName(), "distancing", x, y, z);
+					return true;
+				end
+			end
+		end
+	end
+	return false;
+end
+
 function Unit_AECheck(agent, r, minCount, checkCC, attackers)
 	
 	local result = 0;
@@ -71,6 +90,19 @@ function Unit_AECheck(agent, r, minCount, checkCC, attackers)
 		end
 	end
 	return minCount <= result;
+	
+end
+
+function Unit_GetFirstEnemyInR(agent, r, includeCC, attackers)
+	
+	for i = 1, #attackers do
+		local attacker = attackers[i];
+		if (attacker:GetDistance(agent) <= r) then
+			if (includeCC or false == Unit_IsCrowdControlled(attacker)) then
+				return attacker;
+			end
+		end
+	end
 	
 end
 
@@ -172,3 +204,5 @@ function GetEncounter(map, attackers)
 		end
 	end
 end
+
+function AI_DummyActions() return false; end
