@@ -19,6 +19,10 @@ function Party_GetCCTarget(spellid, party, attackers, minCount, allowNonRanged)
 		-- Print(spell:CheckCreatureType(attacker), Unit_IsCrowdControlled(attacker), party:IsCC(attacker), attacker:IsRanged(), contender, allowNonRanged)
 		if (spell:CheckCreatureType(attacker) and not Unit_IsCrowdControlled(attacker) and not party:IsCC(attacker) and not attacker:IsImmuneToSpell(spellid)) then
 			
+			if (attacker:IsPlayer()) then
+				return attacker;
+			end
+			
 			if (attacker:IsRanged()) then
 				return attacker;
 			end
@@ -180,6 +184,17 @@ end
 
 function AI_HasMotionAura(agent)
 	return agent:HasAuraType(AURA_MOD_FEAR);
+end
+
+function AI_IsIncapacitated(agent)
+	return not agent:IsAlive() or agent:HasAuraType(AURA_MOD_CHARM);
+end
+
+function AI_TargetInHoldingArea(target, area)
+	if (area.tp == "circle") then
+		return target:GetDistance(area.pos.x, area.pos.y, area.pos.z) < area.r;
+	end
+	error("AI_TargetInHoldingArea: area type NYI, type = " .. area.tp);
 end
 
 function GetDungeon(map)

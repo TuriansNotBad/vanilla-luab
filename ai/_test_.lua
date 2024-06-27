@@ -1,8 +1,9 @@
 local t_agentInfo = {
 	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
+	{"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
 	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
-	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
+	-- {"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
@@ -148,7 +149,14 @@ local function RegisterDispel(data, agent, key)
 end
 
 local function HasTank(data)
-	return #data.tanks > 0;
+	if (#data.tanks > 0) then
+		for i,ai in ipairs(data.tanks) do
+			if (not ai:GetPlayer():HasAuraType(AURA_MOD_CHARM)) then
+				return true;
+			end
+		end
+	end
+	return false;
 end
 
 local function RegisterCC(data, agent, spellid)
@@ -156,12 +164,6 @@ local function RegisterCC(data, agent, spellid)
 end
 
 function Hive_Init(hive)
-	local t_12 = {
-		{"Adowwar",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
-		{"Adowpriest",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
-		{"Adowmage",LOGIC_ID_Party,"LvlDps"}, -- mage
-		{"Adowrogue",LOGIC_ID_Party,"LvlDps"}, -- rogue
-	};
 	hive:LoadInfoFromLuaTbl(t_agentInfo);
 	local data = hive:GetData();
 	data.ccAgents = {};
@@ -216,6 +218,7 @@ function Hive_Update(hive)
 	data.healTargets = {};
 	data.cc = hive:GetCC();
 	data._needTremor = nil;
+	data._holdPos = nil;
 	
 	local ownerGuid = hive:GetOwnerGuid()
 	local ownerVictim;
@@ -248,6 +251,9 @@ function Hive_Update(hive)
 				if (data.encounter.fear) then
 					data._needTremor = true;
 				end
+				if (data.encounter.hold_area) then
+					data._holdPos = data.encounter.hold_area;
+				end
 				-- print(data.encounter.name, data._needTremor);
 			end
 		end
@@ -268,6 +274,8 @@ function Hive_Update(hive)
 		elseif (role == ROLE_MDPS) then
 			table.insert(data.mdps, ai);
 		end
+		-- local agent = ai:GetPlayer();
+		-- print(data.owner:GetDistance(agent));
 	end
 	
 	if (#data.attackers == 0) then
@@ -408,20 +416,6 @@ function Hive_CombatUpdate(hive, data)
 		data.reverse = hive:ShouldReverseCLine(data.owner, data.attackers[1]);
 		Print("Hive reverse", data.reverse);
 	end
-	local attackCc = false;
-	local nCC = 0;
-	for i,attacker in ipairs(data.attackers) do
-		-- attacker:SetHealthPct(100.0);
-		-- io.write(attacker:GetName() .. i);
-		-- for i,target in ipairs(attacker:GetThreatTbl()) do
-			-- io.write(": " .. target:GetName() .. " = " .. attacker:GetThreat(target) .. "; ");
-		-- end
-		-- io.write("\n");
-		if (hive:IsCC(attacker)) then
-			nCC = nCC + 1;
-		end
-	end
-	attackCc = nCC == #data.attackers;
 	
 	local minTargetsForCC = 2;
 	for i = #data.ccAgents, 1, -1 do
@@ -430,11 +424,14 @@ function Hive_CombatUpdate(hive, data)
 		local pendingCC = Party_GetCCTarget(spellid, hive, data.attackers, minTargetsForCC, true);
 		if (nil ~= pendingCC and pendingCC:IsAlive()) then
 			local agent = GetPlayerByGuid(guid);
-			if (not agent or not agent:IsAlive()) then
-				table.remove(data.ccAgents, i);
+			if (not agent or not agent:IsAlive() or agent:HasAuraType(AURA_MOD_CHARM)) then
+				if (not agent) then
+					table.remove(data.ccAgents, i);
+				end
 			else
 				local ai = agent:GetAI();
-				if (nil == ai:GetCCTarget() and agent:HasEnoughPowerFor(spellid, false)) then
+				local bRoleTarget = pendingCC:GetRole() ~= ROLE_TANK and pendingCC:GetRole() ~= ROLE_HEALER and not pendingCC:CanAttack(agent);
+				if (nil == ai:GetCCTarget() and agent:HasEnoughPowerFor(spellid, false) and bRoleTarget) then
 					local pendingGuid = pendingCC:GetGuid();
 					ai:SetCCTarget(pendingGuid);
 					hive:AddCC(guid, pendingGuid);
@@ -443,16 +440,51 @@ function Hive_CombatUpdate(hive, data)
 		end
 	end
 	
+	local attackCc = false;
+	local nCC = 0;
+	for i = #data.attackers, 1, -1 do
+		local attacker = data.attackers[i];
+		-- attacker:SetHealthPct(100.0);
+		-- io.write(attacker:GetName() .. i);
+		-- for i,target in ipairs(attacker:GetThreatTbl()) do
+			-- io.write(": " .. target:GetName() .. " = " .. attacker:GetThreat(target) .. "; ");
+		-- end
+		-- io.write("\n");
+		-- never attack charmed allies
+		if (attacker:IsPlayer() and attacker:HasAuraType(AURA_MOD_CHARM)) then
+			table.remove(data.attackers, i);
+		elseif (hive:IsCC(attacker)) then
+			nCC = nCC + 1;
+		end
+	end
+	attackCc = nCC == #data.attackers;
+	
+	local nTanks = 0;
+	-- clear out invalid tanks
+	for i = 1, #data.tanks do
+		
+		nTanks = nTanks + 1;
+		local tank = data.tanks[i];
+		if (tank:CmdType() == CMD_TANK) then
+			local agent = tank:GetPlayer();
+			if (agent:HasAuraType(AURA_MOD_CHARM) or not agent:IsAlive()) then
+				tank:CmdComplete();
+				nTanks = nTanks - 1;
+			end
+		end
+	end
+	
 	local tankTargets = Tank_GetTargetList(data.attackers, data.tanks);
 	for j = 1, #tankTargets do
 		local target = tankTargets[j][3];
-		if (nil ~= target and (false == hive:IsCC(target) or attackCc)) then
+				if (nil ~= target and (false == hive:IsCC(target) or attackCc)) then
 			-- find closest tank that matches
 			table.sort(data.tanks, function(a,b) return a:GetPlayer():GetDistance(target) < b:GetPlayer():GetDistance(target); end);
 			for i = 1, #data.tanks do
 				local ai = data.tanks[i];
+				local bSwapOnly = ai:GetData().tankSwapOnly and nTanks > 1;
 				local should, threatTarget = Tank_ShouldTankTarget(ai, target, tankTargets[j][1], tankTargets[j][2], 0);
-				if (should) then
+				if (should and not bSwapOnly) then
 					tankTargets[j][3] = nil; -- make sure no one else gets this
 					if (false == target:IsInCombat() and true == hive:CanPullTarget(target) and ai:GetPlayer():IsInDungeon()) then
 						if (ai:CmdType() ~= CMD_PULL) then
@@ -479,12 +511,27 @@ function Hive_CombatUpdate(hive, data)
 	for i = 1, #data.cc do
 		local ai = data.cc[i].agent;
 		local target = data.cc[i].target;
-		if (false == attackCc and false == Unit_IsCrowdControlled(target) and ai:CmdType() ~= CMD_CC) then
-			hive:CmdCC(ai, target:GetGuid());
-		elseif (attackCc) then
-			hive:RemoveCC(target:GetGuid());
-			table.insert(data.attackers, target);
-			break;
+		
+		if (target:IsPlayer() and false == target:HasAuraType(AURA_MOD_CHARM)) then
+			
+			-- charmed ally no longer charmed
+			local agent = ai:GetPlayer();
+			if (not agent or not target:CanAttack(agent)) then
+				print("Remove no longer charmed ally from CC list", target:GetName(), agent and agent:GetName());
+				hive:RemoveCC(target:GetGuid());
+			end
+			
+		else
+			
+			-- todo: dont readd charmed allies here
+			if (false == attackCc and false == Unit_IsCrowdControlled(target) and ai:CmdType() ~= CMD_CC) then
+				hive:CmdCC(ai, target:GetGuid());
+			elseif (attackCc) then
+				hive:RemoveCC(target:GetGuid());
+				table.insert(data.attackers, target);
+				break;
+			end
+		
 		end
 	end
 	
@@ -534,6 +581,15 @@ function Hive_CombatUpdate(hive, data)
 		local ai = data.mdps[i];
 		if (ai:CmdType() ~= CMD_CC and ai:CmdType() ~= CMD_ENGAGE) then
 			print("Cmd engage");
+			hive:CmdEngage(ai, 0);
+		end
+		
+	end
+	
+	for i = 1, #data.tanks do
+		
+		local ai = data.tanks[i];
+		if (ai:CmdType() == CMD_NONE or ai:CmdType() == CMD_FOLLOW) then
 			hive:CmdEngage(ai, 0);
 		end
 		

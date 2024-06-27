@@ -75,6 +75,12 @@ function WarriorLevelTank_Activate(ai, goal)
 	data.water   = Consumable_GetWater(level);
 	data.ragepot = Consumable_GetRagePotion(level);
 	
+	-- dps
+	data.charge			= ai:GetSpellMaxRankForMe(SPELL_WAR_CHARGE);
+	data.rend			= ai:GetSpellMaxRankForMe(SPELL_WAR_REND);
+	data.execute		= ai:GetSpellMaxRankForMe(SPELL_WAR_EXECUTE);
+	data.overpower 		= ai:GetSpellMaxRankForMe(SPELL_WAR_OVERPOWER);
+	
 	-- talents
 	data._hasShieldSlam = Builds.Select(agent, "1.6.1", 148, agent.HasTalent, 0);
 	
@@ -105,7 +111,9 @@ function WarriorLevelTank_Update(ai, goal)
 		return GOAL_RESULT_Continue;
 	end
 	
-	if (false == agent:IsAlive()) then
+	if (AI_IsIncapacitated(agent)) then
+		goal:ClearSubGoal();
+		-- agent:ClearMotion();
 		return GOAL_RESULT_Continue;
 	end
 	
@@ -137,22 +145,84 @@ function WarriorLevelTank_Update(ai, goal)
 	
 		-- do combat!
 		if (ai:CmdState() == CMD_STATE_WAITING) then
+			Print(agent:GetName(), agent:GetClass(), "CMD_ENGAGE default update");
 			ai:CmdSetInProgress();
 		end
-		local hive = ai:GetPartyIntelligence();
-		local data = hive:GetData();
-		local attackers = data.attackers;
-		if (not attackers[1]) then
-			return GOAL_RESULT_Continue;
-		end
-		if (agent:GetMotionType() ~= MOTION_CHASE or agent:GetVictim() ~= attackers[1]) then
+		
+		local partyData = party:GetData();
+		-- party has no attackers
+		local targets = partyData.attackers;
+		if (not targets[1]) then
 			agent:AttackStop();
 			agent:ClearMotion();
-			agent:Attack(attackers[1]);
-			local angle = ai:CmdArgs();
-			agent:MoveChase(attackers[1], 0.001, 0.1, 0.1, angle, math.rad(15), false, true);
+			ai:CmdComplete();
+			goal:ClearSubGoal();
+			return GOAL_RESULT_Continue;
 		end
-	
+		
+		if (goal:GetSubGoalNum() > 0) then
+			return GOAL_RESULT_Continue;
+		end
+		
+		local bThreatCheck = agent:IsInDungeon() and partyData:HasTank();
+		
+		local target = Tank_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck, ai:GetStdThreat());
+		local bAllowThreatActions = target ~= nil;
+		
+		-- use tank's target if threat is too high
+		if (nil == target and partyData:HasTank()) then
+			local tank = partyData.tanks[1];
+			if (tank:GetPlayer():IsInCombat()) then
+				target = tank:GetPlayer():GetVictim();
+			end
+		end
+		
+		-- still nothing
+		if (nil == target or not target:IsAlive()) then
+			agent:AttackStop();
+			agent:ClearMotion();
+			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+			agent:InterruptSpell(CURRENT_MELEE_SPELL);
+			-- Print("No target for", agent:GetName());
+			return GOAL_RESULT_Continue;
+		end
+		
+		if (agent:IsNonMeleeSpellCasted()) then
+			return GOAL_RESULT_Continue;
+		end
+		
+		-- movement
+		local area = partyData._holdPos;
+		local bSwap = partyData.encounter and partyData.encounter.tankswap and target:GetName() == partyData.encounter.name;
+		local _,threat = target:GetHighestThreat();
+		local threatdiff = threat - target:GetThreat(agent);
+		
+		if (area and false == AI_TargetInHoldingArea(target, area) and (not bSwap or threatdiff < 1000)) then
+			
+			if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
+				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
+				return GOAL_RESULT_Continue;
+			end
+		
+		else
+		
+			Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+			
+		end
+		
+		-- attacks
+		if (bAllowThreatActions) then
+			if (bSwap) then
+				WarriorTankMaintainThreatRotation(ai, agent, goal, data, target);
+			else
+				WarriorTankDpsRotation(ai, agent, goal, data, target);
+			end
+		else
+			agent:AttackStop();
+		end
+		
+		return GOAL_RESULT_Continue;
+		
 	elseif (cmd == CMD_TANK) then
 	
 		-- do tank!
@@ -186,43 +256,56 @@ function WarriorLevelTank_Update(ai, goal)
 		local reverse = party:GetData().reverse;
 		
 		-- move
-		local tpx,tpy,tpz = ai:GetPosForTanking(target);
 		
-		if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
-			if (false == agent:CanReachWithMelee(target)) then
-				if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
+		local area = partyData._holdPos;
+		if (area and false == AI_TargetInHoldingArea(target, area) and target:GetVictim() == agent) then
+			
+			if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
+				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
+				return GOAL_RESULT_Continue;
+			end
+			
+		else
+		
+			local tpx,tpy,tpz = ai:GetPosForTanking(target);
+			
+			if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
+				if (false == agent:CanReachWithMelee(target)) then
+					if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
+						if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
+							agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
+							data.tankrot = nil;
+						end
+					end
+				else
 					if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
 						agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
-						data.tankrot = nil;
 					end
-				end
-			else
-				if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
-					agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
-				end
-				if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
-					if (data.tankrot == nil) then
-						data.tankrot = ai:GetAngleForTanking(target, reverse, reverse);
-					end
-					if (data.tankrot) then
-						if (data.tankrot ~= data.__oldrot or data.__oldori ~= target:GetOrientation()) then
-							-- Print(data.tankrot, target:GetOrientation(), ai:IsUsingAbsAngle(), data.fliptankrot);
-							data.__oldrot, data.__oldori = data.tankrot, target:GetOrientation();
+					if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
+						if (data.tankrot == nil) then
+							data.tankrot = ai:GetAngleForTanking(target, reverse, reverse);
 						end
-						local adiff = math.abs(target:GetOrientation() - data.tankrot);
-						adiff = math.min(2*math.pi - adiff, adiff);
-						if (adiff > 0.78) then
-							if (not ai:IsUsingAbsAngle()) then
-								ai:SetAbsAngle(data.tankrot);
-								print("set angle", adiff);
+						if (data.tankrot) then
+							if (data.tankrot ~= data.__oldrot or data.__oldori ~= target:GetOrientation()) then
+								-- Print(data.tankrot, target:GetOrientation(), ai:IsUsingAbsAngle(), data.fliptankrot);
+								data.__oldrot, data.__oldori = data.tankrot, target:GetOrientation();
 							end
-						elseif (ai:IsUsingAbsAngle()) then
-							print("unset angle");
-							ai:UnsetAbsAngle();
+							local adiff = math.abs(target:GetOrientation() - data.tankrot);
+							adiff = math.min(2*math.pi - adiff, adiff);
+							if (adiff > 0.78) then
+								if (not ai:IsUsingAbsAngle()) then
+									ai:SetAbsAngle(data.tankrot);
+									print("set angle", adiff);
+								end
+							elseif (ai:IsUsingAbsAngle()) then
+								print("unset angle");
+								ai:UnsetAbsAngle();
+							end
 						end
 					end
 				end
 			end
+			
 		end
 		
 		-- do abilities
@@ -315,7 +398,26 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	-- Potions
 	WarriorTankPotions(agent, goal, data);
 	
+	-- try to save ourselves
+	if (hp < 30) then
+		
+		-- Shield Block
+		if (level >= 16 and not agent:HasAura(SPELL_WAR_SHIELD_BLOCK) and agent:CastSpell(agent, SPELL_WAR_SHIELD_BLOCK, false) == CAST_OK) then
+			-- print("Shield Block", agent:GetName());
+			return true;
+		end
+
+	end
+	
+	-- check if we can do melee
 	if (false == agent:CanReachWithMelee(target)) then
+		if (agent:IsMoving()) then
+			return false;
+		end
+		-- assume target is outside holding area, must use ranged
+		if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
+			return true;
+		end
 		return false;
 	end
 	
@@ -372,6 +474,152 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	return false;
 	
 end
+
+function WarriorTankMaintainThreatRotation(ai, agent, goal, data, target)
+	
+	local level = agent:GetLevel();
+	
+	do
+		local _,threat = target:GetHighestThreat();
+		-- Print("Maintaining threat", agent:GetName(), target:GetThreat(agent), threat);
+			-- Taunt
+		if (level >= 10 and threat - target:GetThreat(agent) > 1000 and not target:HasAura(SPELL_WAR_TAUNT)) then
+			local result = agent:CastSpell(target, SPELL_WAR_TAUNT, false);
+			if (result == CAST_OK) then
+				print("Taunt ", agent:GetName(), target:GetName());
+				return true;
+			end
+		end
+
+	end
+	
+	WarriorTankShapeshift(agent, level);
+	
+	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
+		return false;
+	end
+	
+	local rage = agent:GetPowerPct(POWER_RAGE);
+	local hp = agent:GetHealthPct();
+	local party = ai:GetPartyIntelligence();
+	local partyData = party:GetData();
+	
+	-- Potions
+	WarriorTankPotions(agent, goal, data);
+	
+	-- check if we can do melee
+	if (false == agent:CanReachWithMelee(target)) then
+		if (agent:IsMoving()) then
+			return false;
+		end
+		-- assume target is outside holding area, must use ranged
+		if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
+			return true;
+		end
+		return false;
+	end
+	
+	-- Revenge
+	if (level >= 14 and agent:CastSpell(target, data.revenge, false) == CAST_OK) then
+		-- print("Revenge", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Demoralizing Shout
+	if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
+		-- print("Demoralizing Shout", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Shield Bash
+	if (level >= 12 and agent:CastSpell(target, data.bash, false) == CAST_OK) then
+		-- print("Shield Bash", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Sunder
+	local shouldSunder = level >= 10 and (target:GetAuraStacks(data.sunder) < 5 or target:GetAuraTimeLeft(data.sunder) < 3000);
+	if (shouldSunder and agent:CastSpell(target, data.sunder, false) == CAST_OK) then
+		-- print("Sunder Armor", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Shield Slam
+	if (data._hasShieldSlam and agent:CastSpell(target, data.sslam, false) == CAST_OK) then
+		-- print("Shield Slam", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Strike
+	if (rage > 50 and agent:CastSpell(target, data.heroic, false) == CAST_OK) then
+		-- print("Heroic Strike", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	return false;
+	
+end
+
+function WarriorTankDpsRotation(ai, agent, goal, data, target)
+	
+	local level = agent:GetLevel();
+	
+	if (FORM_BATTLESTANCE ~= agent:GetShapeshiftForm()) then
+		agent:CastSpell(agent, SPELL_WAR_BATTLE_STANCE, false);
+	end
+	
+	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
+		return false;
+	end
+	
+	local rage = agent:GetPowerPct(POWER_RAGE);
+	local hp = agent:GetHealthPct();
+	local party = ai:GetPartyIntelligence();
+	local partyData = party:GetData();
+	
+	-- Potions
+	WarriorTankPotions(agent, goal, data);
+	
+	-- Charge
+	if (level >= 4 and agent:CastSpell(target, data.charge, false) == CAST_OK) then
+		print("Charge", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- check if we can do melee
+	if (false == agent:CanReachWithMelee(target)) then
+		if (agent:IsMoving()) then
+			return false;
+		end
+		-- assume target is outside holding area, must use ranged
+		if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
+			return true;
+		end
+		return false;
+	end
+	
+	-- Execute
+	if (level >= 24 and agent:CastSpell(target, data.execute, false) == CAST_OK) then
+		print("Execute", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Overpower
+	if (level >= 12 and agent:CastSpell(target, data.overpower, false) == CAST_OK) then
+		print("Overpower", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Rend
+	if (level >= 4 and false == target:HasAura(data.rend) and agent:CastSpell(target, data.rend, false) == CAST_OK) then
+		print("Rend", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	return false;
+	
+end
+
 
 function WarriorPullRotation(ai, agent, target)
 	

@@ -114,9 +114,9 @@ function MageLevelDps_Update(ai, goal)
 		return GOAL_RESULT_Continue;
 	end
 	
-	if (false == agent:IsAlive()) then
+	if (AI_IsIncapacitated(agent)) then
 		goal:ClearSubGoal();
-		agent:ClearMotion();
+		-- agent:ClearMotion();
 		ai:SetCCTarget(nil);
 		return GOAL_RESULT_Continue;
 	end

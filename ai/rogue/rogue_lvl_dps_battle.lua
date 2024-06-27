@@ -75,6 +75,8 @@ function RogueLevelDps_Activate(ai, goal)
 	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
 	ai:SetStdThreat(threat * 2);
+	
+	ai:SetAmmo(ITEMID_ROUGH_ARROW);
 
 end
 
@@ -89,6 +91,12 @@ function RogueLevelDps_Update(ai, goal)
 	
 	local cmd = ai:CmdType();
 	if (cmd == CMD_NONE or nil == party) then
+		return GOAL_RESULT_Continue;
+	end
+	
+	if (AI_IsIncapacitated(agent)) then
+		goal:ClearSubGoal();
+		-- agent:ClearMotion();
 		return GOAL_RESULT_Continue;
 	end
 	
@@ -157,18 +165,26 @@ function RogueDpsRotation(ai, agent, goal, data, target)
 	local party = ai:GetPartyIntelligence();
 	local partyData = party:GetData();
 	
-	if (target:GetDistance(agent) > 5.0) then
+	-- check if we can do melee
+	if (false == agent:CanReachWithMelee(target)) then
+		if (agent:IsMoving()) then
+			return false;
+		end
+		-- assume target is outside holding area, must use ranged
+		if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
+			return true;
+		end
 		return false;
 	end
 	
-	if (level >= 12
-	and agent:IsSpellReady(data.kick)
-	and target:IsCastingInterruptableSpell()
-	and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
-		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), data.kick, "Interrupt", 0.0);
-		AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
-		return true;
-	end
+	-- if (level >= 12
+	-- and agent:IsSpellReady(data.kick)
+	-- and target:IsCastingInterruptableSpell()
+	-- and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
+		-- goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), data.kick, "Interrupt", 0.0);
+		-- AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
+		-- return true;
+	-- end
 	
 	if (cp > 2 and data._hasBladeFlurry and false == agent:HasAura(SPELL_ROG_BLADE_FLURRY) and 15000 < agent:GetAuraTimeLeft(data.sndice)) then
 		if (Unit_AECheck(agent, 5.0, 2, false, partyData.attackers) and agent:CastSpell(target, SPELL_ROG_BLADE_FLURRY, false) == CAST_OK) then

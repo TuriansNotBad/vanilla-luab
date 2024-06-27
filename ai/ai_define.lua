@@ -123,6 +123,7 @@ SPELL_GEN_PUMMELER    = 13494;
 
 -- Spell Aura
 AURA_MOD_CONFUSE              = 5;
+AURA_MOD_CHARM                = 6;
 AURA_MOD_FEAR                 = 7;
 AURA_MOD_TAUNT                = 11;
 AURA_MOD_STUN                 = 12;

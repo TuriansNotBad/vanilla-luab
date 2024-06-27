@@ -134,3 +134,8 @@ t_agentSpecs[CLASS_WARRIOR].LvlTank = {
 	BattleGoalID = GOAL_WarriorLevelTank_Battle,
 	TalentInfo = "t_LevelWarriorTankSpec",
 };
+t_agentSpecs[CLASS_WARRIOR].LvlTankSwapOnly = {
+	BattleGoalID = GOAL_WarriorLevelTank_Battle,
+	TalentInfo = "t_LevelWarriorTankSpec",
+	TankSwapOnly = true,
+};

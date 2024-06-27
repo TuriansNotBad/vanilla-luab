@@ -4,6 +4,19 @@
 		<blank>
 *********************************************************************************************]]
 
+function Tank_GetLowestHpTarget(ai, agent, party, targets, threatCheck, minDiff)
+	
+	for i = 1, #targets do
+		local target = targets[i];
+		local _,tankThreat = target:GetHighestThreat();
+		local diff  = tankThreat - target:GetThreat(agent);
+		if (diff > minDiff or false == threatCheck) and (nil == party or false == party:IsCC(target)) then
+			return target;
+		end
+	end
+	
+end
+
 function Tank_AnyTankOnTarget(tanks, target)
 	for i = 1, #tanks do
 		local ai = tanks[i];
@@ -12,6 +25,37 @@ function Tank_AnyTankOnTarget(tanks, target)
 		end
 	end
 	return false;
+end
+
+function Tank_GetTankOnTarget(tanks, target)
+	for i = 1, #tanks do
+		local ai = tanks[i];
+		if (ai:CmdType() == CMD_TANK and ai:CmdArgs() == target:GetGuid()) then
+			return ai;
+		end
+	end
+	return nil;
+end
+
+function Tank_GetMinTankThreat(tanks, target)
+	local minThreat = 999999.0;
+	for i = 1, #tanks do
+		local ai = tanks[i];
+		local agent = ai:GetPlayer();
+		local threat = target:GetThreat(agent);
+		if (agent:GetVictim() == target and threat < minThreat) then
+			minThreat = threat
+		end
+	end
+	return minThreat;
+end
+
+function Tank_GetTankThreat(data, target)
+	if (data.encounter and data.encounter.tankswap) then
+		return Tank_GetMinTankThreat(data.tanks, target);
+	end
+	local _,threat = target:GetHighestThreat();
+	return threat;
 end
 
 function Tank_AnyTankPulling(tanks)
@@ -63,6 +107,11 @@ function Tank_ShouldTankTarget(ai, target, threatNotTank, threatTank, aoeTarget)
 	end
 	
 	local agent = ai:GetPlayer();
+	
+	if (agent:HasAuraType(AURA_MOD_CHARM)) then
+		return false;
+	end
+	
 	local curTarget = agent:GetVictim();
 	if (nil == curTarget) then
 		return true, 0.0;

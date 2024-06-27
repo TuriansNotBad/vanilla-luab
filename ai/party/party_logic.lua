@@ -27,6 +27,7 @@ function Party_Init(ai)
 	end
 	local data = ai:GetData();
 	data.battleGoalID = specTable.BattleGoalID;
+	data.tankSwapOnly = specTable.TankSwapOnly;
 	ai:AddTopGoal(data.battleGoalID, -1);
 end
 

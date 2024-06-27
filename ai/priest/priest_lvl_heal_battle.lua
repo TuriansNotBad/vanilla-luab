@@ -149,7 +149,7 @@ function PriestLevelHeal_Activate(ai, goal)
 			partyData:RegisterBuff(agent, "Fear Ward NC", 1, data.fearward, BUFF_SINGLE, 3*6e4, {dungeon = {fear = true}});
 		end
 		if (level >= 18) then
-			partyData:RegisterDispel(agent, "Magic");
+			-- partyData:RegisterDispel(agent, "Magic");
 		end
 	end
 	
@@ -173,9 +173,9 @@ function PriestLevelHeal_Update(ai, goal)
 	local data = ai:GetData();
 	local partyData = party:GetData();
 	
-	if (false == agent:IsAlive()) then
+	if (AI_IsIncapacitated(agent)) then
 		goal:ClearSubGoal();
-		agent:ClearMotion();
+		-- agent:ClearMotion();
 		ai:SetHealTarget(nil);
 		return GOAL_RESULT_Continue;
 	end
@@ -390,7 +390,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 	
 	local heals = data.heals;
 	-- pick the strongest spell that makes sense
-	if (target:IsTanking()) then
+	if (target:IsTanking() or (target:GetRole() == ROLE_TANK and target:GetAttackersNum() > 0)) then
 		-- emergency heal?
 		-- if (hp < 30) then
 			-- return data.fheal, agent:GetSpellDamageAndThreat(target, data.fheal, true, false);

@@ -9,7 +9,7 @@ function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 	local minDiff = ai:GetStdThreat();
 	for i = 1, #targets do
 		local target = targets[i];
-		local _,tankThreat = target:GetHighestThreat();
+		local tankThreat = Tank_GetTankThreat(party:GetData(), target);
 		local diff  = tankThreat - target:GetThreat(agent);
 		if (diff > minDiff or false == threatCheck) and (nil == party or false == party:IsCC(target)) then
 			return target;
@@ -23,7 +23,7 @@ function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threat
 	local minDiff = ai:GetStdThreat();
 	for i = 1, #targets do
 		local target = targets[i];
-		local _,tankThreat = target:GetHighestThreat();
+		local tankThreat = Tank_GetTankThreat(party:GetData(), target);
 		local diff  = tankThreat - target:GetThreat(agent);
 		if (diff > ai:GetStdThreat() or false == threatCheck) and (nil == party or false == party:IsCC(target)) then
 			if (target:GetDistance(agent) <= maxInterruptDist
@@ -31,7 +31,7 @@ function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threat
 			and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
 				return target;
 			end
-			if (hpTarget == nil and diff > minDiff) then
+			if (hpTarget == nil) then
 				hpTarget = target;
 			end
 		end
@@ -92,7 +92,7 @@ function Dps_MeleeChase(ai, agent, target, bAttack)
 	end
 	
 	local isOnWrongTarget = (bAttack and agent:GetVictim() ~= target) or (false == bAttack and ai:GetChaseTarget() ~= target);
-	if (isOnWrongTarget or agent:GetMotionType() ~= MOTION_CHASE or ai:GetChaseDist() > 2.0) then
+	if (isOnWrongTarget or (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) or ai:GetChaseDist() > 2.0) then
 		agent:AttackStop();
 		agent:ClearMotion();
 		if (bAttack) then
@@ -127,17 +127,21 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 	end
 	
 	local target;
+	local bThreatCheck = agent:IsInDungeon() and partyData:HasTank();
+	
 	if (interruptR) then
-		target = Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon(), interruptR);
+		target = Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, bThreatCheck, interruptR);
 	else
-		target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
+		target = Dps_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck);
 	end
 	local bAllowThreatActions = target ~= nil;
 	
 	-- use tank's target if threat is too high
 	if (nil == target and partyData:HasTank()) then
 		local tank = partyData.tanks[1];
-		target = tank:GetPlayer():GetVictim();
+		if (tank:GetPlayer():IsInCombat()) then
+			target = tank:GetPlayer():GetVictim();
+		end
 	end
 	
 	-- still nothing
@@ -155,14 +159,26 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 	end
 	
 	-- movement
-	if (bRanged) then
+	local area = partyData._holdPos;
+	if (area and false == AI_TargetInHoldingArea(target, area)) then
+		
+		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
+			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
+			return GOAL_RESULT_Continue;
+		end
 	
-		if (false == AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target)) then
-			Dps_RangedChase(ai, agent, target, bAllowThreatActions);
+	else
+	
+		if (bRanged) then
+		
+			if (false == AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target)) then
+				Dps_RangedChase(ai, agent, target, bAllowThreatActions);
+			end
+			
+		else
+			Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
 		end
 		
-	else
-		Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
 	end
 	
 	-- attacks
