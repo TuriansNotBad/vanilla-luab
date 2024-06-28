@@ -1,12 +1,12 @@
 local t_agentInfo = {
 	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	{"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
+	-- {"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
 	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
 	-- {"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
-	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
+	{"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
 	-- {"Man",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
 	-- {"Cynt",LOGIC_ID_Party,"LvlDps"}, -- mage
 };
@@ -218,6 +218,7 @@ function Hive_Update(hive)
 	data.healTargets = {};
 	data.cc = hive:GetCC();
 	data._needTremor = nil;
+	data._needPoisonCleansing = nil;
 	data._holdPos = nil;
 	
 	local ownerGuid = hive:GetOwnerGuid()
@@ -227,11 +228,12 @@ function Hive_Update(hive)
 		if (data.owner) then
 			table.insert(data.tracked, data.owner);
 			ownerVictim = data.owner:GetVictim();
-			if (ownerVictim) then
+			-- if (ownerVictim) then
 				-- local x,y,z = hive:GetCLinePInLosAtD(data.owner, ownerVictim, 10, 15, 1, false);
 				-- local px,py,pz = data.owner:GetPosition();
 				-- Print(x,y,z, "you (", px,py,pz, ") D =", ownerVictim:GetDistance(data.owner));
-			end
+				-- Print("you (", px,py,pz, ")");
+			-- end
 			-- print(data.owner:GetPosition());
 			if (not data.attackers[1]) then
 				data.attackers[1] = ownerVictim;
@@ -248,8 +250,11 @@ function Hive_Update(hive)
 			data.dungeon = GetDungeon(agent:GetMapId());
 			data.encounter = GetEncounter(agent:GetMapId(), data.attackers);
 			if (data.encounter) then
-				if (data.encounter.fear) then
+				if (data.encounter.fear or data.encounter.sleep) then
 					data._needTremor = true;
+				end
+				if (data.encounter.poison) then
+					data._needPoisonCleansing = true;
 				end
 				if (data.encounter.hold_area) then
 					data._holdPos = data.encounter.hold_area;
@@ -328,7 +333,8 @@ function Hive_OOCUpdate(hive, data)
 			local healerScores = {};
 			for i = 1, #data.healers do
 				local healer = data.healers[i];
-				table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target)});
+				local maxHeal = data.encounter and data.encounter.healmax;
+				table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target, maxHeal)});
 			end
 			-- healer with most mana
 			table.sort(healerScores, function(a,b) return a[2] > b[2]; end);
@@ -362,8 +368,11 @@ function Hive_OOCUpdate(hive, data)
 		if (agent:GetDistance(data.owner) > 50) then
 			ai:GoName(data.owner:GetName());
 		else
+			
+			IssueDispelCommands(hive, data, agents, true);
+			IssueDispelCommands(hive, data, data.tracked, true);
 		
-			if (ai:CmdType() ~= CMD_FOLLOW and ai:CmdType() ~= CMD_HEAL and ai:CmdType() ~= CMD_BUFF) then
+			if (ai:CmdType() ~= CMD_FOLLOW and ai:CmdType() ~= CMD_HEAL and ai:CmdType() ~= CMD_BUFF and ai:CmdType() ~= CMD_DISPEL) then
 				Print("CmdFollow issued to", agent:GetName());
 				local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori);
 				hive:CmdFollow(ai, ai:GetMasterGuid(), D, A);
@@ -390,17 +399,18 @@ function IssueDispelCommands(hive, data, agents, friendly)
 			
 			local dispelTbl = agent:GetDispelsTbl(not friendly);
 			for key in next,dispelTbl do
-				local ally = GetClosestDispelAgent(data.dispel, ai, agent, key, friendly);
-				if (ally) then
-					local allyAi = ally:GetAI();
-					-- if (allyAi:CmdType() == CMD_FOLLOW) then
-						AI_PostBuff(ally:GetGuid(), agent:GetGuid(), "Dispel", true);
-						hive:CmdDispel(allyAi, agent:GetGuid(), key);
-						Print("CmdDispel issued to", ally:GetName(), key, agent:GetName());
-					-- end
+				if (key ~= "Poison" or false == agent:HasAura(SPELL_DRD_ABOLISH_POISON)) then
+					local ally = GetClosestDispelAgent(data.dispel, ai, agent, key, friendly);
+					if (ally) then
+						local allyAi = ally:GetAI();
+						-- if (allyAi:CmdType() == CMD_FOLLOW) then
+							AI_PostBuff(ally:GetGuid(), agent:GetGuid(), "Dispel", true);
+							hive:CmdDispel(allyAi, agent:GetGuid(), key);
+							Print("CmdDispel issued to", ally:GetName(), key, agent:GetName());
+						-- end
+					end
 				end
-			end
-			
+			end			
 		end
 		
 	end
@@ -542,12 +552,15 @@ function Hive_CombatUpdate(hive, data)
 		local healerScores = {};
 		for i = 1, #data.healers do
 			local healer = data.healers[i];
-			table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target)});
+			table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target, data.encounter and data.encounter.healmax)});
+			-- print(target:GetName(), target:GetHealthPct(), healer:GetPlayer():GetName(), Healer_ShouldHealTarget(healer, target, data.encounter and data.encounter.healmax),
+				-- Healer_GetHealPriority(target, healer:GetPlayer():GetPowerPct(POWER_MANA), nil, true));
 		end
 		-- healer with most mana
 		table.sort(healerScores, function(a,b) return a[2] > b[2]; end);
-		if (healerScores[1] and healerScores[1][2] > 0.0) then
-			if (healerScores[1][1]:GetHealTarget() ~= target) then
+		if (healerScores[1] and healerScores[1][2] > 0) then
+			if (healerScores[1][1]:CmdType() ~= CMD_HEAL or healerScores[1][1]:CmdArgs() ~= target:GetGuid()) then
+				Print("******* Issue Heal Cmd", target:GetName(), healerScores[1][2]); 
 				hive:CmdHeal(healerScores[1][1], target:GetGuid(), 1);
 			end
 		end
@@ -570,7 +583,7 @@ function Hive_CombatUpdate(hive, data)
 	for i = 1, #data.rdps do
 	
 		local ai = data.rdps[i];
-		if (ai:CmdType() ~= CMD_CC and ai:CmdType() ~= CMD_ENGAGE) then
+		if (ai:CmdType() ~= CMD_CC and ai:CmdType() ~= CMD_ENGAGE and ai:CmdType() ~= CMD_DISPEL) then
 			hive:CmdEngage(ai, 0);
 		end
 		
@@ -579,7 +592,7 @@ function Hive_CombatUpdate(hive, data)
 	for i = 1, #data.mdps do
 	
 		local ai = data.mdps[i];
-		if (ai:CmdType() ~= CMD_CC and ai:CmdType() ~= CMD_ENGAGE) then
+		if (ai:CmdType() ~= CMD_CC and ai:CmdType() ~= CMD_ENGAGE and ai:CmdType() ~= CMD_DISPEL) then
 			print("Cmd engage");
 			hive:CmdEngage(ai, 0);
 		end

@@ -10,6 +10,8 @@
 *********************************************************************************************]]
 REGISTER_GOAL(GOAL_PriestLevelHeal_Battle, "PriestLevelHeal");
 
+-- local function print()end Print=print; fmtprint=print;
+
 local ST_POT = 0;
 
 local function CmdHealReset(ai, agent, goal, interrupt, complete)
@@ -22,6 +24,7 @@ local function CmdHealReset(ai, agent, goal, interrupt, complete)
 	ai:SetHealTarget(nil);
 	goal:SetNumber(0, 0); -- reset saved target health
 	goal:SetNumber(1, 0); -- reset saved spell effect
+	print "CMDHeal Reset"
 	if (complete) then
 		print "CMDHeal Complete"
 		ai:CmdComplete();
@@ -103,6 +106,9 @@ function PriestLevelHeal_Activate(ai, goal)
 	if (level < 16) then
 		table.insert(data.heals, data.lheal);
 	else
+		if (level < 40) then
+			table.insert(data.heals, ai:GetSpellOfRank(SPELL_PRI_HEAL, 1));
+		end
 		table.insert(data.heals, data.heal);
 	end
 	-- strong heals
@@ -223,7 +229,8 @@ function PriestLevelHeal_Update(ai, goal)
 		if (ai:CmdState() == CMD_STATE_WAITING) then
 			ai:CmdSetInProgress();
 			CmdHealReset(ai, agent, goal, true); -- make sure we dont continue casting a spell on previous target
-			print("new heal cmd", GetUnitByGuid(agent, ai:CmdArgs()):GetName());
+			local target = GetUnitByGuid(agent, ai:CmdArgs());
+			Print("new heal cmd", target:GetName(), "hp =", target:GetHealthPct());
 		end
 		
 		if (false == agent:IsInCombat()) then
@@ -240,13 +247,21 @@ function PriestLevelHeal_Update(ai, goal)
 		-- condition here to cancel healing charmed ones?
 		if (not target or not target:IsAlive() or target:GetHealthPct() > 95) then
 			-- interrupt healing high health targets;
-			print("redundant reset");
+			print("redundant reset", target and target:GetName(), target and target:GetHealthPct());
 			return CmdHealReset(ai, agent, goal, agent:IsInCombat(), true);
 		end
 		
 		local hp = target:GetHealthPct();
 		local hpdiff = target:GetMaxHealth() - target:GetHealth();
 		ai:SetHealTarget(guid);
+		
+		local rchrpos = partyData.encounter and partyData.encounter.rchrpos;
+		if (rchrpos) then
+			if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
+				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
+				return GOAL_RESULT_Continue;
+			end
+		end
 		
 		-- interrupt preheals
 		if (agent:IsNonMeleeSpellCasted()) then
@@ -295,7 +310,7 @@ function PriestLevelHeal_Update(ai, goal)
 		else
 			maxThreat = GetAEThreat(ai, agent, partyData.attackers);
 		end
-		local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat);
+		local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData);
 		
 		-- threat check not passed or just have no mana
 		-- or if healing nontank hpdiff isn't low enough
@@ -305,12 +320,12 @@ function PriestLevelHeal_Update(ai, goal)
 		end
 		
 		-- los/dist checks
-		if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 5.0)) then
+		if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 5.0) and not rchrpos) then
 			goal:AddSubGoal(GOAL_COMMON_MoveInPosToCast, 10.0, guid, spell, 5.0);
 		end
 		
 		if (agent:CastSpell(target, spell, false) == CAST_OK) then
-			Print("spell cast begin", GetSpellName(spell), spell, maxThreat, effect, effthreat);
+			Print("spell cast begin", GetSpellName(spell), spell, maxThreat, effect, effthreat, target:GetName(), hpdiff, target:GetHealthPct());
 			goal:SetNumber(0, target:GetHealth()); -- remember target health at cast time
 			goal:SetNumber(1, effect); -- remember healing amount of our spell
 			-- if we're precasting we don't want this to block us from healing others
@@ -386,9 +401,10 @@ function PriestLevelHeal_Update(ai, goal)
 	
 end
 
-function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat)
+function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData)
 	
 	local heals = data.heals;
+	local maxheal = partyData.encounter and partyData.encounter.healmax;
 	-- pick the strongest spell that makes sense
 	if (target:IsTanking() or (target:GetRole() == ROLE_TANK and target:GetAttackersNum() > 0)) then
 		-- emergency heal?
@@ -404,22 +420,22 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 				if ((value <= hpdiff or value / target:GetMaxHealth() < .5) and threat < maxThreat) then
 					return id, value, threat;
 				else
-					-- Print("Spell", GetSpellName(id), id, " is too strong for this tank hp -", target:GetMaxHealth(), value);
+					Print("Spell", GetSpellName(id), id, " is too strong for this tank hp -", target:GetMaxHealth(), value, hpdiff, threat < maxThreat, target:GetName());
 				end
 			end
 		end
 	end
 	
 	-- renew if not super urgent
-	if (data.renew and agent:IsInCombat() and hp > 35) then
+	if (data.renew and agent:IsInCombat() and hp > 35 and not maxheal) then
 		if (target:GetAttackersNum() == 0) then
 			if (not target:HasAura(data.renew)) then
 				return data.renew, agent:GetSpellDamageAndThreat(target, data.renew, true, false);
 			else
 				CmdHealReset(ai, agent, goal, false, true); -- do not linger
+				return nil, nil, nil;
 			end
-			Print(agent:GetName(), "failed to pick renew, target already has = ", target:HasAura(data.renew));
-			return nil, nil, nil;
+			-- Print(agent:GetName(), "failed to pick renew, target already has = ", target:HasAura(data.renew));
 		end
 	end
 	
@@ -428,10 +444,18 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 		local id = heals[i];
 		if (agent:GetPowerCost(id) < agent:GetPower(POWER_MANA)) then
 			local value, threat = agent:GetSpellDamageAndThreat(target, id, true, false);
-			if (value <= hpdiff and threat < maxThreat) then
-				Print("Chose spell", id, value, threat, "missing", hpdiff, hp);
+			if (value / hpdiff < 1.1 and threat < maxThreat) then
+				Print("Chose spell", id, value, threat, "missing", hpdiff, hp, target:GetName());
 				return id, value, threat;
 			end
+		end
+	end
+	
+	-- have to use something...
+	if (agent:GetPowerCost(heals[1]) < agent:GetPower(POWER_MANA)) then
+		local value, threat = agent:GetSpellDamageAndThreat(target, heals[1], true, false);
+		if (threat < maxThreat) then
+			return heals[1], value, threat;
 		end
 	end
 	
@@ -440,7 +464,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 		return heals[1], agent:GetSpellDamageAndThreat(target, heals[1], true, false);
 	end
 	
-	Print(agent:GetName(), "failed to pick any heal spell, threat/mana/targethp check fail", agent:GetPowerPct(POWER_MANA), target:GetHealthPct());
+	Print(agent:GetName(), "failed to pick any heal spell, threat/mana/targethp check fail", agent:GetPowerPct(POWER_MANA), target:GetHealthPct(), target:GetName());
 	return nil, nil, nil;
 	
 end
@@ -498,7 +522,7 @@ function PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, cas
 		local spell = agent:GetCurrentSpellId();
 		local partyData = ai:GetPartyIntelligence():GetData();
 		-- no longer care for threat checks here
-		local newSpell = PriestLevelHeal_BestHealSpell(ai, agent, goal, ai:GetData(), target, target:GetHealthPct(), hpdiff, 9999999);
+		local newSpell = PriestLevelHeal_BestHealSpell(ai, agent, goal, ai:GetData(), target, target:GetHealthPct(), hpdiff, 9999999, {});
 		if (newSpell ~= spell) then
 			fmtprint("Spell %s %d interrupted due to batching diff=%.2f, eff=%.2f, new=%d",
 				GetSpellName(spell), spell, hpdiff, castEffect, newSpell and newSpell or 0);

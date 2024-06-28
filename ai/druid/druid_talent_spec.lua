@@ -41,5 +41,7 @@ t_LevelFeralDruidDpsSpec = {
 			{"Improved Healing Touch", 5, 824},
 			{"Intensity", 5, 827}, {"Combat Endurance", 5, 843}, 
 		},},
+		{Builds["1.12.1"], {
+		},},
 	},
 };

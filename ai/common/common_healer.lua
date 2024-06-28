@@ -4,7 +4,7 @@
 		<blank>
 *********************************************************************************************]]
 
-function Healer_GetHealPriority(target, mp, hot)
+function Healer_GetHealPriority(target, mp, hot, bTopAll)
 	
 	if (not target) then
 		return 0;
@@ -25,6 +25,15 @@ function Healer_GetHealPriority(target, mp, hot)
 		
 	end
 	
+	if (bTopAll) then
+		if (hp < 30) then
+			return 5;
+		end
+		if (hp < 70) then
+			return 3;
+		end
+	end
+	
 	-- only heal nontank with hots
 	if (nil == hot or false == target:HasAura(hot)) then
 		-- only take on really endangered nontanks
@@ -40,7 +49,7 @@ function Healer_GetHealPriority(target, mp, hot)
 
 end
 
-function Healer_ShouldHealTarget(ai, target)
+function Healer_ShouldHealTarget(ai, target, bTopAll)
 	
 	local agent 	= ai:GetPlayer();
 	local mp 		= agent:GetPowerPct(POWER_MANA)/100.0;
@@ -68,8 +77,8 @@ function Healer_ShouldHealTarget(ai, target)
 	end
 	
 	-- judge by priority
-	local curPrio = Healer_GetHealPriority(curTarget, mp, data.hot);
-	local tarPrio = Healer_GetHealPriority(target, mp, data.hot);
+	local curPrio = Healer_GetHealPriority(curTarget, mp, data.hot, bTopAll);
+	local tarPrio = Healer_GetHealPriority(target, mp, data.hot, bTopAll);
 	if (tarPrio > curPrio) then
 		return mp;
 	end
@@ -84,7 +93,7 @@ function Healer_GetTargetList(tracked, targets)
 		for i = 1, #targets do
 			
 			local target = targets[i]:GetPlayer();;
-			if (target:GetHealthPct() < 95) then
+			if (target:IsAlive() and target:GetHealthPct() < 95) then
 				table.insert(list, target);
 			end
 			
@@ -94,7 +103,7 @@ function Healer_GetTargetList(tracked, targets)
 		for i = 1, #tracked do
 			
 			local target = tracked[i];
-			if (target:GetHealthPct() < 95) then
+			if (target:IsAlive() and target:GetHealthPct() < 95) then
 				table.insert(list, target);
 			end
 			

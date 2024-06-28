@@ -123,48 +123,7 @@ function ShamanLevelDps_Update(ai, goal)
 		end
 		
 	elseif (cmd == CMD_ENGAGE) then
-	
-		-- do combat!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			print("shaman cmd_engage");
-			ai:CmdSetInProgress();
-		end
-		local partyData = party:GetData();
-		local targets = partyData.attackers;
-		if (not targets[1]) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (false == Tank_AnyTankPulling(partyData.tanks) and targets[1]:IsInCombat() and not ShamanTotems(ai, agent, goal, data, partyData)) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		local target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
-		-- too high threat
-		if (not target or not target:IsAlive()) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			agent:InterruptSpell(CURRENT_MELEE_SPELL);
-			-- Print("No target for", agent:GetName());
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		ShamanPotions(agent, goal, data);
-		ShamanDpsRotation(ai, agent, goal, data, target);
-	
+		return Dps_OnEngageUpdate(ai, agent, goal, party, data, false, 10.0, ShamanThreatActions);
 	end
 
 	return GOAL_RESULT_Continue;
@@ -175,6 +134,9 @@ local t_totems = {
 	[TOTEM_EARTH] = {
 		Strength = {[5874] = true, [5921] = true, [5922] = true, [7403] = true, [15464] = true,},
 		Tremor = {[5913] = true,},
+	},
+	[TOTEM_WATER] = {
+		Poison = {[5923] = true,},
 	},
 	[TOTEM_AIR] = {
 		Windfury = {[6112] = true, [7483] = true, [7484] = true,},
@@ -187,6 +149,9 @@ local function HasTotemType(agent, slot, type)
 end
 
 local function GetTotemTarget(agent, partyData)
+	if (partyData.encounter and partyData.encounter.rchrpos) then
+		return agent, 0, 0;
+	end
 	local target = partyData.owner;
 	if (#partyData.tanks > 0) then
 		for i,tank in ipairs(partyData.tanks) do
@@ -195,6 +160,9 @@ local function GetTotemTarget(agent, partyData)
 				break;
 			end
 		end
+	end
+	if (target:IsMoving()) then
+		return nil;
 	end
 	return target, 8.0, 0.0;
 end
@@ -211,21 +179,38 @@ function ShamanTotems(ai, agent, goal, data, partyData)
 	if (level >= 18 and true == partyData._needTremor) then
 		if (false == HasTotemType(agent, TOTEM_EARTH, "Tremor") and agent:HasEnoughPowerFor(data.ttremor, false)) then
 			local target, D, A = GetTotemTarget(agent, partyData);
-			goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.ttremor, TOTEM_EARTH, D, A);
+			if (target) then
+				goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.ttremor, TOTEM_EARTH, D, A);
+			end
 			return false;
 		end
 	elseif (level >= 10 and false == HasTotemType(agent, TOTEM_EARTH, "Strength") and agent:HasEnoughPowerFor(data.tstr, false)) then
 		
 		local target, D, A = GetTotemTarget(agent, partyData);
-		goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.tstr, TOTEM_EARTH, D, A);
+		if (target) then
+			goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.tstr, TOTEM_EARTH, D, A);
+		end
 		return false;
+	end
+	
+	-- water
+	if (level >= 22 and true == partyData._needPoisonCleansing) then
+		if (false == HasTotemType(agent, TOTEM_WATER, "Poison") and agent:HasEnoughPowerFor(SPELL_SHA_POISON_CLEANSING_TOTEM, false)) then
+			local target, D, A = GetTotemTarget(agent, partyData);
+			if (target) then
+				goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), SPELL_SHA_POISON_CLEANSING_TOTEM, TOTEM_WATER, D, A);
+			end
+			return false;
+		end
 	end
 	
 	-- air
 	if (level >= 32) then
 		if (false == HasTotemType(agent, TOTEM_AIR, "Windfury") and agent:HasEnoughPowerFor(data.twind, false)) then
 			local target, D, A = GetTotemTarget(agent, partyData);
-			goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.twind, TOTEM_AIR, D, A);
+			if (target) then
+				goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.twind, TOTEM_AIR, D, A);
+			end
 			return false;
 		end
 	end
@@ -251,11 +236,17 @@ function ShamanDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	Dps_MeleeChase(ai, agent, target);
-	
 	local level = agent:GetLevel();
 	
-	if (target:GetDistance(agent) > 5.0) then
+	-- check if we can do melee
+	if (false == agent:CanReachWithMelee(target)) then
+		if (agent:IsMoving()) then
+			return false;
+		end
+		-- assume target is outside holding area, must use ranged
+		if (CAST_OK == agent:IsInPositionToCast(target, data.bolt, 2.5) and CAST_OK == agent:CastSpell(target, data.bolt, false)) then
+			return true;
+		end
 		return false;
 	end
 	
@@ -269,6 +260,14 @@ function ShamanDpsRotation(ai, agent, goal, data, target)
 		return true;
 	end
 
+end
+
+function ShamanThreatActions(ai, agent, goal, data, target)
+	local party = ai:GetPartyIntelligence();
+	local partyData = party:GetData();
+	ShamanTotems(ai, agent, goal, data, partyData);
+	ShamanPotions(agent, goal, data);
+	ShamanDpsRotation(ai, agent, goal, data, target);
 end
 
 --[[*****************************************************

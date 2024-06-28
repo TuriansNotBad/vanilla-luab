@@ -134,7 +134,7 @@ function Tank_ShouldTankTarget(ai, target, threatNotTank, threatTank, aoeTarget)
 		return true, threatTank + stdThreat;
 	end
 	
-	if (target:GetVictim() and target:GetVictim():GetRole() ~= ROLE_TANK and curThreatDiff > ai:GetStdThreat()) then
+	if (target:GetVictim() and target:GetVictim():GetRole() ~= ROLE_TANK --[[and curThreatDiff > ai:GetStdThreat()]]) then
 		Print("Switching target cos its attacking non tank and mine is ok =", curThreatDiff, curThreatTank, curThreatNotTank, ai:GetStdThreat(), target:GetName());
 		return true, 0.0;
 	end

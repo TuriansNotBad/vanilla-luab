@@ -411,7 +411,7 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	
 	-- check if we can do melee
 	if (false == agent:CanReachWithMelee(target)) then
-		if (agent:IsMoving()) then
+		if (agent:IsMoving() and (target:GetThreat(agent) > 10.0 or target:GetDistance(agent) < 10)) then
 			return false;
 		end
 		-- assume target is outside holding area, must use ranged

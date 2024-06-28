@@ -127,6 +127,11 @@ function FeralLevelDps_Activate(ai, goal)
 	-- talents
 	data._hasCatFire = agent:HasTalent(1162, 0);
 	
+	-- dispels
+	if (level >= 14) then
+		data.dispels = {Poison = level >= 26 and SPELL_DRD_ABOLISH_POISON or SPELL_DRD_CURE_POISON};
+	end
+	
 	data.UpdateShapeshift = DruidUpdateForm;
 	data.forms = GetForms();
 	ai:SetForm(FORM_NONE);
@@ -157,6 +162,9 @@ function FeralLevelDps_Activate(ai, goal)
 			partyData:RegisterBuff(agent, "Mark of the Wild", 1, data.motw, type, 5*6e4);
 		end
 		partyData:RegisterBuff(agent, "Thorns", 1, data.thorns, BUFF_SINGLE, 3*6e4, {role = {[ROLE_TANK] = true}});
+		if (level >= 14) then
+			partyData:RegisterDispel(agent, "Poison");
+		end
 	end
 
 end
@@ -298,6 +306,32 @@ function FeralLevelDps_Update(ai, goal)
 			goal:AddSubGoal(GOAL_COMMON_Buff, 20.0, guid, spellid, key);
 		end
 	
+	elseif (cmd == CMD_DISPEL) then
+		
+		if (ai:CmdState() == CMD_STATE_WAITING) then
+			ai:CmdSetInProgress();
+		end
+		
+		-- give buffs!
+		local guid, key = ai:CmdArgs();
+		if (goal:GetSubGoalNum() > 0) then
+			return GOAL_RESULT_Continue;
+		end
+		
+		ai:SetForm(FORM_NONE);
+		local target = GetPlayerByGuid(guid);
+		if (nil == target or false == target:IsAlive()) then
+			ai:CmdComplete();
+			goal:ClearSubGoal();
+			return GOAL_RESULT_Continue;
+		end
+		
+		if (agent:GetShapeshiftForm() == FORM_NONE) then
+			local spellid = data.dispels[key];
+			-- AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Dispel", true);
+			goal:AddSubGoal(GOAL_COMMON_CastAlone, 10.0, guid, spellid, "Dispel", 5.0);
+		end
+		
 	end
 
 	return GOAL_RESULT_Continue;
@@ -339,7 +373,7 @@ function DruidCatRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	Dps_MeleeChase(ai, agent, target);
+	Dps_MeleeChase(ai, agent, target, true);
 	
 	local level = agent:GetLevel();
 	local party = ai:GetPartyIntelligence();

@@ -75,6 +75,12 @@ function MageLevelDps_Activate(ai, goal)
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
 	
+	-- dispels
+	if (level >= 18) then
+		data.dispels = {Curse = SPELL_MAG_REMOVE_LESSER_CURSE};
+	end
+
+	
 	if (level < 30) then
 		data.armor = data.frostA;
 	elseif (level < 34) then
@@ -95,6 +101,9 @@ function MageLevelDps_Activate(ai, goal)
 		end
 		partyData:RegisterBuff(agent, "Arcane Intellect", 1, data.aint, type, 5*6e4);
 		partyData:RegisterCC(agent, data.poly);
+		if (level >= 18) then
+			partyData:RegisterDispel(agent, "Curse");
+		end
 	end
 
 end
@@ -121,11 +130,10 @@ function MageLevelDps_Update(ai, goal)
 		return GOAL_RESULT_Continue;
 	end
 	
+	-- update CC target
 	if (0 == #partyData.attackers) then
 		ai:SetCCTarget(nil);
 	else
-		-- update CC target
-		-- could be better to merge with CMD_ENGAGE
 		if (ai:CmdType() ~= CMD_CC) then
 			local target = ai:GetCCTarget();
 			if (target) then
@@ -232,6 +240,28 @@ function MageLevelDps_Update(ai, goal)
 		end
 		ai:SetCCTarget(guid);
 		goal:AddSubGoal(GOAL_COMMON_Cc, 20.0, guid, data.poly);
+		
+	elseif (cmd == CMD_DISPEL) then
+		
+		if (ai:CmdState() == CMD_STATE_WAITING) then
+			ai:CmdSetInProgress();
+		end
+		
+		-- give buffs!
+		local guid, key = ai:CmdArgs();
+		if (goal:GetSubGoalNum() > 0) then
+			return GOAL_RESULT_Continue;
+		end
+		
+		local target = GetPlayerByGuid(guid);
+		if (nil == target or false == target:IsAlive()) then
+			ai:CmdComplete();
+			goal:ClearSubGoal();
+			return GOAL_RESULT_Continue;
+		end
+		
+		local spellid = data.dispels[key];
+		goal:AddSubGoal(GOAL_COMMON_CastAlone, 10.0, guid, spellid, "Dispel", 5.0);
 		
 	end
 

@@ -69,7 +69,7 @@ t_agentSpecs[CLASS_DRUID].BalanceLvlDps = {
 t_agentSpecs[CLASS_DRUID].FeralLvlDps = {
 	BattleGoalID = GOAL_DruidFeralLevelDps_Battle,
 	TalentInfo = "t_LevelFeralDruidDpsSpec",
-	Copy = true,
+	-- Copy = true,
 };
 
 -- Tank druid spec for leveling PI.

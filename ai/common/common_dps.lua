@@ -160,6 +160,7 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 	
 	-- movement
 	local area = partyData._holdPos;
+	local rchrpos = partyData.encounter and partyData.encounter.rchrpos;
 	if (area and false == AI_TargetInHoldingArea(target, area)) then
 		
 		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
@@ -167,6 +168,17 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 			return GOAL_RESULT_Continue;
 		end
 	
+	elseif (rchrpos) then
+		
+		-- if (bRanged or not bAllowThreatActions) then
+			if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
+				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
+				return GOAL_RESULT_Continue;
+			end
+		-- else
+			-- Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+		-- end
+		
 	else
 	
 		if (bRanged) then
