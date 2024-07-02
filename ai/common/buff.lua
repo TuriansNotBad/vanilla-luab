@@ -81,8 +81,9 @@ function Buff_Terminate(ai, goal)
 	
 	AI_UnpostBuff(guid, key);
 	if (ai:CmdType() == CMD_BUFF) then
-		Print("CmdBuff complete", agent:GetName());
-		ai:CmdComplete();
+		-- Print("CmdBuff complete", agent:GetName());
+		-- ai:CmdComplete();
+		Command_Complete(ai, "CMD_BUFF complete");
 	end
 end
 

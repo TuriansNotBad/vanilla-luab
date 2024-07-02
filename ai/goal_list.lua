@@ -20,6 +20,7 @@ GOAL_COMMON_Shapeshift      =  8;
 GOAL_COMMON_DoNothing       =  9;
 GOAL_COMMON_CastAlone       = 10;
 GOAL_COMMON_Totem           = 11;
+GOAL_COMMON_UseObj          = 12;
 
 --===============================================================
 -- Individual top goals

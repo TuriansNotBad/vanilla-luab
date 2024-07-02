@@ -48,15 +48,16 @@ end
 
 function AI_PostBuff(casterGuid, recieverGuid, key, value)
 	if (board.up(key, recieverGuid:GetId())) then
+		Print("AI_PostBuff: (c,r)", casterGuid, recieverGuid, "key =", key, "value =", value, "already assigned to", data[key][recieverGuid:GetId()][1])
 		error("Agent posting buff while already having one key key = " .. tostring(key) .. " id = "
-			.. tostring(recieverGuid:GetId()) .. " caster = " .. tostring(casterGuid:GetId()));
+			.. tostring(recieverGuid) .. " caster = " .. tostring(casterGuid));
 	end
-	Print("Buff posted", key, value, casterGuid:GetId(), recieverGuid:GetId());
+	Print("Buff posted", key, value, recieverGuid, casterGuid);
 	board.post(key, recieverGuid:GetId(), casterGuid, value);
 end
 
 function AI_UnpostBuff(recieverGuid, key)
-	Print("Buff removed", key, recieverGuid:GetId());
+	Print("Buff removed", key, recieverGuid, data[key] and data[key][recieverGuid:GetId()] and data[key][recieverGuid:GetId()][1]);
 	board.remove(key, recieverGuid:GetId());
 end
 
@@ -99,7 +100,8 @@ function AI_HasBuffAssigned(recieverGuid, key, type)
 		for id,buffinfo in next,info do
 		
 			local target = GetPlayerById(id);
-			if (nil == target) then
+			local caster = GetPlayerByGuid(buffinfo[1]);
+			if (nil == target or nil == caster or false == caster:IsAlive()) then
 				board.remove(key, id);
 			elseif (reciever:IsInSameSubGroup(target)) then
 				return true;
@@ -113,6 +115,16 @@ function AI_HasBuffAssigned(recieverGuid, key, type)
 	
 	return false;
 	
+end
+
+function AI_HasBuffAssignedTo(agent, receiverGuid, key)
+	if (AI_HasBuffAssigned(receiverGuid, key, BUFF_SINGLE)) then
+		local casterGuid = AI_GetAssignedBuff(receiverGuid, key);
+		if (agent:GetGuid() == casterGuid) then
+			return true;
+		end
+	end
+	return false;
 end
 
 function AI_GetAssignedBuff(recieverGuid, key)

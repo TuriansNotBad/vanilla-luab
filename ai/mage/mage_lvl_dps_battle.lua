@@ -57,6 +57,8 @@ function MageLevelDps_Activate(ai, goal)
 	
 	data.fireball   = ai:GetSpellMaxRankForMe(SPELL_MAG_FIREBALL);
 	data.frostbolt  = ai:GetSpellMaxRankForMe(SPELL_MAG_FROSTBOLT);
+	data.fireblast  = ai:GetSpellMaxRankForMe(SPELL_MAG_FIRE_BLAST);
+	data.scorch     = ai:GetSpellMaxRankForMe(SPELL_MAG_SCORCH);
 
 	data.poly       = ai:GetSpellMaxRankForMe(SPELL_MAG_POLYMORPH);
 	data.decurse    = SPELL_MAG_REMOVE_LESSER_CURSE;
@@ -105,6 +107,19 @@ function MageLevelDps_Activate(ai, goal)
 			partyData:RegisterDispel(agent, "Curse");
 		end
 	end
+	
+	-- Command params
+	Cmd_EngageSetParams(data, true, 25.0, MageDpsRotation);
+	Cmd_FollowSetParams(data, 90.0, 80.0);
+	-- register commands
+	Command_MakeTable(ai)
+		(CMD_FOLLOW, nil, nil, nil, true)
+		(CMD_ENGAGE, nil, nil, nil, true)
+		(CMD_BUFF,   nil, nil, nil, true)
+		(CMD_DISPEL, nil, nil, nil, true)
+		(CMD_SCRIPT, nil, nil, nil, true)
+		(CMD_CC,     nil, nil, nil, true)
+	;
 
 end
 
@@ -113,156 +128,13 @@ end
 *******************************************************]]
 function MageLevelDps_Update(ai, goal)
 	
-	local data = ai:GetData();
-	local agent = ai:GetPlayer();
-	local party = ai:GetPartyIntelligence();
-	local partyData = party:GetData();
-	
-	local cmd = ai:CmdType();
-	if (cmd == CMD_NONE or nil == party) then
-		return GOAL_RESULT_Continue;
-	end
-	
-	if (AI_IsIncapacitated(agent)) then
-		goal:ClearSubGoal();
-		-- agent:ClearMotion();
-		ai:SetCCTarget(nil);
-		return GOAL_RESULT_Continue;
-	end
-	
-	-- update CC target
-	if (0 == #partyData.attackers) then
-		ai:SetCCTarget(nil);
-	else
-		if (ai:CmdType() ~= CMD_CC) then
-			local target = ai:GetCCTarget();
-			if (target) then
-				if (nil == target or false == target:IsAlive() or (party and false == party:IsCC(target))) then
-					ai:SetCCTarget(nil);
-				end
-			end
-		end
-	end
-	
 	-- handle commands
-	if (cmd == CMD_FOLLOW) then
+	if (not Command_DefaultUpdate(ai, goal)) then
+		return GOAL_RESULT_Continue;
+	end
 	
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			print("mage CMD_FOLLOW");
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
-		
-		if (goal:GetSubGoalNum() > 0 or agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		AI_Replenish(agent, goal, 90.0, 70.0);
-		
-		-- armor
-		MageSelfBuff(agent, data);
-		
-		if (goal:GetSubGoalNum() == 0 and agent:GetMotionType() ~= MOTION_FOLLOW) then
-			goal:ClearSubGoal();
-			agent:ClearMotion();
-			local guid, dist, angle = ai:CmdArgs();
-			local target = GetPlayerByGuid(guid);
-			if (target) then
-				agent:MoveFollow(target, dist, angle);
-			else
-				ai:CmdComplete();
-			end
-		end
-		
-	elseif (cmd == CMD_ENGAGE) then
-		
-		Dps_OnEngageUpdate(ai, agent, goal, party, data, true, nil, MageDpsRotation);
-	
-	elseif (cmd == CMD_BUFF) then
-		
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			print("mage CMD_BUFF");
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
-		
-		-- give buffs!
-		local guid, spellid, key = ai:CmdArgs();
-		if (false == agent:HasEnoughPowerFor(spellid, false)) then
-			-- release assigned buff
-			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
-				goal:ClearSubGoal();
-			end
-			AI_Replenish(agent, goal, 0.0, 99.0);
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		local target = GetPlayerByGuid(guid);
-		if (nil == target or false == target:IsAlive()) then
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		goal:AddSubGoal(GOAL_COMMON_Buff, 20.0, guid, spellid, key);
-		
-	elseif (cmd == CMD_CC) then
-		
-		-- do cc!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-			print("Begin CC");
-		end
-		
-		local guid = ai:CmdArgs();
-		local target = GetUnitByGuid(agent, guid);
-		local party = ai:GetPartyIntelligence();
-		if (nil == target or false == target:IsAlive() or (party and false == party:IsCC(target))) then
-			ai:SetCCTarget(nil);
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			print("End CC");
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		ai:SetCCTarget(guid);
-		goal:AddSubGoal(GOAL_COMMON_Cc, 20.0, guid, data.poly);
-		
-	elseif (cmd == CMD_DISPEL) then
-		
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-		end
-		
-		-- give buffs!
-		local guid, key = ai:CmdArgs();
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		local target = GetPlayerByGuid(guid);
-		if (nil == target or false == target:IsAlive()) then
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		local spellid = data.dispels[key];
-		goal:AddSubGoal(GOAL_COMMON_CastAlone, 10.0, guid, spellid, "Dispel", 5.0);
-		
+	if (ai:CmdType() == CMD_FOLLOW) then
+		MageSelfBuff(ai:GetPlayer(), ai:GetData());
 	end
 
 	return GOAL_RESULT_Continue;
@@ -289,7 +161,7 @@ function MageSelfBuff(agent, data)
 	
 end
 
-function MageDpsRotation(ai, agent, goal, data, target)
+function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	
 	local level = agent:GetLevel();
 	
@@ -297,9 +169,9 @@ function MageDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	if (agent:IsMoving()) then
-		return false;
-	end
+	-- if (agent:IsMoving()) then
+		-- return false;
+	-- end
 	
 	local mana = agent:GetPowerPct(POWER_MANA);
 	local hp = agent:GetHealthPct();
@@ -315,6 +187,36 @@ function MageDpsRotation(ai, agent, goal, data, target)
 	if (CAST_OK ~= agent:IsInPositionToCast(target, data.frostbolt, 2.5)) then
 		-- print("pos fail", agent:IsInPositionToCast(target, data.frostbolt, 2.5));
 		return false;
+	end
+	
+	if (data.attackmode == "burst" and level >= 6) then
+		if (agent:GetDistance(target) < 19) then
+			if (agent:CastSpell(target, data.fireblast, false) == CAST_OK) then
+				print("Fire Blast", agent:GetName(), target:GetName());
+				return true;
+			end
+			if (level >= 22 and agent:CastSpell(target, data.scorch, false) == CAST_OK) then
+				print("Scorch", agent:GetName(), target:GetName());
+				return true;
+			end
+		end
+		return false;
+	end
+	
+	-- evocation
+	if (level >= 20 and mana < 30 and agent:IsSpellReady(SPELL_MAG_EVOCATION) and agent:CastSpell(agent, SPELL_MAG_EVOCATION, false) == CAST_OK) then
+		Print(agent:GetName(), "Evocation. Mana =", mana);
+		return true;
+	end
+	
+	-- interrupt
+	if (level >= 24
+	and target:IsCastingInterruptableSpell()
+	and agent:IsSpellReady(SPELL_MAG_COUNTERSPELL)
+	and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
+		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), SPELL_MAG_COUNTERSPELL, "Interrupt", 3.0);
+		AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
+		return true;
 	end
 	
 	-- spammable

@@ -72,6 +72,15 @@ function ShamanLevelDps_Activate(ai, goal)
 	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
 	ai:SetStdThreat(2.0*threat);
+	
+	-- Command params
+	Cmd_EngageSetParams(data, false, 15.0, ShamanThreatActions);
+	Cmd_FollowSetParams(data, 90.0, 90.0);
+	-- register commands
+	Command_MakeTable(ai)
+		(CMD_FOLLOW, nil, nil, nil, true)
+		(CMD_ENGAGE, nil, nil, nil, true)
+	;
 
 end
 
@@ -80,52 +89,19 @@ end
 *******************************************************]]
 function ShamanLevelDps_Update(ai, goal)
 
-	local data = ai:GetData();
-	local agent = ai:GetPlayer();
-	local party = ai:GetPartyIntelligence();
-	
-	local cmd = ai:CmdType();
-	if (cmd == CMD_NONE or nil == party) then
+	-- handle commands
+	if (not Command_DefaultUpdate(ai, goal)) then
 		return GOAL_RESULT_Continue;
 	end
+	
+	local agent = ai:GetPlayer();
+	local party = ai:GetPartyIntelligence();
 	local partyData = party:GetData();
 	
 	if (#partyData.attackers == 0) then
 		agent:UnsummonAllTotems();
 	end
 	
-	-- handle commands
-	if (cmd == CMD_FOLLOW) then
-	
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
-		
-		if (goal:GetSubGoalNum() > 0 or agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		AI_Replenish(agent, goal, 90.0, 90.0);
-		
-		if (goal:GetSubGoalNum() == 0 and agent:GetMotionType() ~= MOTION_FOLLOW) then
-			goal:ClearSubGoal();
-			agent:ClearMotion();
-			local guid, dist, angle = ai:CmdArgs();
-			local target = GetPlayerByGuid(guid);
-			if (target) then
-				agent:MoveFollow(target, dist, angle);
-			else
-				ai:CmdComplete();
-			end
-		end
-		
-	elseif (cmd == CMD_ENGAGE) then
-		return Dps_OnEngageUpdate(ai, agent, goal, party, data, false, 10.0, ShamanThreatActions);
-	end
-
 	return GOAL_RESULT_Continue;
 	
 end
@@ -150,6 +126,9 @@ end
 
 local function GetTotemTarget(agent, partyData)
 	if (partyData.encounter and partyData.encounter.rchrpos) then
+		if (agent:IsMoving()) then
+			return nil;
+		end
 		return agent, 0, 0;
 	end
 	local target = partyData.owner;
@@ -262,7 +241,7 @@ function ShamanDpsRotation(ai, agent, goal, data, target)
 
 end
 
-function ShamanThreatActions(ai, agent, goal, data, target)
+function ShamanThreatActions(ai, agent, goal, party, data, partyData, target)
 	local party = ai:GetPartyIntelligence();
 	local partyData = party:GetData();
 	ShamanTotems(ai, agent, goal, data, partyData);

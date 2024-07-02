@@ -118,10 +118,18 @@ end
 	Returns spellid for shifting into form
 ****************************************************************************]]
 function GetSpellForForm(form)
+	-- druid
 	if (form == FORM_CAT) then
 		return SPELL_DRD_CAT_FORM;
 	elseif (form == FORM_BEAR) then
 		return SPELL_DRD_BEAR_FORM;
+	-- warrior
+	elseif (form == FORM_DEFENSIVESTANCE) then
+		return SPELL_WAR_DEFENSIVE_STANCE;
+	elseif (form == FORM_BATTLESTANCE) then
+		return SPELL_WAR_BATTLE_STANCE;
+	elseif (form == FORM_BERSERKERSTANCE) then
+		return SPELL_WAR_BERSERKER_STANCE;
 	end
 	error("GetSpellForForm: spell not defined for form " .. tostring(form));
 end
@@ -187,7 +195,19 @@ function AI_HasMotionAura(agent)
 end
 
 function AI_IsIncapacitated(agent)
-	return not agent:IsAlive() or agent:HasAuraType(AURA_MOD_CHARM);
+	return not agent:IsAlive() or agent:HasLostControl();
+end
+
+function AI_IsAvailableToCast(ai, agent, target, spellid)
+	-- agent has control
+	if (agent:HasLostControl() or false == agent:IsAlive()) then
+		return false;
+	end
+	-- cast is not possible
+	if (not agent:HasEnoughPowerFor(spellid, true) or not agent:IsSpellReady(spellid)) then
+		return false;
+	end
+	return true;
 end
 
 function AI_TargetInHoldingArea(target, area)

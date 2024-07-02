@@ -27,6 +27,9 @@ t_LevelWarriorTankSpec = {
 			},
 		},
 		{Builds["1.12.1"], {
+				{"Deflection", 5, 130},
+				{"Tactical Mastery", 5, 641},
+				
 				{"Shield Specialization", 5, 1601},
 				{"Improved Bloodrage", 2, 142}, {"Toughness", 3, 140},
 				{"Defiance", 5, 144},
@@ -35,8 +38,6 @@ t_LevelWarriorTankSpec = {
 				{"One-Handed Weapon Specialization", 5, 702},
 				{"Shield Slam", 1, 148},
 			
-				{"Deflection", 5, 130},
-				{"Tactical Mastery", 5, 641},
 				{"Anger Management", 1, 137},
 				
 				{"Cruelty", 5, 157},

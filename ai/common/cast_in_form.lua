@@ -37,6 +37,7 @@ function CastInForm_Update(ai, goal)
 	local guid 	= goal:GetParam(0);
 	local spell = goal:GetParam(1);
 	local form  = goal:GetParam(2);
+	local buffer= goal:GetParam(3);
 	local agent = ai:GetPlayer();
 	local target = GetUnitByGuid(agent, guid);
 	
@@ -60,8 +61,8 @@ function CastInForm_Update(ai, goal)
 		error("CastInForm: UpdateShapeshift function not defined for agent " .. agent:GetName());
 	end
 	
-	if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 5.0)) then
-		goal:AddSubGoal(GOAL_COMMON_MoveInPosToCast, 10.0, guid, spell, 5.0);
+	if (CAST_OK ~= agent:IsInPositionToCast(target, spell, buffer)) then
+		goal:AddSubGoal(GOAL_COMMON_MoveInPosToCast, 10.0, guid, spell, buffer);
 	elseif (agent:GetShapeshiftForm() == form) then
 		if (CAST_OK == agent:CastSpell(target, spell, false)) then
 			goal:SetNumber(SN_CAST, 1);

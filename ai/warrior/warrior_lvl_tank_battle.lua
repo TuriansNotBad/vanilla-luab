@@ -14,6 +14,40 @@ local ST_BOMB = 0; -- dynamite cooldown
 local ST_SAPP = 1; -- goblin sapper charge cooldown
 local ST_POT  = 2; -- potion cooldown
 
+
+local function GetForms()
+	return {
+		[FORM_CAT]  = SPELL_DRD_CAT_FORM,
+		[FORM_BEAR] = SPELL_DRD_BEAR_FORM,
+	};
+end
+
+local function WarriorUpdateStance(data, ai, agent, goal)
+	
+	local form = ai:GetForm();
+	if (form == agent:GetShapeshiftForm() or agent:GetStandState() ~= STAND_STATE_STAND or agent:IsNonMeleeSpellCasted()) then
+		return;
+	end
+	
+	if (agent:GetShapeshiftForm() ~= FORM_NONE and agent:GetShapeshiftForm() ~= form) then
+		agent:CancelAura(GetSpellForForm(agent:GetShapeshiftForm()));
+		return;
+	end
+	
+	if (form ~= FORM_NONE) then
+		agent:CastSpell(agent, GetSpellForForm(form), false);
+	end
+
+end
+
+local function WarriorTankShapeshift(ai, agent, level)
+	if (level >= 10) then
+		ai:SetForm(FORM_DEFENSIVESTANCE);
+	elseif (FORM_BATTLESTANCE ~= agent:GetShapeshiftForm()) then
+		ai:SetForm(FORM_BATTLESTANCE);
+	end
+end
+
 --[[*****************************************************
 	Goal activation.
 *******************************************************]]
@@ -66,6 +100,7 @@ function WarriorLevelTank_Activate(ai, goal)
 	data.revenge = ai:GetSpellMaxRankForMe(SPELL_WAR_REVENGE);
 	data.bash    = ai:GetSpellMaxRankForMe(SPELL_WAR_SHIELD_BASH);
 	data.sslam   = Builds.Select(ai, "1.6.1", SPELL_WAR_SHIELD_SLAM, ai.GetSpellMaxRankForMe);
+	data.mock    = ai:GetSpellMaxRankForMe(SPELL_WAR_MOCKING_BLOW);
 	
 	data.dshout  = ai:GetSpellMaxRankForMe(SPELL_WAR_DEMORALIZING_SHOUT);
 	
@@ -83,6 +118,9 @@ function WarriorLevelTank_Activate(ai, goal)
 	
 	-- talents
 	data._hasShieldSlam = Builds.Select(agent, "1.6.1", 148, agent.HasTalent, 0);
+	data._hasTacticalMs = agent:HasTalent(641, 1) or agent:HasTalent(641, 2) or agent:HasTalent(641, 3) or agent:HasTalent(641, 4);
+	
+	data.UpdateShapeshift = WarriorUpdateStance;
 	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, data.sunder, false, true);;
 	if (false == agent:HasAura(SPELL_WAR_DEFENSIVE_STANCE)) then
@@ -94,6 +132,16 @@ function WarriorLevelTank_Activate(ai, goal)
 	ai:SetAmmo(ITEMID_ROUGH_ARROW);
 	data.PullRotation = WarriorPullRotation;
 	
+	-- Command params
+	Cmd_FollowSetParams(data, 90.0, -1.0);
+	-- Register commands
+	Command_MakeTable(ai)
+		(CMD_FOLLOW, nil, nil, nil, true)
+		(CMD_ENGAGE, nil, WarriorLevelTank_CmdEngageUpdate, nil, true)
+		(CMD_PULL,   nil, nil, nil, true)
+		(CMD_TANK,   WarriorLevelTank_CmdTankOnBegin, WarriorLevelTank_CmdTankUpdate, WarriorLevelTank_CmdTankOnEnd, true)
+	;
+	
 end
 
 --[[*****************************************************
@@ -101,248 +149,193 @@ end
 *******************************************************]]
 function WarriorLevelTank_Update(ai, goal)
 	
-	local data = ai:GetData();
-	local agent = ai:GetPlayer();
-	local party = ai:GetPartyIntelligence();
-	local partyData = party:GetData();
-	
-	local cmd = ai:CmdType();
-	if (cmd == CMD_NONE or nil == party) then
-		return GOAL_RESULT_Continue;
-	end
-	
-	if (AI_IsIncapacitated(agent)) then
-		goal:ClearSubGoal();
-		-- agent:ClearMotion();
-		return GOAL_RESULT_Continue;
-	end
-	
 	-- handle commands
-	if (cmd == CMD_FOLLOW) then
-	
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
-		
-		AI_Replenish(agent, goal, 90.0, -1);
-		
-		if (goal:GetSubGoalNum() == 0 and agent:GetMotionType() ~= MOTION_FOLLOW) then
-			goal:ClearSubGoal();
-			agent:ClearMotion();
-			local guid, dist, angle = ai:CmdArgs();
-			local target = GetPlayerByGuid(guid);
-			if (target) then
-				agent:MoveFollow(target, dist, angle);
-			else
-				ai:CmdComplete();
-			end
-		end
-		
-	elseif (cmd == CMD_ENGAGE) then
-	
-		-- do combat!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			Print(agent:GetName(), agent:GetClass(), "CMD_ENGAGE default update");
-			ai:CmdSetInProgress();
-		end
-		
-		local partyData = party:GetData();
-		-- party has no attackers
-		local targets = partyData.attackers;
-		if (not targets[1]) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		local bThreatCheck = agent:IsInDungeon() and partyData:HasTank();
-		
-		local target = Tank_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck, ai:GetStdThreat());
-		local bAllowThreatActions = target ~= nil;
-		
-		-- use tank's target if threat is too high
-		if (nil == target and partyData:HasTank()) then
-			local tank = partyData.tanks[1];
-			if (tank:GetPlayer():IsInCombat()) then
-				target = tank:GetPlayer():GetVictim();
-			end
-		end
-		
-		-- still nothing
-		if (nil == target or not target:IsAlive()) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			agent:InterruptSpell(CURRENT_MELEE_SPELL);
-			-- Print("No target for", agent:GetName());
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		-- movement
-		local area = partyData._holdPos;
-		local bSwap = partyData.encounter and partyData.encounter.tankswap and target:GetName() == partyData.encounter.name;
-		local _,threat = target:GetHighestThreat();
-		local threatdiff = threat - target:GetThreat(agent);
-		
-		if (area and false == AI_TargetInHoldingArea(target, area) and (not bSwap or threatdiff < 1000)) then
-			
-			if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
-				return GOAL_RESULT_Continue;
-			end
-		
-		else
-		
-			Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
-			
-		end
-		
-		-- attacks
-		if (bAllowThreatActions) then
-			if (bSwap) then
-				WarriorTankMaintainThreatRotation(ai, agent, goal, data, target);
-			else
-				WarriorTankDpsRotation(ai, agent, goal, data, target);
-			end
-		else
-			agent:AttackStop();
-		end
-		
+	if (not Command_DefaultUpdate(ai, goal)) then
 		return GOAL_RESULT_Continue;
-		
-	elseif (cmd == CMD_TANK) then
-	
-		-- do tank!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			goal:ClearSubGoal();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			ai:UnsetAbsAngle();
-			data.tankrot = nil;
-			Print(agent:GetName(), "CMD_TANK begin.");
-		end
-		
-		local guid = ai:CmdArgs();
-		local target = GetUnitByGuid(agent, guid);
-		
-		-- target expired
-		if (nil == target or false == target:IsAlive() or party:IsCC(target)) then
-			ai:CmdComplete();
-			agent:ClearMotion();
-			agent:AttackStop();
-			Print(agent:GetName(), "CMD_TANK complete.", type(target), target and not target:IsAlive(), target and party:IsCC(target), #partyData.attackers);
-			return GOAL_RESULT_Continue;
-		end
-		
-		-- changing target
-		if (target ~= agent:GetVictim()) then
-			agent:ClearMotion();
-			agent:Attack(target);
-		end
-		
-		local reverse = party:GetData().reverse;
-		
-		-- move
-		
-		local area = partyData._holdPos;
-		if (area and false == AI_TargetInHoldingArea(target, area) and target:GetVictim() == agent) then
-			
-			if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
-				return GOAL_RESULT_Continue;
-			end
-			
-		else
-		
-			local tpx,tpy,tpz = ai:GetPosForTanking(target);
-			
-			if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
-				if (false == agent:CanReachWithMelee(target)) then
-					if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
-						if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
-							agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
-							data.tankrot = nil;
-						end
-					end
-				else
-					if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
-						agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
-					end
-					if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
-						if (data.tankrot == nil) then
-							data.tankrot = ai:GetAngleForTanking(target, reverse, reverse);
-						end
-						if (data.tankrot) then
-							if (data.tankrot ~= data.__oldrot or data.__oldori ~= target:GetOrientation()) then
-								-- Print(data.tankrot, target:GetOrientation(), ai:IsUsingAbsAngle(), data.fliptankrot);
-								data.__oldrot, data.__oldori = data.tankrot, target:GetOrientation();
-							end
-							local adiff = math.abs(target:GetOrientation() - data.tankrot);
-							adiff = math.min(2*math.pi - adiff, adiff);
-							if (adiff > 0.78) then
-								if (not ai:IsUsingAbsAngle()) then
-									ai:SetAbsAngle(data.tankrot);
-									print("set angle", adiff);
-								end
-							elseif (ai:IsUsingAbsAngle()) then
-								print("unset angle");
-								ai:UnsetAbsAngle();
-							end
-						end
-					end
-				end
-			end
-			
-		end
-		
-		-- do abilities
-		if (WarriorTankRotation(ai, agent, goal, data, target) and false == ai:CmdIsRequirementMet()) then
-			local threat = target:GetThreat(agent);
-			if (threat >= ai:CmdGetProgress() - 0.01) then
-				ai:CmdSetProgress(threat);
-			else
-				-- creature uses aggro reducing spells, set complete
-				ai:CmdSetProgress(10000000.0);
-			end
-		end
-	
-	elseif (cmd == CMD_PULL) then
-	
-		-- do pull!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-			goal:AddSubGoal(GOAL_COMMON_Pull, 60, ai:CmdArgs());
-		end
-		if (goal:GetSubGoalNum() == 0) then
-			ai:CmdComplete();
-		end
-	
 	end
-
+	
+	if (ai:CmdType() == CMD_FOLLOW) then		
+		local agent = ai:GetPlayer();
+		WarriorTankShapeshift(ai, agent, agent:GetLevel());
+	end
+	
 	return GOAL_RESULT_Continue;
 	
 end
 
-local function WarriorTankShapeshift(agent, level)
-	if (level >= 10) then
-		if (FORM_DEFENSIVESTANCE ~= agent:GetShapeshiftForm()) then
-			agent:CastSpell(agent, SPELL_WAR_DEFENSIVE_STANCE, false);
+function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyData)
+	-- do combat!
+	-- party has no attackers
+	local targets = partyData.attackers;
+	if (not targets[1]) then
+		agent:AttackStop();
+		agent:ClearMotion();
+		Command_Complete(ai, "CMD_ENGAGE no targets left");
+		goal:ClearSubGoal();
+		return;
+	end
+	
+	if (goal:GetSubGoalNum() > 0) then
+		return;
+	end
+	
+	local bThreatCheck = agent:IsInDungeon() and partyData:HasTank();
+	
+	local target = Tank_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck, ai:GetStdThreat());
+	local bAllowThreatActions = target ~= nil;
+	
+	-- use tank's target if threat is too high
+	if (nil == target and partyData:HasTank()) then
+		local tank = partyData.tanks[1];
+		if (tank:GetPlayer():IsInCombat()) then
+			target = tank:GetPlayer():GetVictim();
 		end
-	elseif (FORM_BATTLESTANCE ~= agent:GetShapeshiftForm()) then
-		agent:CastSpell(agent, SPELL_WAR_BATTLE_STANCE, false);
+	end
+	
+	-- still nothing
+	if (nil == target or not target:IsAlive()) then
+		agent:AttackStop();
+		agent:ClearMotion();
+		agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+		agent:InterruptSpell(CURRENT_MELEE_SPELL);
+		-- Print("No target for", agent:GetName());
+		return;
+	end
+	
+	if (agent:IsNonMeleeSpellCasted()) then
+		return;
+	end
+	
+	-- movement
+	local area = partyData._holdPos;
+	local bSwap = partyData.encounter and partyData.encounter.tankswap and target:GetName() == partyData.encounter.name;
+	local _,threat = target:GetHighestThreat();
+	local threatdiff = threat - target:GetThreat(agent);
+	
+	if (area and false == AI_TargetInHoldingArea(target, area) and (not bSwap or threatdiff < 1000)) then
+		
+		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
+			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
+			return;
+		end
+	
+	else
+	
+		Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+		
+	end
+	
+	-- attacks
+	if (bAllowThreatActions) then
+		if (bSwap) then
+			WarriorTankMaintainThreatRotation(ai, agent, goal, data, target);
+		else
+			WarriorTankDpsRotation(ai, agent, goal, data, target);
+		end
+	else
+		agent:AttackStop();
+	end
+	
+end
+
+function WarriorLevelTank_CmdTankOnBegin(ai, agent, goal, party, data, partyData)
+	goal:ClearSubGoal();
+	agent:ClearMotion();
+	ai:UnsetAbsAngle();
+	data.tankrot = nil;
+end
+
+function WarriorLevelTank_CmdTankOnEnd(ai)
+	ai:GetPlayer():ClearMotion();
+	ai:GetPlayer():AttackStop();
+end
+
+function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
+	-- do tank!
+	local guid = ai:CmdArgs();
+	local target = GetUnitByGuid(agent, guid);
+	
+	-- target expired
+	if (nil == target or false == target:IsAlive() or party:IsCC(target)) then
+		Command_Complete(ai, "CMD_TANK complete");
+		Print(agent:GetName(), "CMD_TANK complete.", type(target), target and not target:IsAlive(), target and party:IsCC(target), #partyData.attackers);
+		return;
+	end
+	
+	if (goal:GetSubGoalNum() > 0) then
+		return;
+	end
+	
+	-- changing target
+	if (target ~= agent:GetVictim()) then
+		agent:ClearMotion();
+		agent:Attack(target);
+	end
+	
+	local reverse = party:GetData().reverse;
+	
+	-- move
+	
+	local area = partyData._holdPos;
+	if (area and false == AI_TargetInHoldingArea(target, area) and target:GetVictim() == agent) then
+		
+		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
+			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
+			return;
+		end
+		
+	else
+	
+		local tpx,tpy,tpz = ai:GetPosForTanking(target);
+		
+		if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
+			if (false == agent:CanReachWithMelee(target)) then
+				if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
+					if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
+						agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
+						data.tankrot = nil;
+					end
+				end
+			else
+				if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
+					agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
+				end
+				if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
+					if (data.tankrot == nil) then
+						data.tankrot = ai:GetAngleForTanking(target, reverse, reverse);
+					end
+					if (data.tankrot) then
+						if (data.tankrot ~= data.__oldrot or data.__oldori ~= target:GetOrientation()) then
+							-- Print(data.tankrot, target:GetOrientation(), ai:IsUsingAbsAngle(), data.fliptankrot);
+							data.__oldrot, data.__oldori = data.tankrot, target:GetOrientation();
+						end
+						local adiff = math.abs(target:GetOrientation() - data.tankrot);
+						adiff = math.min(2*math.pi - adiff, adiff);
+						if (adiff > 0.78) then
+							if (not ai:IsUsingAbsAngle()) then
+								ai:SetAbsAngle(data.tankrot);
+								print("set angle", adiff);
+							end
+						elseif (ai:IsUsingAbsAngle()) then
+							print("unset angle");
+							ai:UnsetAbsAngle();
+						end
+					end
+				end
+			end
+		end
+		
+	end
+	
+	-- do abilities
+	if (WarriorTankRotation(ai, agent, goal, data, target) and false == ai:CmdIsRequirementMet()) then
+		local threat = target:GetThreat(agent);
+		if (threat >= ai:CmdGetProgress() - 0.01) then
+			ai:CmdSetProgress(threat);
+		else
+			-- creature uses aggro reducing spells, set complete
+			ai:CmdSetProgress(10000000.0);
+		end
 	end
 end
 
@@ -360,11 +353,11 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	
 	local level = agent:GetLevel();
 	
-	WarriorTankShapeshift(agent, level);
-	
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
 	end
+	
+	WarriorTankShapeshift(ai, agent, level);
 	
 	local rage = agent:GetPowerPct(POWER_RAGE);
 	local hp = agent:GetHealthPct();
@@ -429,8 +422,21 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	if (level >= 10 and target:GetVictim() and target:GetVictim() ~= agent and not target:HasAura(SPELL_WAR_TAUNT)) then
 		local result = agent:CastSpell(target, SPELL_WAR_TAUNT, false);
 		if (result == CAST_OK) then
-			print("Taunt ", agent:GetName(), target:GetName());
+			print("Taunt", agent:GetName(), target:GetName());
 			return true;
+		end
+		
+		if (level >= 16 and data._hasTacticalMs and rage >= 10 and agent:IsSpellReady(data.mock)) then
+			Print("!!!!! Mocking blow attempt");
+			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.mock, FORM_BATTLESTANCE, 0.0);
+			return true;
+		end
+		
+		if (level >= 26 and agent:IsSpellReady(SPELL_WAR_CHALLENGING_SHOUT)) then
+			if (agent:CastSpell(target, SPELL_WAR_CHALLENGING_SHOUT, false) == CAST_OK) then
+				print("!!!!! Challenging Shout", agent:GetName(), target:GetName());
+				return true;
+			end
 		end
 	end
 	
@@ -493,7 +499,7 @@ function WarriorTankMaintainThreatRotation(ai, agent, goal, data, target)
 
 	end
 	
-	WarriorTankShapeshift(agent, level);
+	WarriorTankShapeshift(ai, agent, level);
 	
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
@@ -564,9 +570,7 @@ function WarriorTankDpsRotation(ai, agent, goal, data, target)
 	
 	local level = agent:GetLevel();
 	
-	if (FORM_BATTLESTANCE ~= agent:GetShapeshiftForm()) then
-		agent:CastSpell(agent, SPELL_WAR_BATTLE_STANCE, false);
-	end
+	ai:SetForm(FORM_BATTLESTANCE);
 	
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
@@ -624,7 +628,7 @@ end
 function WarriorPullRotation(ai, agent, target)
 	
 	local level = agent:GetLevel();
-	WarriorTankShapeshift(agent, level);
+	WarriorTankShapeshift(ai, agent, level);
 	
 	-- los/dist checks
 	if (CAST_OK ~= agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 5.0)) then

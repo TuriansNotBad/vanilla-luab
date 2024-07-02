@@ -166,6 +166,17 @@ function FeralLevelDps_Activate(ai, goal)
 			partyData:RegisterDispel(agent, "Poison");
 		end
 	end
+	
+	-- Command params
+	Cmd_EngageSetParams(data, true, 25.0, MageDpsRotation);
+	Cmd_FollowSetParams(data, 90.0, 96.0);
+	-- register commands
+	Command_MakeTable(ai)
+		(CMD_FOLLOW, nil, nil, nil, true)
+		(CMD_ENGAGE, nil, nil, nil, true)
+		(CMD_BUFF,   nil, nil, nil, true)
+		(CMD_DISPEL, nil, nil, nil, true)
+	;
 
 end
 
@@ -176,166 +187,81 @@ function FeralLevelDps_Update(ai, goal)
 
 	local data = ai:GetData();
 	local agent = ai:GetPlayer();
-	local party = ai:GetPartyIntelligence();
 	
-	local cmd = ai:CmdType();
-	if (cmd == CMD_NONE or nil == party) then
-		return GOAL_RESULT_Continue;
-	end
-	
-	DruidUpdateForm(data, ai, agent, goal);
-
 	-- handle commands
+	local cmd = ai:CmdType();
 	if (cmd == CMD_FOLLOW) then
-	
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
 		
-		if (goal:GetSubGoalNum() > 0 or agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
+		if (goal:GetSubGoalNum() == 0) then
 		
-		local level = agent:GetLevel();
-		if (level < 10) then
-			ai:SetForm(FORM_NONE);
-		elseif (level < 20) then
-			ai:SetForm(FORM_BEAR);
-		else
-			ai:SetForm(FORM_CAT);
-		end
-		
-		local transformpct = agent:GetPowerCost(data.forms[FORM_BEAR]) * 100.0/agent:GetMaxPower(POWER_MANA);
-		local manaThresh;
-		if (agent:GetShapeshiftForm() == FORM_NONE) then
-			manaThresh = 96.0;
-		else
-			manaThresh = 95.0 - transformpct;
-		end
-		AI_Replenish(agent, goal, 90.0, manaThresh, FORM_NONE);
-		
-		if (goal:GetSubGoalNum() == 0 and agent:GetMotionType() ~= MOTION_FOLLOW) then
-			goal:ClearSubGoal();
-			agent:ClearMotion();
-			local guid, dist, angle = ai:CmdArgs();
-			local target = GetPlayerByGuid(guid);
-			if (target) then
-				agent:MoveFollow(target, dist, angle);
+			local level = agent:GetLevel();
+			if (level < 10) then
+				ai:SetForm(FORM_NONE);
+			elseif (level < 20) then
+				ai:SetForm(FORM_BEAR);
 			else
-				ai:CmdComplete();
+				ai:SetForm(FORM_CAT);
 			end
+			
+			local transformpct = agent:GetPowerCost(data.forms[FORM_BEAR]) * 100.0/agent:GetMaxPower(POWER_MANA);
+			local manaThresh;
+			if (agent:GetShapeshiftForm() == FORM_NONE) then
+				manaThresh = 96.0;
+			else
+				manaThresh = 95.0 - transformpct;
+			end
+			Cmd_FollowSetParams(data, 90.0, manaThresh, FORM_NONE);
+		
 		end
 		
 	elseif (cmd == CMD_ENGAGE) then
 	
-		-- do combat!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-		end
-		local partyData = party:GetData();
-		local targets = partyData.attackers;
-		if (not targets[1]) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		local target = Dps_GetLowestHpTarget(ai, agent, party, targets, agent:IsInDungeon());
-		-- too high threat
-		if (not target or not target:IsAlive()) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			agent:InterruptSpell(CURRENT_MELEE_SPELL);
-			-- Print("No target for", agent:GetName());
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (agent:IsNonMeleeSpellCasted() or goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		-- Potions
-		DruidPotions(agent, goal, data);
-		
-		local level = agent:GetLevel();
-		if (level < 10) then
-			DruidLowLevelRotation(ai, agent, goal, ai:GetData(), target);
-		elseif (level < 20) then
-			DruidBearRotation(ai, agent, goal, ai:GetData(), target);
+		if (agent:GetLevel() < 10) then
+			if (agent:HasEnoughPowerFor(data.wrath, false)) then
+				Cmd_EngageSetParams(data, true, nil, FeralLvlDpsActions);
+			else
+				Cmd_EngageSetParams(data, false, nil, FeralLvlDpsActions);
+			end
 		else
-			DruidCatRotation(ai, agent, goal, ai:GetData(), target);
+			Cmd_EngageSetParams(data, false, nil, FeralLvlDpsActions);
 		end
 	
 	elseif (cmd == CMD_BUFF) then
 		
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
-		
-		-- give buffs!
-		local guid, spellid, key = ai:CmdArgs();
-		if (false == agent:HasEnoughPowerFor(spellid, true)) then
-			-- release assigned buff
-			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
-				goal:ClearSubGoal();
-			end
-			AI_Replenish(agent, goal, 0.0, 99.0, FORM_NONE);
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
 		ai:SetForm(FORM_NONE);
-		local target = GetPlayerByGuid(guid);
-		if (nil == target or false == target:IsAlive()) then
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
 		
-		if (agent:GetShapeshiftForm() == FORM_NONE) then
-			goal:AddSubGoal(GOAL_COMMON_Buff, 20.0, guid, spellid, key);
-		end
-	
 	elseif (cmd == CMD_DISPEL) then
 		
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-		end
-		
-		-- give buffs!
-		local guid, key = ai:CmdArgs();
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
 		ai:SetForm(FORM_NONE);
-		local target = GetPlayerByGuid(guid);
-		if (nil == target or false == target:IsAlive()) then
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (agent:GetShapeshiftForm() == FORM_NONE) then
-			local spellid = data.dispels[key];
-			-- AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Dispel", true);
-			goal:AddSubGoal(GOAL_COMMON_CastAlone, 10.0, guid, spellid, "Dispel", 5.0);
-		end
 		
 	end
+	
+	Command_DefaultUpdate(ai, goal);
 
 	return GOAL_RESULT_Continue;
 	
+end
+
+function FeralLvlDpsActions(ai, agent, goal, party, data, partyData, target)
+	-- Potions
+	DruidPotions(agent, goal, data);
+	
+	-- save all mana for dispels
+	if (partyData.encounter and partyData.encounter.dispelFocus) then
+		if (partyData.encounter.dispelFocus.Poison or partyData.encounter.dispelFocus.Curse) then
+			ai:SetForm(FORM_NONE);
+			return;
+		end
+	end
+	
+	local level = agent:GetLevel();
+	if (level < 10) then
+		DruidLowLevelRotation(ai, agent, goal, data, target);
+	elseif (level < 20) then
+		DruidBearRotation(ai, agent, goal, data, target);
+	else
+		DruidCatRotation(ai, agent, goal, data, target);
+	end
 end
 
 function DruidPotions(agent, goal, data)
@@ -358,7 +284,7 @@ local function DruidApplyItemBuffs(ai, agent, goal, data, level)
 	-- crowd pummeler, could check if equipped
 	if (level >= 29 and false == agent:HasAura(SPELL_GEN_PUMMELER)) then
 		if (agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true)) then
-			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, agent:GetGuid(), SPELL_GEN_PUMMELER, FORM_NONE);
+			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, agent:GetGuid(), SPELL_GEN_PUMMELER, FORM_NONE, 5.0);
 			return true;
 		end
 	end
@@ -373,7 +299,7 @@ function DruidCatRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	Dps_MeleeChase(ai, agent, target, true);
+	-- Dps_MeleeChase(ai, agent, target, true);
 	
 	local level = agent:GetLevel();
 	local party = ai:GetPartyIntelligence();
@@ -394,7 +320,7 @@ function DruidCatRotation(ai, agent, goal, data, target)
 			return true;
 		end
 	elseif (level >= 18 and false == target:HasAura(data.fire) and agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true)) then
-		goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.fire, FORM_NONE);
+		goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.fire, FORM_NONE, 5.0);
 		return true;
 	end
 	
@@ -437,7 +363,7 @@ function DruidBearRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	Dps_MeleeChase(ai, agent, target);
+	-- Dps_MeleeChase(ai, agent, target);
 	
 	local level = agent:GetLevel();
 	local party = ai:GetPartyIntelligence();
@@ -489,11 +415,11 @@ function DruidLowLevelRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	if (agent:HasEnoughPowerFor(data.wrath, false)) then
-		Dps_RangedChase(ai, agent, target);
-	else
-		Dps_MeleeChase(ai, agent, target);
-	end
+	-- if (agent:HasEnoughPowerFor(data.wrath, false)) then
+		-- Dps_RangedChase(ai, agent, target);
+	-- else
+		-- Dps_MeleeChase(ai, agent, target);
+	-- end
 	
 	-- los/dist checks
 	if (CAST_OK ~= agent:IsInPositionToCast(target, data.wrath, 2.5)) then

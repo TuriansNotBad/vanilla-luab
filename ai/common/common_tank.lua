@@ -108,7 +108,7 @@ function Tank_ShouldTankTarget(ai, target, threatNotTank, threatTank, aoeTarget)
 	
 	local agent = ai:GetPlayer();
 	
-	if (agent:HasAuraType(AURA_MOD_CHARM)) then
+	if (AI_IsIncapacitated(agent)) then
 		return false;
 	end
 	

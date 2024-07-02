@@ -80,7 +80,7 @@ function Cc_Terminate(ai, goal)
 	local agent = ai:GetPlayer();
 	if (ai:CmdType() == CMD_CC) then
 		Print("CmdCC complete", agent:GetName());
-		ai:CmdComplete();
+		Command_Complete(ai, "CMD_CC complete");
 	end
 	print("Cc_Terminate CC");
 end

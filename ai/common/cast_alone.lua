@@ -57,10 +57,13 @@ function CastAlone_Update(ai, goal)
 		else
 			goal:ClearSubGoal();
 			agent:ClearMotion();
-			if (CAST_OK == agent:CastSpell(target, spell, false)) then
+			local result = agent:CastSpell(target, spell, false);
+			if (CAST_OK == result) then
 				Print(agent:GetName(), "cast alone", key, spell, GetSpellName(spell), target:GetName());
 				goal:SetNumber(SN_CAST, 1);
 				goal:SetTimer(SN_CAST, 0.5); -- for spell batching
+			elseif (CAST_NOTHING_TO_DISPEL and CAST_NOTHING_TO_DISPEL == result) then
+				return GOAL_RESULT_Success;
 			end
 		end
 	end
@@ -79,8 +82,9 @@ function CastAlone_Terminate(ai, goal)
 	
 	AI_UnpostBuff(guid, key);
 	if (ai:CmdType() == CMD_DISPEL) then
-		Print("CmdCastAlone complete", agent:GetName());
-		ai:CmdComplete();
+		-- Print("CmdCastAlone complete", agent:GetName());
+		-- ai:CmdComplete();
+		Command_Complete(ai, "CMD_DISPEL complete");
 	end
 end
 

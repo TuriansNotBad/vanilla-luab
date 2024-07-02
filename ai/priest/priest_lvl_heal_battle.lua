@@ -27,7 +27,7 @@ local function CmdHealReset(ai, agent, goal, interrupt, complete)
 	print "CMDHeal Reset"
 	if (complete) then
 		print "CMDHeal Complete"
-		ai:CmdComplete();
+		Command_Complete(ai, "CMD_HEAL completed");
 	end
 	return GOAL_RESULT_Continue;
 end
@@ -155,12 +155,24 @@ function PriestLevelHeal_Activate(ai, goal)
 			partyData:RegisterBuff(agent, "Fear Ward NC", 1, data.fearward, BUFF_SINGLE, 3*6e4, {dungeon = {fear = true}});
 		end
 		if (level >= 18) then
-			-- partyData:RegisterDispel(agent, "Magic");
+			partyData:RegisterDispel(agent, "Magic");
 		end
 	end
 	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
 	ai:SetStdThreat(2.0*threat);
+	
+	-- Command params
+	Cmd_EngageSetParams(data, true, nil, AI_DummyActions);
+	Cmd_FollowSetParams(data, 90.0, 80.0);
+	-- register commands
+	Command_MakeTable(ai)
+		(CMD_FOLLOW, nil, nil, nil, true)
+		(CMD_ENGAGE, nil, nil, nil, true)
+		(CMD_BUFF,   nil, nil, nil, true)
+		(CMD_DISPEL, nil, nil, nil, true)
+		(CMD_HEAL,   PriestLevelHeal_CmdHealOnBeginOrEnd, PriestLevelHeal_CmdHealUpdate, PriestLevelHeal_CmdHealOnBeginOrEnd, false)
+	;
 	
 end
 
@@ -168,237 +180,125 @@ end
 	Goal update.
 *******************************************************]]
 function PriestLevelHeal_Update(ai, goal)
-
-	local cmd = ai:CmdType();
-	if (cmd == CMD_NONE) then
-		return GOAL_RESULT_Continue;
-	end
 	
-	local party = ai:GetPartyIntelligence();
-	local agent = ai:GetPlayer();
-	local data = ai:GetData();
-	local partyData = party:GetData();
-	
-	if (AI_IsIncapacitated(agent)) then
-		goal:ClearSubGoal();
-		-- agent:ClearMotion();
-		ai:SetHealTarget(nil);
-		return GOAL_RESULT_Continue;
-	end
-
 	-- handle commands
-	if (cmd == CMD_FOLLOW) then
-		
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
-				goal:ClearSubGoal();
-			end
-		end
-		
-		if (goal:GetSubGoalNum() > 0 or agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		AI_Replenish(agent, goal, 90.0, 70.0);
-		
-		if (goal:GetSubGoalNum() == 0 and agent:GetMotionType() ~= MOTION_FOLLOW) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			local guid, dist, angle = ai:CmdArgs();
-			local target = GetPlayerByGuid(guid);
-			if (target) then
-				agent:MoveFollow(target, dist, angle);
-			else
-				ai:CmdComplete();
-			end
-		end
-		
-	elseif (cmd == CMD_ENGAGE) then
-		
-		-- todo: chase tank instead of lowest hp enemy?
-		return Dps_OnEngageUpdate(ai, agent, goal, party, data, true, nil, AI_DummyActions);
+	Command_DefaultUpdate(ai, goal);
 	
-	elseif (cmd == CMD_HEAL) then
-		
-		-- do heal!
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-			CmdHealReset(ai, agent, goal, true); -- make sure we dont continue casting a spell on previous target
-			local target = GetUnitByGuid(agent, ai:CmdArgs());
-			Print("new heal cmd", target:GetName(), "hp =", target:GetHealthPct());
-		end
-		
-		if (false == agent:IsInCombat()) then
-			AI_Replenish(agent, goal, 0.0, 30.0);
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-
-		local guid = ai:CmdArgs();
-		local target = GetUnitByGuid(agent, guid);
-		local isTank = target == nil and false or target:IsTanking();
-		-- condition here to cancel healing charmed ones?
-		if (not target or not target:IsAlive() or target:GetHealthPct() > 95) then
-			-- interrupt healing high health targets;
-			print("redundant reset", target and target:GetName(), target and target:GetHealthPct());
-			return CmdHealReset(ai, agent, goal, agent:IsInCombat(), true);
-		end
-		
-		local hp = target:GetHealthPct();
-		local hpdiff = target:GetMaxHealth() - target:GetHealth();
-		ai:SetHealTarget(guid);
-		
-		local rchrpos = partyData.encounter and partyData.encounter.rchrpos;
-		if (rchrpos) then
-			if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
-				return GOAL_RESULT_Continue;
-			end
-		end
-		
-		-- interrupt preheals
-		if (agent:IsNonMeleeSpellCasted()) then
-			
-			-- reposition check
-			if (PriestLevelHeal_ShouldInterruptPrecast(agent, target, isTank, hpdiff)) then
-				if (AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target)) then
-					PriestLevelHeal_InterruptCurrentHealingSpell(ai, agent, goal);
-					return GOAL_RESULT_Continue;
-				end
-			end
-			
-			if (not PriestLevelHeal_InterruptPrecastHeals(agent, goal, target, isTank, hpdiff)
-				and not PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, goal:GetNumber(0), goal:GetNumber(1)))
-			then
-				return GOAL_RESULT_Continue;
-			end
-			
-		end
-		
-		-- heal spell cast
-		if (goal:GetNumber(1) > 0) then
-			if (not ai:CmdIsRequirementMet()) then
-				print"Progress"
-				ai:CmdAddProgress();
-			end
-		end
-		goal:SetNumber(0, 0); -- reset saved target health
-		goal:SetNumber(1, 0); -- reset saved spell effect
-		
-		-- abandon healing nontanks that arent in immediate danger
-		if (ai:CmdIsRequirementMet()) then
-			-- if (agent:IsInCombat()) then
-				if (not isTank and target:GetAttackersNum() == 0 and hp > 55) then
-					print("req met reset");
-					return CmdHealReset(ai, agent, goal, false, true);
-				end
-			-- end
-		end
-		
-		PriestPotions(agent, goal, data);
-		
-		local maxThreat;
-		if (target:IsTanking() and hp < 30) then
-			maxThreat = 1000.0;
-		else
-			maxThreat = GetAEThreat(ai, agent, partyData.attackers);
-		end
-		local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData);
-		
-		-- threat check not passed or just have no mana
-		-- or if healing nontank hpdiff isn't low enough
-		if (nil == spell) then
-			AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target);
-			return GOAL_RESULT_Continue;
-		end
-		
-		-- los/dist checks
-		if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 5.0) and not rchrpos) then
-			goal:AddSubGoal(GOAL_COMMON_MoveInPosToCast, 10.0, guid, spell, 5.0);
-		end
-		
-		if (agent:CastSpell(target, spell, false) == CAST_OK) then
-			Print("spell cast begin", GetSpellName(spell), spell, maxThreat, effect, effthreat, target:GetName(), hpdiff, target:GetHealthPct());
-			goal:SetNumber(0, target:GetHealth()); -- remember target health at cast time
-			goal:SetNumber(1, effect); -- remember healing amount of our spell
-			-- if we're precasting we don't want this to block us from healing others
-			-- this way we can interrupt any precast to put a hot on a dps or heal an actual low tank
-			if (PriestLevelHeal_ShouldInterruptPrecast(agent, target, isTank, hpdiff) and not ai:CmdIsRequirementMet()) then
-				print("Progress added");
-				ai:CmdAddProgress();
-			end
-		end
-		
-		return GOAL_RESULT_Continue;
-	
-	elseif (cmd == CMD_BUFF) then
-		
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
-		
-		-- give buffs!
-		local guid, spellid, key = ai:CmdArgs();
-		if (false == agent:HasEnoughPowerFor(spellid, false)) then
-			-- release assigned buff
-			if (goal:GetActiveSubGoalId() ~= GOAL_COMMON_Replenish) then
-				goal:ClearSubGoal();
-			end
-			if (#partyData.attackers == 0) then
-				AI_Replenish(agent, goal, 0.0, 99.0);
-			end
-			return GOAL_RESULT_Continue;
-		end
-		
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		local target = GetPlayerByGuid(guid);
-		if (nil == target or false == target:IsAlive()) then
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		goal:AddSubGoal(GOAL_COMMON_Buff, 20.0, guid, spellid, key);
-		
-	elseif (cmd == CMD_DISPEL) then
-		
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			ai:CmdSetInProgress();
-			CmdHealReset(ai, agent, goal, true);
-		end
-		
-		-- give buffs!
-		local guid, key = ai:CmdArgs();
-		if (goal:GetSubGoalNum() > 0) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		local target = GetPlayerByGuid(guid);
-		if (nil == target or false == target:IsAlive()) then
-			ai:CmdComplete();
-			goal:ClearSubGoal();
-			return GOAL_RESULT_Continue;
-		end
-		
-		local spellid = data.dispels[key];
-		-- AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Dispel", true);
-		goal:AddSubGoal(GOAL_COMMON_CastAlone, 10.0, guid, spellid, "Dispel", 5.0);
-	end
-
 	return GOAL_RESULT_Continue;
 	
+end
+
+function PriestLevelHeal_CmdHealOnBeginOrEnd(ai)
+	CmdHealReset(ai, ai:GetPlayer(), ai:GetTopGoal(), true);
+end
+
+function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
+	-- do heal!
+	if (false == agent:IsInCombat()) then
+		AI_Replenish(agent, goal, 0.0, 30.0);
+	end
+	
+	if (goal:GetSubGoalNum() > 0) then
+		return GOAL_RESULT_Continue;
+	end
+
+	local guid = ai:CmdArgs();
+	local target = GetUnitByGuid(agent, guid);
+	local isTank = target == nil and false or target:IsTanking();
+	-- condition here to cancel healing charmed ones?
+	if (not target or not target:IsAlive() or target:GetHealthPct() > 95) then
+		-- interrupt healing high health targets;
+		print("redundant reset", target and target:GetName(), target and target:GetHealthPct());
+		return CmdHealReset(ai, agent, goal, agent:IsInCombat(), true);
+	end
+	
+	local hp = target:GetHealthPct();
+	local hpdiff = target:GetMaxHealth() - target:GetHealth();
+	ai:SetHealTarget(guid);
+	
+	local rchrpos = partyData.encounter and partyData.encounter.rchrpos;
+	if (rchrpos) then
+		if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
+			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
+			return GOAL_RESULT_Continue;
+		end
+	end
+	
+	-- interrupt preheals
+	if (agent:IsNonMeleeSpellCasted()) then
+		
+		-- reposition check
+		if (PriestLevelHeal_ShouldInterruptPrecast(agent, target, isTank, hpdiff)) then
+			if (AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target)) then
+				PriestLevelHeal_InterruptCurrentHealingSpell(ai, agent, goal);
+				return GOAL_RESULT_Continue;
+			end
+		end
+		
+		if (not PriestLevelHeal_InterruptPrecastHeals(agent, goal, target, isTank, hpdiff)
+			and not PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, goal:GetNumber(0), goal:GetNumber(1)))
+		then
+			return GOAL_RESULT_Continue;
+		end
+		
+	end
+	
+	-- heal spell cast
+	if (goal:GetNumber(1) > 0) then
+		if (not ai:CmdIsRequirementMet()) then
+			print"Progress"
+			ai:CmdAddProgress();
+		end
+	end
+	goal:SetNumber(0, 0); -- reset saved target health
+	goal:SetNumber(1, 0); -- reset saved spell effect
+	
+	-- abandon healing nontanks that arent in immediate danger
+	if (ai:CmdIsRequirementMet()) then
+		-- if (agent:IsInCombat()) then
+			if (not isTank and target:GetAttackersNum() == 0 and hp > 55) then
+				print("req met reset");
+				return CmdHealReset(ai, agent, goal, false, true);
+			end
+		-- end
+	end
+	
+	PriestPotions(agent, goal, data);
+	
+	local maxThreat;
+	if (target:IsTanking() and hp < 30) then
+		maxThreat = 1000.0;
+	else
+		maxThreat = GetAEThreat(ai, agent, partyData.attackers);
+	end
+	local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData);
+	
+	-- threat check not passed or just have no mana
+	-- or if healing nontank hpdiff isn't low enough
+	if (nil == spell) then
+		AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target);
+		return GOAL_RESULT_Continue;
+	end
+	
+	-- los/dist checks
+	if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 5.0) and not rchrpos) then
+		goal:AddSubGoal(GOAL_COMMON_MoveInPosToCast, 10.0, guid, spell, 5.0);
+	end
+	
+	if (agent:CastSpell(target, spell, false) == CAST_OK) then
+		Print("spell cast begin", GetSpellName(spell), spell, maxThreat, effect, effthreat, target:GetName(), hpdiff, target:GetHealthPct());
+		goal:SetNumber(0, target:GetHealth()); -- remember target health at cast time
+		goal:SetNumber(1, effect); -- remember healing amount of our spell
+		-- if we're precasting we don't want this to block us from healing others
+		-- this way we can interrupt any precast to put a hot on a dps or heal an actual low tank
+		if (PriestLevelHeal_ShouldInterruptPrecast(agent, target, isTank, hpdiff) and not ai:CmdIsRequirementMet()) then
+			print("Progress added");
+			ai:CmdAddProgress();
+		end
+	end
+	
+	return GOAL_RESULT_Continue;
+
 end
 
 function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData)
@@ -420,7 +320,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 				if ((value <= hpdiff or value / target:GetMaxHealth() < .5) and threat < maxThreat) then
 					return id, value, threat;
 				else
-					Print("Spell", GetSpellName(id), id, " is too strong for this tank hp -", target:GetMaxHealth(), value, hpdiff, threat < maxThreat, target:GetName());
+					-- Print("Spell", GetSpellName(id), id, " is too strong for this tank hp -", target:GetMaxHealth(), value, hpdiff, threat < maxThreat, target:GetName());
 				end
 			end
 		end
@@ -464,7 +364,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 		return heals[1], agent:GetSpellDamageAndThreat(target, heals[1], true, false);
 	end
 	
-	Print(agent:GetName(), "failed to pick any heal spell, threat/mana/targethp check fail", agent:GetPowerPct(POWER_MANA), target:GetHealthPct(), target:GetName());
+	-- Print(agent:GetName(), "failed to pick any heal spell, threat/mana/targethp check fail", agent:GetPowerPct(POWER_MANA), target:GetHealthPct(), target:GetName());
 	return nil, nil, nil;
 	
 end

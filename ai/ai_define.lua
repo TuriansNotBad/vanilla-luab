@@ -26,6 +26,7 @@ CMD_PULL   = 6;
 CMD_CC     = 7;
 CMD_BUFF   = 8;
 CMD_DISPEL = 9;
+CMD_SCRIPT = 10;
 
 -- Teams
 TEAM_HORDE    = 67;
@@ -36,6 +37,7 @@ ROLE_MDPS   = 1;
 ROLE_RDPS   = 2;
 ROLE_TANK   = 3;
 ROLE_HEALER = 4;
+ROLE_SCRIPT = 5;
 
 -- Races
 RACE_HUMAN              = 1;
@@ -139,6 +141,10 @@ MECHANIC_SLEEP = 10;
 
 -- Spell Cast Result
 CAST_OK = 255;
+-- these are defined in C++
+-- CAST_NOTHING_TO_DISPEL
+-- CAST_NOT_SHAPESHIFT
+-- CAST_ONLY_SHAPESHIFT
 
 -- Current Spell Types
 CURRENT_MELEE_SPELL             = 0;
@@ -277,6 +283,31 @@ Proficiency = {
 	Sword2H   = 202,
 	DualWield = 674,
 };
+
+-- reputation
+REP_HATED       = 0;
+REP_HOSTILE     = 1;
+REP_UNFRIENDLY  = 2;
+REP_NEUTRAL     = 3;
+REP_FRIENDLY    = 4;
+REP_HONORED     = 5;
+REP_REVERED     = 6;
+REP_EXALTED     = 7;
+
+-- CMD Name Lookup
+CMD2STR = {
+	[CMD_NONE  ] = "CMD_NONE",
+	[CMD_MOVE  ] = "CMD_MOVE",
+	[CMD_FOLLOW] = "CMD_FOLLOW",
+	[CMD_ENGAGE] = "CMD_ENGAGE",
+	[CMD_TANK  ] = "CMD_TANK",
+	[CMD_HEAL  ] = "CMD_HEAL",
+	[CMD_PULL  ] = "CMD_PULL",
+	[CMD_CC    ] = "CMD_CC",
+	[CMD_BUFF  ] = "CMD_BUFF",
+	[CMD_DISPEL] = "CMD_DISPEL",
+	[CMD_SCRIPT] = "CMD_SCRIPT",
+}
 
 -- Client build numbers
 Builds = {

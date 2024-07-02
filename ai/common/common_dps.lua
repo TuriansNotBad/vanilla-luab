@@ -4,6 +4,22 @@
 		<blank>
 *********************************************************************************************]]
 
+function Dps_GetNearestTarget(agent, targets)
+	if (#targets == 0) then
+		return;
+	end
+	local nearest = targets[1];
+	local dist    = targets[1]:GetDistance(agent);
+	for i = 2, #targets do
+		local d = targets[i]:GetDistance(agent);
+		if (d < dist) then
+			nearest = targets[i];
+			dist = d;
+		end
+	end
+	return nearest;
+end
+
 function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 	
 	local minDiff = ai:GetStdThreat();
@@ -103,17 +119,18 @@ function Dps_MeleeChase(ai, agent, target, bAttack)
 	end
 end
 
-function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, fnThreatActions)
+function Dps_OnEngageUpdate(ai, agent, goal, party, data, partyData, bRanged, interruptR, fnThreatActions)
 
 	-- do combat!
 	if (ai:CmdState() == CMD_STATE_WAITING) then
 		Print(agent:GetName(), agent:GetClass(), "CMD_ENGAGE default update");
 		ai:CmdSetInProgress();
+		goal:ClearSubGoal();
+		agent:InterruptSpell(CURRENT_GENERIC_SPELL);
 	end
 	
-	local partyData = party:GetData();
 	-- party has no attackers
-	local targets = partyData.attackers;
+	local targets = data.targets or partyData.attackers;
 	if (not targets[1]) then
 		agent:AttackStop();
 		agent:ClearMotion();
@@ -127,14 +144,22 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 	end
 	
 	local target;
-	local bThreatCheck = agent:IsInDungeon() and partyData:HasTank();
+	local bAllowThreatActions = true; 
 	
-	if (interruptR) then
-		target = Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, bThreatCheck, interruptR);
-	else
-		target = Dps_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck);
+	if (partyData.hostileTotems) then
+		target = Dps_GetNearestTarget(agent, partyData.hostileTotems);
 	end
-	local bAllowThreatActions = target ~= nil;
+	
+	if (nil == target) then
+		local bThreatCheck = agent:IsInDungeon() and partyData:HasTank() and not targets.ignoreThreat;
+		
+		if (interruptR) then
+			target = Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, bThreatCheck, interruptR);
+		else
+			target = Dps_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck);
+		end
+		bAllowThreatActions = target ~= nil;
+	end
 	
 	-- use tank's target if threat is too high
 	if (nil == target and partyData:HasTank()) then
@@ -150,7 +175,6 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 		agent:ClearMotion();
 		agent:InterruptSpell(CURRENT_GENERIC_SPELL);
 		agent:InterruptSpell(CURRENT_MELEE_SPELL);
-		-- Print("No target for", agent:GetName());
 		return GOAL_RESULT_Continue;
 	end
 	
@@ -195,9 +219,11 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, bRanged, interruptR, f
 	
 	-- attacks
 	if (bAllowThreatActions) then
-		fnThreatActions(ai, agent, goal, data, target);
+		fnThreatActions(ai, agent, goal, party, data, partyData, target);
 	else
 		agent:AttackStop();
+		agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+		agent:InterruptSpell(CURRENT_MELEE_SPELL);
 	end
 	
 	return GOAL_RESULT_Continue;

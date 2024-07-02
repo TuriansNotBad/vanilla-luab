@@ -12,6 +12,7 @@ REGISTER_GOAL(GOAL_RogueLevelDps_Battle, "RogueLevelDps");
 
 local ST_POT = 0;
 local function print()end
+
 --[[*****************************************************
 	Goal activation.
 *******************************************************]]
@@ -77,6 +78,15 @@ function RogueLevelDps_Activate(ai, goal)
 	ai:SetStdThreat(threat * 2);
 	
 	ai:SetAmmo(ITEMID_ROUGH_ARROW);
+	
+	-- Command params
+	Cmd_EngageSetParams(data, false, 10.0, RogueThreatActions);
+	Cmd_FollowSetParams(data, 90.0, -1.0);
+	-- register commands
+	Command_MakeTable(ai)
+		(CMD_FOLLOW, nil, nil, nil, true)
+		(CMD_ENGAGE, nil, nil, nil, true)
+	;
 
 end
 
@@ -85,62 +95,16 @@ end
 *******************************************************]]
 function RogueLevelDps_Update(ai, goal)
 
-	local data = ai:GetData();
-	local agent = ai:GetPlayer();
-	local party = ai:GetPartyIntelligence();
-	
-	local cmd = ai:CmdType();
-	if (cmd == CMD_NONE or nil == party) then
-		return GOAL_RESULT_Continue;
-	end
-	
-	if (AI_IsIncapacitated(agent)) then
-		goal:ClearSubGoal();
-		-- agent:ClearMotion();
-		return GOAL_RESULT_Continue;
-	end
-	
 	-- handle commands
-	if (cmd == CMD_FOLLOW) then
+	Command_DefaultUpdate(ai, goal);
 	
-		if (ai:CmdState() == CMD_STATE_WAITING) then
-			agent:AttackStop();
-			agent:ClearMotion();
-			ai:CmdSetInProgress();
-			goal:ClearSubGoal();
-		end
-		
-		if (goal:GetSubGoalNum() > 0 or agent:IsNonMeleeSpellCasted()) then
-			return GOAL_RESULT_Continue;
-		end
-		
-		AI_Replenish(agent, goal, 90.0, 0);
-		
-		if (goal:GetSubGoalNum() == 0 and agent:GetMotionType() ~= MOTION_FOLLOW) then
-			goal:ClearSubGoal();
-			agent:ClearMotion();
-			local guid, dist, angle = ai:CmdArgs();
-			local target = GetPlayerByGuid(guid);
-			if (target) then
-				agent:MoveFollow(target, dist, angle);
-			else
-				ai:CmdComplete();
-			end
-		end
-		
-	elseif (cmd == CMD_ENGAGE) then
-	
-		return Dps_OnEngageUpdate(ai, agent, goal, party, data, false, 10.0, RogueThreatActions);
-	
-	end
-
 	return GOAL_RESULT_Continue;
 	
 end
 
-function RogueThreatActions(ai, agent, goal, data, target)
+function RogueThreatActions(ai, agent, goal, party, data, partyData, target)
 	RoguePotions(agent, goal, data);
-	RogueDpsRotation(ai, agent, goal, ai:GetData(), target);
+	RogueDpsRotation(ai, agent, goal, data, target);
 end
 
 function RoguePotions(agent, goal, data)
@@ -177,14 +141,14 @@ function RogueDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	-- if (level >= 12
-	-- and agent:IsSpellReady(data.kick)
-	-- and target:IsCastingInterruptableSpell()
-	-- and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
-		-- goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), data.kick, "Interrupt", 0.0);
-		-- AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
-		-- return true;
-	-- end
+	if (level >= 12
+	and agent:IsSpellReady(data.kick)
+	and target:IsCastingInterruptableSpell()
+	and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
+		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), data.kick, "Interrupt", 0.0);
+		AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
+		return true;
+	end
 	
 	if (cp > 2 and data._hasBladeFlurry and false == agent:HasAura(SPELL_ROG_BLADE_FLURRY) and 15000 < agent:GetAuraTimeLeft(data.sndice)) then
 		if (Unit_AECheck(agent, 5.0, 2, false, partyData.attackers) and agent:CastSpell(target, SPELL_ROG_BLADE_FLURRY, false) == CAST_OK) then

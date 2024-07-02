@@ -183,5 +183,5 @@ t_dungeons[48].encounters = {
 	{name = "Twilight Lord Kelris", sleep = true, tpos = {-818.897, -145.292, -25.870}},
 	{name = "Aku'mai Servant", tpos = {-818.897, -145.292, -25.870}, rchrpos = {x=-818.861, y=-120.905, z=-25.870}, healmax = true},
 	{name = "Old Serra'kis"},
-	{name = "Aku'mai", poison = true},
+	{name = "Aku'mai", poison = true, dispelFocus = {Poison = true}},
 };
