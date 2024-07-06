@@ -179,18 +179,19 @@ function RogueDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	-- backstab, must be behind
-	if (level >= 4 and agent:CastSpell(target, data.backstab, false) == CAST_OK) then
-		print("Backstab", agent:GetName(), target:GetName());
-		return true;
+	if (level >= 4 and not target:HasInArc(agent, math.pi)) then
+		-- backstab, must be behind
+		if (agent:CastSpell(target, data.backstab, false) == CAST_OK) then
+			print("Backstab", agent:GetName(), target:GetName());
+			return true;
+		end
+	else
+		-- strike
+		if (agent:CastSpell(target, data.sstrike, false) == CAST_OK) then
+			print("Sinister Strike", agent:GetName(), target:GetName());
+			return true;
+		end
 	end
-	
-	-- strike
-	if (agent:CastSpell(target, data.sstrike, false) == CAST_OK) then
-		print("Sinister Strike", agent:GetName(), target:GetName());
-		return true;
-	end
-
 end
 
 --[[*****************************************************

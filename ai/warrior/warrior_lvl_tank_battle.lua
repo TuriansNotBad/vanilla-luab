@@ -13,6 +13,7 @@ REGISTER_GOAL(GOAL_WarriorLevelTank_Battle, "WarriorLevelTank");
 local ST_BOMB = 0; -- dynamite cooldown
 local ST_SAPP = 1; -- goblin sapper charge cooldown
 local ST_POT  = 2; -- potion cooldown
+local ST_TAUNT= 3; -- taunt cooldown
 
 
 local function GetForms()
@@ -77,8 +78,16 @@ function WarriorLevelTank_Activate(ai, goal)
 	local race = agent:GetRace();
 	if (race == RACE_ORC) then
 		info.WeaponType = {"Axe"};
+		if (ai:GetSpec() == "LvlTankSwapOnly") then
+			info.WeaponType = {"Axe2H"};
+			info.OffhandType = nil;
+		end
 	elseif (race == RACE_HUMAN) then
 		info.WeaponType = {"Sword"};
+		if (ai:GetSpec() == "LvlTankSwapOnly") then
+			info.WeaponType = {"Sword2H"};
+			info.OffhandType = nil;
+		end
 	end
 	AI_SpecGenerateGear(ai, info, gsi, nil, true)
 	
@@ -228,9 +237,9 @@ function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyDat
 	-- attacks
 	if (bAllowThreatActions) then
 		if (bSwap) then
-			WarriorTankMaintainThreatRotation(ai, agent, goal, data, target);
+			WarriorTankMaintainThreatRotation(ai, agent, goal, data, partyData, target);
 		else
-			WarriorTankDpsRotation(ai, agent, goal, data, target);
+			WarriorTankDpsRotation(ai, agent, goal, data, partyData, target);
 		end
 	else
 		agent:AttackStop();
@@ -328,7 +337,7 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	end
 	
 	-- do abilities
-	if (WarriorTankRotation(ai, agent, goal, data, target) and false == ai:CmdIsRequirementMet()) then
+	if (WarriorTankRotation(ai, agent, goal, data, partyData, target) and false == ai:CmdIsRequirementMet()) then
 		local threat = target:GetThreat(agent);
 		if (threat >= ai:CmdGetProgress() - 0.01) then
 			ai:CmdSetProgress(threat);
@@ -349,9 +358,32 @@ local function WarriorTankPotions(agent, goal, data)
 	
 end
 
-function WarriorTankRotation(ai, agent, goal, data, target)
+local function WarriorTankDoDebuffs(ai, agent, goal, data, partyData, level, target, bRend)
+	
+	if (partyData.encounter and partyData.encounter.nodebuffs) then
+		return false;
+	end
+	
+	-- Demoralizing Shout
+	if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
+		-- print("Demoralizing Shout", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	-- Rend
+	if (bRend and level >= 4 and false == target:HasAura(data.rend) and agent:CastSpell(target, data.rend, false) == CAST_OK) then
+		print("Rend", agent:GetName(), target:GetName());
+		return true;
+	end
+	
+	return false;
+
+end
+
+function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	
 	local level = agent:GetLevel();
+	local levelDiff = target:GetLevel() - level;
 	
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
@@ -404,7 +436,9 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	
 	-- check if we can do melee
 	if (false == agent:CanReachWithMelee(target)) then
-		if (agent:IsMoving() and (target:GetThreat(agent) > 10.0 or target:GetDistance(agent) < 10)) then
+		local nonTankThreat,tankThreat = target:GetHighestThreat();
+		local threatDiff = nonTankThreat - tankThreat;
+		if (agent:IsMoving() and (threatDiff > 25.0 or target:GetDistance(agent) < 10)) then
 			return false;
 		end
 		-- assume target is outside holding area, must use ranged
@@ -414,27 +448,42 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	if (agent:GetAttackersNum() > 3 and false == agent:HasAura(11350)) then
+	-- oil of immolation
+	if ((levelDiff > 3 or agent:GetAttackersNum() > 3) and false == agent:HasAura(11350)) then
 		agent:CastSpell(agent, 11350, true);
 	end
 	
+	-- crystal spire
+	if (levelDiff > 3 and false == agent:HasAura(15279)) then
+		agent:CastSpell(agent, 15279, true);
+	end
+	
+	-- bloodrage
+	if (level >= 10 and hp > 20 and rage < 40 and false == agent:HasAura(SPELL_WAR_BLOODRAGE)) then
+		agent:CastSpell(agent, SPELL_WAR_BLOODRAGE, false);
+	end
+	
 	-- Taunt
-	if (level >= 10 and target:GetVictim() and target:GetVictim() ~= agent and not target:HasAura(SPELL_WAR_TAUNT)) then
+	-- Timer for spell batching issues
+	if (level >= 10 and goal:IsFinishTimer(ST_TAUNT) and target:GetVictim() and target:GetVictim() ~= agent and not target:HasAuraType(AURA_MOD_TAUNT)) then
 		local result = agent:CastSpell(target, SPELL_WAR_TAUNT, false);
 		if (result == CAST_OK) then
-			print("Taunt", agent:GetName(), target:GetName());
+			print("!!!!! Taunt", agent:GetName(), target:GetName());
+			goal:SetTimer(ST_TAUNT, 1);
 			return true;
 		end
 		
 		if (level >= 16 and data._hasTacticalMs and rage >= 10 and agent:IsSpellReady(data.mock)) then
 			Print("!!!!! Mocking blow attempt");
 			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.mock, FORM_BATTLESTANCE, 0.0);
+			goal:SetTimer(ST_TAUNT, 1);
 			return true;
 		end
 		
 		if (level >= 26 and agent:IsSpellReady(SPELL_WAR_CHALLENGING_SHOUT)) then
 			if (agent:CastSpell(target, SPELL_WAR_CHALLENGING_SHOUT, false) == CAST_OK) then
 				print("!!!!! Challenging Shout", agent:GetName(), target:GetName());
+				goal:SetTimer(ST_TAUNT, 1);
 				return true;
 			end
 		end
@@ -446,9 +495,8 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 		return true;
 	end
 	
-	-- Demoralizing Shout
-	if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
-		-- print("Demoralizing Shout", agent:GetName(), target:GetName());
+	-- Demo shout
+	if (WarriorTankDoDebuffs(ai, agent, goal, data, partyData, level, target, false)) then
 		return true;
 	end
 	
@@ -481,9 +529,10 @@ function WarriorTankRotation(ai, agent, goal, data, target)
 	
 end
 
-function WarriorTankMaintainThreatRotation(ai, agent, goal, data, target)
+function WarriorTankMaintainThreatRotation(ai, agent, goal, data, partyData, target)
 	
 	local level = agent:GetLevel();
+	local levelDiff = target:GetLevel() - level;
 	
 	do
 		local _,threat = target:GetHighestThreat();
@@ -525,15 +574,24 @@ function WarriorTankMaintainThreatRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
+	-- oil of immolation
+	if ((levelDiff > 3 or agent:GetAttackersNum() > 3) and false == agent:HasAura(11350)) then
+		agent:CastSpell(agent, 11350, true);
+	end
+	
+	-- bloodrage
+	if (level >= 10 and hp > 20 and rage < 40 and false == agent:HasAura(SPELL_WAR_BLOODRAGE)) then
+		agent:CastSpell(agent, SPELL_WAR_BLOODRAGE, false);
+	end
+	
 	-- Revenge
 	if (level >= 14 and agent:CastSpell(target, data.revenge, false) == CAST_OK) then
 		-- print("Revenge", agent:GetName(), target:GetName());
 		return true;
 	end
 	
-	-- Demoralizing Shout
-	if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
-		-- print("Demoralizing Shout", agent:GetName(), target:GetName());
+	-- Demo shout
+	if (WarriorTankDoDebuffs(ai, agent, goal, data, partyData, level, target, false)) then
 		return true;
 	end
 	
@@ -566,7 +624,7 @@ function WarriorTankMaintainThreatRotation(ai, agent, goal, data, target)
 	
 end
 
-function WarriorTankDpsRotation(ai, agent, goal, data, target)
+function WarriorTankDpsRotation(ai, agent, goal, data, partyData, target)
 	
 	local level = agent:GetLevel();
 	
@@ -602,6 +660,11 @@ function WarriorTankDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
+	-- bloodrage
+	if (level >= 10 and hp > 20 and rage < 40 and false == agent:HasAura(SPELL_WAR_BLOODRAGE)) then
+		agent:CastSpell(agent, SPELL_WAR_BLOODRAGE, false);
+	end
+	
 	-- Execute
 	if (level >= 24 and agent:CastSpell(target, data.execute, false) == CAST_OK) then
 		print("Execute", agent:GetName(), target:GetName());
@@ -615,8 +678,13 @@ function WarriorTankDpsRotation(ai, agent, goal, data, target)
 	end
 	
 	-- Rend
-	if (level >= 4 and false == target:HasAura(data.rend) and agent:CastSpell(target, data.rend, false) == CAST_OK) then
-		print("Rend", agent:GetName(), target:GetName());
+	if (WarriorTankDoDebuffs(ai, agent, goal, data, partyData, level, target, true)) then
+		return true;
+	end
+	
+	-- Strike
+	if (agent:CastSpell(target, data.heroic, false) == CAST_OK) then
+		-- print("Heroic Strike", agent:GetName(), target:GetName());
 		return true;
 	end
 	

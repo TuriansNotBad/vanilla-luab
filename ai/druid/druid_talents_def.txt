@@ -27,3 +27,34 @@ talents = {
 		{"Primal Instinct", 0, 809}, {"Improved Pounce", 0, 806},
 	},
 }
+
+-- 5875
+talents = {
+	["Restoration"] = {
+		{"Improved Mark of the Wild", 0, 821}, {"Furor", 0, 822},
+		{"Improved Healing Touch", 0, 824}, {"Nature's Focus", 0, 823}, {"Improved Enrage", 0, 826},
+		{"Reflection", 0, 829}, {"Insect Swarm", 0, 827}, {"Subtlety", 0, 841},
+		{"Tranquil Spirit", 0, 843}, {"Improved Rejuvenation", 0, 830},
+		{"Nature's Swiftness", 0, 831}, {"Gift of Nature", 0, 828}, {"Improved Tranquility", 0, 842},
+		{"Improved Regrowth", 0, 825},
+		{"Swiftmend", 0, 844},
+	},
+	["Balance"] = {
+		{"Improved Wrath", 0, 762}, {"Nature's Grasp", 0, 761}, {"Improved Nature's Grasp", 0, 921},
+		{"Improved Entangling Roots", 0, 787}, {"Improved Moonfire", 0, 763}, {"Natural Weapons", 0, 791}, {"Natural Shapeshifter", 0, 781},
+		{"Improved Thorns", 0, 782}, {"Omen of Clarity", 0, 788}, {"Nature's Reach", 0, 764},
+		{"Vengeance", 0, 792}, {"Improved Starfire", 0, 784},
+		{"Nature's Grace", 0, 789}, {"Moonglow", 0, 783},
+		{"Moonfury", 0, 790},
+		{"Moonkin Form", 0, 793},
+	},
+	["Feral Combat"] = {
+		{"Ferocity", 0, 796}, {"Feral Aggression", 0, 795},
+		{"Feral Instinct", 0, 799}, {"Brutal Impact", 0, 797}, {"Thick Hide", 0, 794},
+		{"Feline Swiftness", 0, 807}, {"Feral Charge", 0, 804}, {"Sharpened Claws", 0, 798},
+		{"Improved Shred", 0, 802}, {"Predatory Strikes", 0, 803}, {"Blood Frenzy", 0, 800}, {"Primal Fury", 0, 801},
+		{"Savage Fury", 0, 805}, {"Faerie Fire (Feral)", 0, 1162},
+		{"Heart of the Wild", 0, 808},
+		{"Leader of the Pack", 0, 809},
+	},
+}

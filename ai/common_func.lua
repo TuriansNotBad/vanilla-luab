@@ -225,19 +225,27 @@ function GetDungeon(map)
 	return data.encounters;
 end
 
-function GetEncounter(map, attackers)
+function GetEncounter(map, party, partyData)
+
 	local data = GetDungeon(map);
 	if (nil == data) then
 		return;
 	end
-	for i,attacker in ipairs(attackers) do
+	
+	for i,encounter in ipairs(data) do
+		if (encounter.test and encounter.test(party, partyData)) then
+			return encounter;
+		end
+	end
+	
+	for i,attacker in ipairs(partyData.attackers) do
 		for i,encounter in ipairs(data) do
-			-- print(encounter.name, attacker:GetName());
 			if (encounter.name == attacker:GetName()) then
 				return encounter;
 			end
 		end
 	end
+	
 end
 
 function AI_DummyActions() return false; end

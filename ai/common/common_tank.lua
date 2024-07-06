@@ -112,8 +112,9 @@ function Tank_ShouldTankTarget(ai, target, threatNotTank, threatTank, aoeTarget)
 		return false;
 	end
 	
-	local curTarget = agent:GetVictim();
+	local curTarget = ai:CmdType() == CMD_TANK and GetUnitByGuid(agent, ai:CmdArgs()) or agent:GetVictim();
 	if (nil == curTarget) then
+		-- Print("Switching target because I had no target", agent:GetName(), ai:CmdType(), ai:CmdType() > 0 and ai:CmdArgs());
 		return true, 0.0;
 	end
 	
@@ -186,7 +187,7 @@ function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 			agent:MovePoint(x,y,z,false);
 		end
 		
-		if (agentD <= 1 and agent:CanReachWithMelee(target)) then
+		if (agentD <= 2 and agent:CanReachWithMelee(target)) then
 			Print("I can't get it any closer, targetD =", target:GetDistance(x,y,z));
 			return true;
 		end

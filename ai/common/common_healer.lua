@@ -4,6 +4,10 @@
 		<blank>
 *********************************************************************************************]]
 
+local SHOULD_HEAL_UNABLE_TO_CAST         =  0;
+local SHOULD_HEAL_REQUIREMENT_NOT_MET    = -1;
+local SHOULD_HEAL_TARGET_IS_LOW_PRIORITY = -2;
+
 function Healer_GetHealPriority(target, mp, hot, bTopAll)
 	
 	if (not target) then
@@ -29,6 +33,9 @@ function Healer_GetHealPriority(target, mp, hot, bTopAll)
 		if (hp < 30) then
 			return 5;
 		end
+		if (hp < 80 and hot and false == target:HasAura(hot) and ROLE_TANK ~= target:GetRole()) then
+			return 3;
+		end
 		if (hp < 70) then
 			return 3;
 		end
@@ -37,11 +44,11 @@ function Healer_GetHealPriority(target, mp, hot, bTopAll)
 	-- only heal nontank with hots
 	if (nil == hot or false == target:HasAura(hot)) then
 		-- only take on really endangered nontanks
-		if ((hp < 55 and target:GetAttackersNum() > 0) or hp < 30) then
+		if ((hp < 55 and target:GetAttackersNum() > 0) or hp < 40) then
 			return 3;
 		end
 		-- should we spare mana for nontanks at all
-		if (hp < 50 or (mp > 0.90 and hp < 70)) then
+		if (hp < 60 or (mp > 0.90 and hp < 70)) then
 			return 1;
 		end
 	end
@@ -58,7 +65,7 @@ function Healer_ShouldHealTarget(ai, target, bTopAll)
 	local cmd       = ai:CmdType();
 	
 	if (AI_IsIncapacitated(agent) or cmd == CMD_DISPEL or agent:GetStandState() ~= STAND_STATE_STAND) then
-		return 0.0;
+		return SHOULD_HEAL_UNABLE_TO_CAST;
 	end
 	
 	-- take on anyone
@@ -73,16 +80,16 @@ function Healer_ShouldHealTarget(ai, target, bTopAll)
 				return mp;
 			end
 		end
-		return 0.0;
+		return SHOULD_HEAL_REQUIREMENT_NOT_MET;
 	end
 	
 	-- judge by priority
-	local curPrio = Healer_GetHealPriority(curTarget, mp, data.hot, bTopAll);
-	local tarPrio = Healer_GetHealPriority(target, mp, data.hot, bTopAll);
+	local curPrio = Healer_GetHealPriority(curTarget, mp, data.hot, bTopAll or false == agent:IsInCombat());
+	local tarPrio = Healer_GetHealPriority(target, mp, data.hot, bTopAll or false == agent:IsInCombat());
 	if (tarPrio > curPrio) then
 		return mp;
 	end
-	return 0.0;
+	return SHOULD_HEAL_TARGET_IS_LOW_PRIORITY;
 	
 end
 

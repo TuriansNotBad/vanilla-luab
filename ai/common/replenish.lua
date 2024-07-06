@@ -15,6 +15,7 @@ REGISTER_GOAL(GOAL_COMMON_Replenish, "Replenish");
 ********************************************************]]
 function Replenish_Activate(ai, goal)
 	local agent = ai:GetPlayer();
+	Print(agent:GetName(), "begin Replenish");
 	if (false == agent:IsInCombat()) then
 		agent:ClearMotion();
 	end
@@ -26,7 +27,8 @@ end
 function Replenish_Update(ai, goal)
 	
 	local agent = ai:GetPlayer();
-	if (agent:IsInCombat() or agent:GetVictim()) then
+	if (agent:IsInCombat()) then
+		Print(agent:GetName(), "interrupt Replenish due to combat", agent:IsInCombat(), agent:GetVictim() and agent:GetVictim():GetName());
 		return GOAL_RESULT_Success;
 	end
 	

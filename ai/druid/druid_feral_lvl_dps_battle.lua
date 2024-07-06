@@ -256,11 +256,11 @@ function FeralLvlDpsActions(ai, agent, goal, party, data, partyData, target)
 	
 	local level = agent:GetLevel();
 	if (level < 10) then
-		DruidLowLevelRotation(ai, agent, goal, data, target);
+		DruidLowLevelRotation(ai, agent, goal, data, partyData, target);
 	elseif (level < 20) then
-		DruidBearRotation(ai, agent, goal, data, target);
+		DruidBearRotation(ai, agent, goal, data, partyData, target);
 	else
-		DruidCatRotation(ai, agent, goal, data, target);
+		DruidCatRotation(ai, agent, goal, data, partyData, target);
 	end
 end
 
@@ -293,7 +293,44 @@ local function DruidApplyItemBuffs(ai, agent, goal, data, level)
 	
 end
 
-function DruidCatRotation(ai, agent, goal, data, target)
+local function DruidFeralDoDebuffs(ai, agent, goal, data, partyData, level, target)
+	
+	if (partyData.encounter and partyData.encounter.nodebuffs) then
+		return false;
+	end
+	
+	if (ai:GetShapeshiftForm() == FORM_BEAR) then
+		-- Demoralizing Shout
+		if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
+			-- print("Demoralizing Shout", agent:GetName(), target:GetName());
+			return true;
+		end
+	end
+	
+	-- At low level use Rip
+	if (ai:GetShapeshiftForm() == FORM_CAT and agent:GetComboPoints() == 5 and level < 32) then
+		if (agent:CastSpell(target, data.rip, false) == CAST_OK) then
+			print("Rip", agent:GetName(), target:GetName());
+			return true;
+		end
+	end
+	
+	-- Pick Faerie Fire
+	if (data._hasCatFire) then
+		if (false == target:HasAura(data.cfire) and agent:CastSpell(target, data.cfire, false) == CAST_OK) then
+			print("Feral Fire (Cat)", agent:GetName(), target:GetName());
+			return true;
+		end
+	elseif (level >= 18 and false == target:HasAura(data.fire) and agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true)) then
+		goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.fire, FORM_NONE, 5.0);
+		return true;
+	end
+	
+	return false;
+
+end
+
+function DruidCatRotation(ai, agent, goal, data, partyData, target)
 
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
@@ -313,14 +350,8 @@ function DruidCatRotation(ai, agent, goal, data, target)
 	
 	ai:SetForm(FORM_CAT);
 	
-	-- Pick Faerie Fire
-	if (data._hasCatFire) then
-		if (false == target:HasAura(data.cfire) and agent:CastSpell(target, data.cfire, false) == CAST_OK) then
-			print("Feral Fire (Cat)", agent:GetName(), target:GetName());
-			return true;
-		end
-	elseif (level >= 18 and false == target:HasAura(data.fire) and agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true)) then
-		goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.fire, FORM_NONE, 5.0);
+	-- Faerie Fire, Rip
+	if (DruidFeralDoDebuffs(ai, agent, goal, data, partyData, level, target)) then
 		return true;
 	end
 	
@@ -328,34 +359,38 @@ function DruidCatRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	-- Finisher
+	-- Finisher; DruidFeralDoDebuffs will use rip if level < 32 and otherwise applicable
 	if (cp == 5) then
-		if (data.fbite and level >= 32 and agent:CastSpell(target, data.fbite, false) == CAST_OK) then
-			print("Ferocious Bite", agent:GetName(), target:GetName());
-			return true;
+		if (level >= 32) then
+			if (data.fbite and level >= 32 and agent:CastSpell(target, data.fbite, false) == CAST_OK) then
+				print("Ferocious Bite", agent:GetName(), target:GetName());
+				return true;
+			end
+			return false;
 		end
-		if (agent:CastSpell(target, data.rip, false) == CAST_OK) then
-			print("Rip", agent:GetName(), target:GetName());
-			return true;
-		end
-		return false;
 	end
 	
 	-- shred, must be behind
-	if (level >= 22 and agent:CastSpell(target, data.shred, false) == CAST_OK) then
-		print("Shred", agent:GetName(), target:GetName());
-		return true;
-	end
+	if (level >= 22 and not target:HasInArc(agent, math.pi)) then
 	
-	-- claw
-	if (agent:CastSpell(target, data.claw, false) == CAST_OK) then
-		print("Claw", agent:GetName(), target:GetName());
-		return true;
+		if (agent:CastSpell(target, data.shred, false) == CAST_OK) then
+			print("Shred", agent:GetName(), target:GetName());
+			return true;
+		end
+		
+	else
+	
+		-- claw
+		if (agent:CastSpell(target, data.claw, false) == CAST_OK) then
+			print("Claw", agent:GetName(), target:GetName());
+			return true;
+		end
+		
 	end
 
 end
 
-function DruidBearRotation(ai, agent, goal, data, target)
+function DruidBearRotation(ai, agent, goal, data, partyData, target)
 
 	ai:SetForm(FORM_BEAR);
 	
@@ -379,11 +414,7 @@ function DruidBearRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
-	-- Demoralizing Roar
-	if (false == target:HasAura(data.demo) and agent:CastSpell(target, data.demo, false) == CAST_OK) then
-		print("Demoralizing Roar", agent:GetName(), target:GetName());
-		return true;
-	end
+	DruidFeralDoDebuffs(ai, agent, goal, data, partyData, level, target);
 	
 	-- bash
 	if (level >= 14 and agent:CastSpell(target, data.bash, false) == CAST_OK) then
@@ -407,7 +438,7 @@ function DruidBearRotation(ai, agent, goal, data, target)
 	
 end
 
-function DruidLowLevelRotation(ai, agent, goal, data, target)
+function DruidLowLevelRotation(ai, agent, goal, data, partyData, target)
 	
 	ai:SetForm(FORM_NONE);
 	

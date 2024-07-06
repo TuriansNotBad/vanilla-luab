@@ -184,7 +184,9 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, partyData, bRanged, in
 	
 	-- movement
 	local area = partyData._holdPos;
-	local rchrpos = partyData.encounter and partyData.encounter.rchrpos;
+	local encounter = partyData.encounter;
+	local distancingR = encounter and encounter.distancingR or 5.0;
+	local rchrpos = encounter and encounter.rchrpos;
 	if (area and false == AI_TargetInHoldingArea(target, area)) then
 		
 		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
@@ -207,7 +209,7 @@ function Dps_OnEngageUpdate(ai, agent, goal, party, data, partyData, bRanged, in
 	
 		if (bRanged) then
 		
-			if (false == AI_DistanceIfNeeded(ai, agent, goal, party, 5.0, target)) then
+			if (false == AI_DistanceIfNeeded(ai, agent, goal, party, distancingR, target)) then
 				Dps_RangedChase(ai, agent, target, bAllowThreatActions);
 			end
 			

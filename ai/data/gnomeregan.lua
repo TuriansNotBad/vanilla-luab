@@ -1,4 +1,5 @@
 
+-----------------------------------------------------------------------------------------------
 -- When going from Workshop Key route tank is very likely to pick the wrong pull direction
 -- when just entering the Engineering labs, pulling unintionally other mobs and likely wiping.
 -- Best to face pull.
@@ -382,6 +383,60 @@ t_dungeons[90] = {
 };
 
 local Gnomeregan = t_dungeons[90];
+
+local function Gnomeregan_OnLoad(self, hive, data, player)
+	
+-- Entries
+local GO_EXPLOSIVE_CHARGE         = 144065;
+local GO_CAVE_IN_NORTH            = 146085;
+local GO_CAVE_IN_SOUTH            = 146086;
+local NPC_BLASTMASTER_SHORTFUSE   = 7998;
+	
+	Print("Gnomeregan_OnLoad: initialized by player", player:GetName(), "; Guid:", tostring(player:GetGuid()), player:GetMapId());
+
+	-- find guids
+	-- blastmaster
+	local bmPosStart = Gnomeregan.Blastmaster.BmPosStart;
+	local x,y,z,r = bmPosStart.x, bmPosStart.y, bmPosStart.z, 80.0;
+	local blastmaster = GetUnitsWithEntryNear(player, NPC_BLASTMASTER_SHORTFUSE, x, y, z, r, false, false)[1];
+	if (not blastmaster) then
+		Print("Failed to find Blastmaster at coords = (", x, y, z, ") with radius =", r, "entry =", NPC_BLASTMASTER_SHORTFUSE);
+		error("Gnomeregan_OnLoad: Blastmaster not found in map. Entry = " .. tostring(NPC_BLASTMASTER_SHORTFUSE));
+	end
+	self.Ids.Blastmaster = blastmaster:GetGuid();
+	
+	-- explosive charges
+	r = 60.0;
+	local charges = GetObjectsWithEntryAround(blastmaster, GO_EXPLOSIVE_CHARGE, r, false);
+	if (#charges < 4) then
+		x,y,z = blastmaster:GetPosition();
+		Print("Failed to find charges around blastmaster = (", x, y, z, ") with radius =", r, "BM entry =", NPC_BLASTMASTER_SHORTFUSE);
+		for i,v in ipairs(charges) do
+			Print("Charge:", v);
+		end
+		Print("Total charges:", #charges, "required: 4");
+		error("Gnomeregan_OnLoad: Not all explosive charges were found in map. Entry = " .. tostring(GO_EXPLOSIVE_CHARGE));
+	end
+	self.Ids.ExplosiveCharges = charges;
+
+	-- cave ins
+	local caveInNorth = GetObjectsWithEntryAround(blastmaster, GO_CAVE_IN_NORTH, r, false)[1];
+	local caveInSouth = GetObjectsWithEntryAround(blastmaster, GO_CAVE_IN_SOUTH, r, false)[1];
+	
+	if (not caveInNorth or not caveInSouth) then
+		Print("Failed to find cave ins around blastmaster = (", x, y, z, ") with radius =", r, "BM entry =", NPC_BLASTMASTER_SHORTFUSE);
+		Print("North =", caveInNorth, GO_CAVE_IN_NORTH, "South =", caveInSouth, GO_CAVE_IN_SOUTH);
+		error("Gnomeregan_OnLoad: Not all cave ins were found in map.");
+	end
+	
+	self.Ids.CaveInNorth = caveInNorth;
+	self.Ids.CaveInSouth = caveInSouth;
+	
+end
+
+--------------------------------------------------------------------
+--                 Mekgineer event script
+--------------------------------------------------------------------
 Gnomeregan.Mekgineer = 
 {
 	assignee = nil, -- ai userdata associated with agent assigned to buttons
@@ -448,6 +503,23 @@ function Gnomeregan.Mekgineer.AgentScript(ai, agent, goal, data, partyData)
 	
 end
 
+function Gnomeregan.Mekgineer:ResetAssignee(hive, data)
+	
+	if (self.assignee) then
+		local agent, ai = GetAIFromGuid(self.assignee);
+		if (agent) then
+			local aidata = ai:GetData();
+			aidata.script = nil;
+			aidata.targets = nil;
+			aidata.attackmode = nil;
+			ai:SetRole(ROLE_RDPS);
+			Command_Complete(ai);
+		end
+		self.assignee = nil;
+	end
+	
+end
+
 function Gnomeregan.Mekgineer:Update(hive, data)
 	
 	if (nil == data.owner and nil == data.agents[1]) then
@@ -464,7 +536,7 @@ function Gnomeregan.Mekgineer:Update(hive, data)
 	
 	local agent, ai = GetAIFromGuid(self.assignee);
 	if (not agent or not agent:IsAlive()) then
-		self.assignee = nil;
+		self:ResetAssignee(hive, data);
 		return;
 	end
 	
@@ -481,8 +553,20 @@ function Gnomeregan.Mekgineer:Update(hive, data)
 		end
 	end
 	
+	-- only bombs that are on the ground
+	local _,__,z = agent:GetPosition();
+	for i = #self.bombs, 1, -1 do
+		local bomb = self.bombs[i];
+		local _,__,bombZ = bomb:GetPosition();
+		if (bombZ - z > 5.0) then
+			table.remove(self.bombs, i);
+		end
+	end
+	
 	-- attack bombs
 	if (#self.bombs > 0) then
+		
+		
 		ai:SetRole(ROLE_SCRIPT);
 		aidata.targets = self.bombs;
 		aidata.attackmode = "burst";
@@ -523,22 +607,346 @@ end
 function Gnomeregan.Mekgineer:OnEnd(hive, data)
 	
 	print("Gnomeregan.Mekgineer encounter ended");
-	if (self.assignee) then
-		local agent, ai = GetAIFromGuid(self.assignee);
-		if (agent) then
-			local aidata = ai:GetData();
-			aidata.script = nil;
-			aidata.targets = nil;
-			aidata.attackmode = nil;
-			ai:SetRole(ROLE_RDPS);
-			Command_Complete(ai);
+	self:ResetAssignee(hive, data);
+	self.bombs = {};
+	
+end
+
+--------------------------------------------------------------------
+--                 Blastmaster event script
+--------------------------------------------------------------------
+
+Gnomeregan.Blastmaster = {
+	BmPosStart = {x = -514.935, y = -138.544, z = -152.399}, -- starting position of Blastmaster NPC
+	WaitPos = {
+		[1] = {x = -537.113, y = -101.872, z = -155.951}, -- wait by entrance position of south cave
+		[2] = {x = -555.874, y = -114.762, z = -152.504}, -- wait inside cave position of south cave
+		[3] = {x = -510.286, y =  -96.331, z = -151.751}, -- wait by entrance position of north cave
+		[4] = {x = -487.885, y =  -90.055, z = -147.543}, -- wait inside cave position of north cave
+	},
+	OutsideWaitPos = {x = -521.865, y = -97.156, z = -154.492}, -- wait outside for charges to explode position
+	Phase = 0,
+	GrubbisDead = false,
+};
+
+function Gnomeregan.Blastmaster.Test(hive, data)
+	
+	local player = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
+	if (player and player:GetMapId() == 90) then
+		
+		local GuidList = Gnomeregan.encounters.Ids;
+		if (nil == GuidList.Blastmaster) then
+			return false;
 		end
-		self.assignee = nil;
-		self.bombs = {};
+		
+		local blastmaster = GetUnitByGuid(player, Gnomeregan.encounters.Ids.Blastmaster);
+		if (nil == blastmaster or false == blastmaster:IsAlive()) then
+			return false;
+		end
+		
+		-- local southX,southY,southZ = blastmaster:GetPositionOfObj(GuidList.CaveInSouth);
+		-- local northX,northY,northZ = blastmaster:GetPositionOfObj(GuidList.CaveInNorth);
+		local bmPosStart = Gnomeregan.Blastmaster.BmPosStart;
+		local x,y,z,d = bmPosStart.x, bmPosStart.y, bmPosStart.z, 20.0;
+		
+		-- if tracked player is too far we don't care about this event
+		if (player:GetDistance(blastmaster) >= 150.0) then
+			return false;
+		elseif (Gnomeregan.Blastmaster.Phase > 0) then
+			-- Encounter has reset. IsAlive check above should be enough tho
+			-- if (blastmaster:GetDistance(x,y,z) < 5) then
+				-- return false;
+			-- end
+			return true;
+		end
+		
+		-- if Blastmaster is moving around
+		if (blastmaster:IsMoving() or blastmaster:GetDistance(x,y,z) >= d) then
+			return true;
+		end
+		
+		-- if any cave is open
+		local southCaveState = GetObjectGOState(player, GuidList.CaveInSouth);
+		local northCaveState = GetObjectGOState(player, GuidList.CaveInNorth);
+		if (southCaveState == 0 or northCaveState == 0) then
+			return true;
+		end
+		
+	end
+	return false;
+	
+end
+
+function Gnomeregan.Blastmaster:UpdatePhase(player, blastmaster)
+	
+	-- Phase 1: wait at cave entrance south (if both caves are closed)
+	-- Phase 2: defend inside cave until both charges planted then wait until the cave is closed outside (if south cave is open)
+	-- Phase 3: wait at cave entrance north (if both caves are closed)
+	-- Phase 4: defend inside cave until both charges planted then wait until the cave is closed outside (if north cave is open)
+	-- Phase 5: wait outside cave entrance
+	
+	local GuidList = Gnomeregan.encounters.Ids;
+	
+	local southCaveState = GetObjectGOState(player, GuidList.CaveInSouth);
+	local northCaveState = GetObjectGOState(player, GuidList.CaveInNorth);
+	
+	-- both caves are closed
+	if (southCaveState + northCaveState == 2) then
+		if (self.Phase > 3) then
+			-- encounter ends
+			self.Phase = 6;
+		elseif (self.Phase > 1) then
+			-- switch to north cave
+			self.Phase = 3;
+		else
+			-- do south cave
+			self.Phase = 1;
+		end
+		return;
+	end
+	
+	-- south cave is open
+	if (southCaveState == 0) then
+		self.Phase = 2;
+		return;
+	end
+	
+	-- north cave is open
+	if (northCaveState == 0) then
+		if (self.GrubbisDead) then
+			self.Phase = 5;
+		else
+			self.Phase = 4;
+		end
+		return;
 	end
 	
 end
 
+-- remember everyone's roles
+function Gnomeregan.Blastmaster:PreprocessAgents(data)
+	for i,ai in ipairs(data.agents) do
+		local data = ai:GetData();
+		if (nil == data["Gnomeregan.Blastmaster.OldRole"]) then
+			data["Gnomeregan.Blastmaster.OldRole"] = ai:GetRole();
+		end
+	end
+end
+
+-- reset everyone's roles
+function Gnomeregan.Blastmaster:RestoreAgents(data)
+	for i,ai in ipairs(data.agents) do
+		local data = ai:GetData();
+		if (data["Gnomeregan.Blastmaster.OldRole"]) then
+			Command_ClearAll(ai, "Gnomeregan.Blastmaster.RestoreAgents");
+			ai:SetRole(data["Gnomeregan.Blastmaster.OldRole"]);
+			data["Gnomeregan.Blastmaster.OldRole"] = nil;
+		end
+	end
+end
+
+function Gnomeregan.Blastmaster:ChangeRole(ai, newRole)
+	if (nil == ai:GetData()["Gnomeregan.Blastmaster.OldRole"]) then
+		error("Gnomeregan.Blastmaster.ChangeRole: " .. ai:GetPlayer():GetName() .. " - has no saved role, agent will not function correctly");
+	end
+	ai:SetRole(newRole);
+end
+
+function Gnomeregan.Blastmaster:GetRealRole(ai)
+	local data = ai:GetData();
+	if (nil == data["Gnomeregan.Blastmaster.OldRole"]) then
+		error("Gnomeregan.Blastmaster.GetRealRole: " .. ai:GetPlayer():GetName() .. " - has no saved role, agent will not function correctly");
+	end
+	return data["Gnomeregan.Blastmaster.OldRole"];
+end
+
+function Gnomeregan.Blastmaster:RestoreRole(ai)
+	local data = ai:GetData();
+	if (data["Gnomeregan.Blastmaster.OldRole"]) then
+		ai:SetRole(data["Gnomeregan.Blastmaster.OldRole"]);
+		return;
+	end
+	error("Gnomeregan.Blastmaster.RestoreRole: " .. ai:GetPlayer():GetName() .. " - has no saved role, agent will not function correctly");
+end
+
+function Gnomeregan.Blastmaster:OnBegin(hive, data)
+	
+	self.Phase       = 0;
+	self.GrubbisDead = false;
+	self:PreprocessAgents(data);
+	data.disablePull = true;
+	
+end
+
+function Gnomeregan.Blastmaster:UpdateAgents(data, x, y, z, numAttackers, forTank)
+	for i,ai in ipairs(data.agents) do
+		
+		local agent = ai:GetPlayer();
+		local role = self:GetRealRole(ai);
+		
+		if (forTank and role ~= ROLE_TANK) then
+			
+			-- restore irrelevant agents to normal function
+			if (ai:GetRole() == ROLE_SCRIPT) then
+				Command_ClearAll(ai, "Gnomeregan.Blastmaster releasing control");
+				agent:ClearMotion();
+				self:RestoreRole(ai);
+			end
+			
+		end
+		
+		if ((forTank and role == ROLE_TANK) or not forTank) then
+			if (numAttackers == 0) then
+			
+				if (ai:GetRole() ~= ROLE_SCRIPT) then
+					Command_ClearAll(ai, "Gnomeregan.Blastmaster taking control");
+					self:ChangeRole(ai, ROLE_SCRIPT);
+				end
+				-- stand at the entrance
+				if (agent:GetDistance(x,y,z) > 5 and false == ai:IsMovingTo(x,y,z)) then
+					agent:ClearMotion();
+					agent:MovePoint(x,y,z,false);
+				end
+				
+			elseif (ai:GetRole() == ROLE_SCRIPT) then
+				Command_ClearAll(ai, "Gnomeregan.Blastmaster releasing control");
+				agent:ClearMotion();
+				self:RestoreRole(ai);
+			end
+		end
+		
+	end
+end
+
+function Gnomeregan.Blastmaster:Update(hive, data)
+	
+local NPC_CAVERNDEEP_BURROWER = 6206;
+local NPC_CAVERNDEEP_AMBUSHER = 6207;
+local NPC_GRUBBIS             = 7361;
+local NPC_CHOMPER             = 6215;
+	
+	local player = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
+	if (not player or self.Phase > 5) then
+		self:RestoreAgents(data);
+		return;
+	end
+	
+	local GuidList = Gnomeregan.encounters.Ids;
+	local blastmaster = GetUnitByGuid(player, GuidList.Blastmaster);
+	if (nil == blastmaster or false == blastmaster:IsAlive()) then
+		return;
+	end
+	
+	self:UpdatePhase(player, blastmaster);
+
+	local function GetNumSpawnedCharges()
+		local n = 0;
+		for i,chargeGuid in ipairs(GuidList.ExplosiveCharges) do
+			if (GetObjectIsSpawned(player, chargeGuid)) then
+				n = n + 1;
+			end
+		end
+		return n;
+	end
+	
+	local wPos = self.WaitPos[self.Phase];
+	local safePos = self.OutsideWaitPos;
+	local x,y,z = blastmaster:GetPosition();
+	
+	local southCaveState = GetObjectGOState(player, GuidList.CaveInSouth);
+	local northCaveState = GetObjectGOState(player, GuidList.CaveInNorth);
+	local numAttackers = 0;
+	if (southCaveState == 0 or northCaveState == 0) then
+		local ambushers = GetUnitsWithEntryNear(blastmaster, NPC_CAVERNDEEP_AMBUSHER, x, y, z, 50.0, true, true);
+		local burrowers = GetUnitsWithEntryNear(blastmaster, NPC_CAVERNDEEP_BURROWER, x, y, z, 50.0, true, true);
+		numAttackers = #ambushers + #burrowers;
+		data.attackers = {};
+		for i,v in ipairs(ambushers) do table.insert(data.attackers, v) end
+		for i,v in ipairs(burrowers) do table.insert(data.attackers, v) end
+		table.sort(data.attackers, function(a, b) return a:GetHealth() < b:GetHealth(); end);
+	end
+	
+	if (self.Phase == 1) then
+		
+		-- get tank facing the cave
+		-- Print("Phase", self.Phase, "Tank should face Southern Cave");
+		self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true);
+		
+	elseif (self.Phase == 2) then
+		
+		-- get tank into the cave when out of combat, leave when about to explode
+		if (GetNumSpawnedCharges() < 2) then
+			-- Print("Phase", self.Phase, "Tank should camp the Southern Cave");
+			self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true);
+		else
+			-- Print("Phase", self.Phase, "Everyone should evacuate Southern Cave");
+			self:UpdateAgents(data, safePos.x, safePos.y, safePos.z, numAttackers, false);
+		end
+		
+	elseif (self.Phase == 3) then
+		
+		-- get tank facing the cave
+		-- Print("Phase", self.Phase, "Tank should face the Northern Cave");
+		self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true);
+		
+	elseif (self.Phase == 4) then
+		
+		-- get tank into the cave when out of combat, when both charges are set
+		-- tank is reverted to normal behaviour of following the owner around
+		if (GetNumSpawnedCharges() < 2) then
+			-- Print("Phase", self.Phase, "Tank should camp the Northern Cave");
+			self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true);
+		else
+			if (false == self.GrubbisDead) then
+				-- Print("Phase", self.Phase, "Tank should wait in anticipation of Grubbis");
+				local x,y,z = player:GetPosition();
+				local grubbis = GetUnitsWithEntryNear(player, NPC_GRUBBIS, x, y, z, 20.0, false, true)[1];
+				local chomper = GetUnitsWithEntryNear(player, NPC_CHOMPER, x, y, z, 20.0, false, true)[1];
+				local grubbisAlive = grubbis and grubbis:IsAlive();
+				local chomperAlive = chomper and chomper:IsAlive();
+				if (grubbis and chomper) then
+					if (false == (grubbisAlive or chomperAlive)) then
+						self.GrubbisDead = true;
+					end
+				end
+				if (grubbisAlive) then numAttackers = numAttackers + 1; table.insert(data.attackers, grubbis); end
+				if (chomperAlive) then numAttackers = numAttackers + 1; table.insert(data.attackers, chomper); end
+			end
+			self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true);
+		end
+		
+	elseif (self.Phase == 5) then
+		
+		-- get tank into the cave when out of combat
+		-- Print("Phase", self.Phase, "All should wait outside caves");
+		self:UpdateAgents(data, safePos.x, safePos.y, safePos.z, numAttackers, false);
+		
+	end
+
+end
+
+function Gnomeregan.Blastmaster:OnEnd(hive, data)
+	
+	self.Phase       = 0;
+	self.GrubbisDead = false;
+	self:RestoreAgents(data);
+	data.disablePull = nil;
+	
+end
+
 t_dungeons[90].encounters = {
-	{name = "Mekgineer Thermaplugg", script = Gnomeregan.Mekgineer, tpos = {-531.448, 670.266, -325.268}},
+	{name = "Grubbis", script = Gnomeregan.Blastmaster, test = Gnomeregan.Blastmaster.Test},
+	-- {name = "Grubbis"},
+	{name = "Viscous Fallout"},
+	{name = "Electrocutioner 6000", tpos = {-552.048, 502.902, -216.727}, rchrpos = {x=-545.596, y=528.996, z=-216.279, melee = "ignore"}, healmax = true},
+	{name = "Crowd Pummeler 9-60", tpos = {-902.155, 361.340, -272.596}},
+	{name = "Mekgineer Thermaplugg", script = Gnomeregan.Mekgineer, tpos = {-531.448, 670.266, -325.268}, tankswap = true},
+	OnLoad = Gnomeregan_OnLoad,
+	Ids =
+	{
+		Blastmaster      = nil,
+		ExplosiveCharges = nil, -- order is random!
+		CaveInSouth      = nil,
+		CaveInNorth      = nil,
+	},
 };

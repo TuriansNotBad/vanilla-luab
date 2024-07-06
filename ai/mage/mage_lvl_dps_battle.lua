@@ -204,7 +204,7 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	end
 	
 	-- evocation
-	if (level >= 20 and mana < 30 and agent:IsSpellReady(SPELL_MAG_EVOCATION) and agent:CastSpell(agent, SPELL_MAG_EVOCATION, false) == CAST_OK) then
+	if (level >= 20 and mana < 20 and agent:IsSpellReady(SPELL_MAG_EVOCATION) and agent:CastSpell(agent, SPELL_MAG_EVOCATION, false) == CAST_OK) then
 		Print(agent:GetName(), "Evocation. Mana =", mana);
 		return true;
 	end

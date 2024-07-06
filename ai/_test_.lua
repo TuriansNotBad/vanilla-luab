@@ -3,8 +3,8 @@ local t_agentInfo = {
 	-- {"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
 	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
-	-- {"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
-	{"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
+	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
+	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
 	-- {"Man",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
@@ -12,6 +12,16 @@ local t_agentInfo = {
 };
 
 local Hive_FormationRectGetAngle;
+
+local function Hive_CanPullTarget(hive, data, target)
+	if (data.disablePull) then
+		return false;
+	end
+	if (data.encounter and data.encounter.pull) then
+		return true;
+	end
+	return hive:CanPullTarget(target);
+end
 
 local function GetBuffAgentsTbl(data, target, key)
 	data = data[key];
@@ -95,7 +105,7 @@ local function GetClosestBuffAgent(data, targetai, target, key, filter, encounte
 	local t = GetBuffAgentsTbl(data, target, key);
 	for i = 1, #t do
 		local agent = t[i];
-		if (false == agent:CanAttack(target)) then
+		if (false == agent:CanAttack(target) and agent:GetRole() ~= ROLE_SCRIPT) then
 			local ai = agent:GetAI();
 			local cmd = ai:CmdType();
 			local healmax = encounter and encounter.healmax;
@@ -125,7 +135,7 @@ local function GetClosestDispelAgent(data, targetai, target, key, friendly, enco
 	local t = GetBuffAgentsTbl(data, target, key);
 	for i = 1, #t do
 		local agent = t[i];
-		if (false == agent:CanAttack(target) or false == friendly) then
+		if ((false == agent:CanAttack(target) or false == friendly) and agent:GetRole() ~= ROLE_SCRIPT) then
 		
 			local ai = agent:GetAI();
 			local cmd = ai:CmdType();
@@ -136,7 +146,7 @@ local function GetClosestDispelAgent(data, targetai, target, key, friendly, enco
 				local hot = ai:GetData().hot;
 				local healPriority = Healer_GetHealPriority(healTarget, agent:GetPowerPct(POWER_MANA), hot, healmax);
 				
-				Print("Dispel search: heal target, heal priority =", healTarget and healTarget:GetName(), healPriority);
+				-- Print("Dispel search: heal target, heal priority =", healTarget and healTarget:GetName(), healPriority);
 				
 				local healLowPrio = healTarget and not healmax and healPriority < 3;
 				-- Print(cmd, cmd == CMD_HEAL and Healer_GetHealPriority(healTarget, agent:GetPowerPct(POWER_MANA)));
@@ -233,6 +243,29 @@ local function FillTrackedAttackers(attackers, tracked)
 	end
 end
 
+local function Hive_UpdateMapInfo(hive, data)
+	
+	local player = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
+	if (not player) then
+		return;
+	end
+	
+	local mapId = player:GetMapId();
+	if (mapId ~= data._currentMapId) then
+	
+		Print("Hive: Map change from", data._currentMapId, "to", mapId);
+		data.dungeon = GetDungeon(mapId);
+		
+		if (data.dungeon and data.dungeon.OnLoad) then
+			data.dungeon:OnLoad(hive, data, player);
+		end
+		
+		data._currentMapId = mapId;
+		
+	end
+	
+end
+
 function Hive_Update(hive)
 	
 	local data = hive:GetData();
@@ -240,6 +273,7 @@ function Hive_Update(hive)
 	data.attackers = hive:GetAttackers();
 	data.agents = hive:GetAgents();
 	data.owner = nil;
+	data.anyAgentInCombat = false;
 	table.sort(data.attackers, function(a, b) return a:GetHealth() < b:GetHealth(); end);
 	data.healers = {};
 	data.tanks = {};
@@ -265,9 +299,12 @@ function Hive_Update(hive)
 				-- Print(x,y,z, "you (", px,py,pz, ") D =", ownerVictim:GetDistance(data.owner));
 				-- Print("you (", px,py,pz, ")");
 			-- end
-			-- print(data.owner:GetPosition());
+			-- Print(data.owner:GetPosition());
 			if (not data.attackers[1]) then
-				data.attackers[1] = ownerVictim;
+				-- odd bug with owner victim being stuck on ally due to gnomeregan irradiated status
+				if (ownerVictim and ownerVictim:CanAttack(data.owner)) then
+					data.attackers[1] = ownerVictim;
+				end
 			end
 		end
 	end
@@ -276,10 +313,11 @@ function Hive_Update(hive)
 	do
 		local agent = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
 		if (agent) then
+			Hive_UpdateMapInfo(hive, data);
 			FillTrackedForMap(agent, data.tracked);
 			FillTrackedAttackers(data.attackers, data.tracked);
 			data.dungeon = GetDungeon(agent:GetMapId());
-			local encounter = GetEncounter(agent:GetMapId(), data.attackers);
+			local encounter = GetEncounter(agent:GetMapId(), party, data);
 			-- data.encounter = GetEncounter(agent:GetMapId(), data.attackers);
 			
 			local function encounter_changed(old, new)
@@ -297,7 +335,7 @@ function Hive_Update(hive)
 				end
 				
 				data.encounter = new;
-				Print("~~~~~~~~~~ ENCOUNTER CHANGED to ", new and new.name);
+				Print("~~~~~~~~~~ ENCOUNTER CHANGED to", new and new.name, "from", old and old.name);
 				
 				if (new and new.script and new.script.OnBegin) then
 					new.script:OnBegin(hive, data);
@@ -310,7 +348,7 @@ function Hive_Update(hive)
 			end
 			
 			if (encounter) then
-				if (encounter.fear or encounter.sleep) then
+				if (encounter.fear or encounter.sleep or encounter.charm) then
 					data._needTremor = true;
 				end
 				if (encounter.poison) then
@@ -329,6 +367,9 @@ function Hive_Update(hive)
 	
 	for i = 1, #data.agents do
 		local ai = data.agents[i];
+		if (ai:GetPlayer():IsInCombat()) then
+			data.anyAgentInCombat = true;
+		end
 		-- ai:GetPlayer():SetHealthPct(100.0);
 		-- ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
 		-- ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);
@@ -386,12 +427,12 @@ end
 
 function Hive_OOCUpdate(hive, data)
 	
-	data.encounter = nil;
+	-- data.encounter = nil;
 	data.reverse = nil;
 	local agents = data.agents;
 	
 	if (#data.healers > 0) then
-		local healTargets = Healer_GetTargetList(data.tracked);
+		local healTargets = Healer_GetTargetList(data.tracked, data.anyAgentInCombat and data.agents or nil);
 		for j = 1, #healTargets do
 			local target = healTargets[j];
 			-- choose healers based on mana
@@ -400,7 +441,7 @@ function Hive_OOCUpdate(hive, data)
 				local healer = data.healers[i];
 				local maxHeal = data.encounter and data.encounter.healmax;
 				if (not AI_IsIncapacitated(healer:GetPlayer()) and healer:CmdType() ~= CMD_BUFF) then
-					table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target, maxHeal)});
+					table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target, true)});
 				end
 			end
 			-- healer with most mana
@@ -429,28 +470,31 @@ function Hive_OOCUpdate(hive, data)
 	
 	for i = 1, #agents do
 		local ai = agents[i];
-		local agent = ai:GetPlayer();
 		
-		if (agent:GetLevel() ~= data.owner:GetLevel()) then
-			ai:SetDesiredLevel(data.owner:GetLevel());
-		end
-		
-		local dist = agent:GetDistance(data.owner);
-		if (dist > 50 and (ai:CmdType() == CMD_FOLLOW or agent:GetMapId() ~= data.owner:GetMapId() or dist > 200)) then
-			ai:GoName(data.owner:GetName());
-		else
+		if (ai:GetRole() ~= ROLE_SCRIPT) then
+			local agent = ai:GetPlayer();
 			
-			if (not AI_IsIncapacitated(agent)
-			and ai:CmdType() ~= CMD_FOLLOW
-			and ai:CmdType() ~= CMD_HEAL
-			and ai:CmdType() ~= CMD_BUFF
-			and ai:CmdType() ~= CMD_DISPEL) then
-				local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori);
-				-- Print("CmdFollow issued to", agent:GetName(), ai:CmdType());
-				Command_IssueFollow(ai, hive, ai:GetMasterGuid(), D, A);
-				-- hive:CmdFollow(ai, ai:GetMasterGuid(), D, A);
+			if (agent:GetLevel() ~= data.owner:GetLevel()) then
+				ai:SetDesiredLevel(data.owner:GetLevel());
 			end
-		
+			
+			local dist = agent:GetDistance(data.owner);
+			if (dist > 50 and (ai:CmdType() == CMD_FOLLOW or agent:GetMapId() ~= data.owner:GetMapId() or dist > 200)) then
+				ai:GoName(data.owner:GetName());
+			else
+				
+				if (not AI_IsIncapacitated(agent)
+				and ai:CmdType() ~= CMD_FOLLOW
+				and ai:CmdType() ~= CMD_HEAL
+				and ai:CmdType() ~= CMD_BUFF
+				and ai:CmdType() ~= CMD_DISPEL) then
+					local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori);
+					-- Print("CmdFollow issued to", agent:GetName(), ai:CmdType());
+					Command_IssueFollow(ai, hive, ai:GetMasterGuid(), D, A);
+					-- hive:CmdFollow(ai, ai:GetMasterGuid(), D, A);
+				end
+			
+			end
 		end
 		
 	end
@@ -591,7 +635,7 @@ function Hive_CombatUpdate(hive, data)
 				local should, threatTarget = Tank_ShouldTankTarget(ai, target, tankTargets[j][1], tankTargets[j][2], 0);
 				if (should and not bSwapOnly) then
 					tankTargets[j][3] = nil; -- make sure no one else gets this
-					if (false == target:IsInCombat() and true == hive:CanPullTarget(target) and ai:GetPlayer():IsInDungeon()) then
+					if (false == target:IsInCombat() and true == Hive_CanPullTarget(hive, data, target) and ai:GetPlayer():IsInDungeon()) then
 						if (ai:CmdType() ~= CMD_PULL) then
 							-- hive:CmdPull(ai, target:GetGuid());
 							Command_IssuePull(ai, hive, target);
@@ -661,7 +705,7 @@ function Hive_CombatUpdate(hive, data)
 				table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target, data.encounter and data.encounter.healmax)});
 			end
 			-- print(target:GetName(), target:GetHealthPct(), healer:GetPlayer():GetName(), Healer_ShouldHealTarget(healer, target, data.encounter and data.encounter.healmax),
-				-- Healer_GetHealPriority(target, healer:GetPlayer():GetPowerPct(POWER_MANA), nil, true));
+				-- Healer_GetHealPriority(target, healer:GetPlayer():GetPowerPct(POWER_MANA), nil, data.encounter and data.encounter.healmax));
 		end
 		-- healer with most mana
 		table.sort(healerScores, function(a,b) return a[2] > b[2]; end);
