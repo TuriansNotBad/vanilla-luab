@@ -186,6 +186,8 @@ t_dungeons[47] = {
 	},
 };
 
+
+
 t_dungeons[47].encounters = {
 	{name = "Roogug"},
 	{name = "Aggem Thorncurse"},
@@ -193,4 +195,12 @@ t_dungeons[47].encounters = {
 	{name = "Overlord Ramtusk", healmax = true},
 	{name = "Agathelos the Raging"},
 	{name = "Charlga Razorflank", distancingR = 18.0, pull = true, nodebuffs = true,},
+	
+	dispelFilter = function(target, hive, data, agents, friendly)
+		if (not friendly) then return false; end
+		-- Dominate Mind, Chains of Ice, tornado
+		if (target:HasAura(14515) or target:HasAura(113) or target:HasAura(6728)) then return true, "Magic"; end
+		return false;
+	end
+
 };

@@ -34,6 +34,8 @@ function Command_MakeTable(ai)
 	
 end
 
+-- todo: if command issued before agent's top goal activate is run this will error
+-- can happen with .reset chat command
 function Command_GetTable(aidata)
 	if (not aidata._commandTable) then
 		error("CommandMgr: ai command table not defined");

@@ -184,4 +184,15 @@ t_dungeons[48].encounters = {
 	{name = "Aku'mai Servant", tpos = {-818.897, -145.292, -25.870}, rchrpos = {x=-818.861, y=-120.905, z=-25.870}, healmax = true},
 	{name = "Old Serra'kis"},
 	{name = "Aku'mai", poison = true, dispelFocus = {Poison = true}},
+	
+	dispelFilter = function(target, hive, data, agents, friendly)
+		if (not friendly) then return false; end
+		-- Lady Sarevess: Slow
+		-- Twilight Lord Kelris: Sleep
+		if (target:HasAura(246) or target:HasAura(8399)) then return true, "Magic"; end
+		-- Aku'Mai: Poison Cloud
+		if (target:HasAura(3815)) then return true, "Poison"; end
+		return false;
+	end
+	
 };

@@ -127,6 +127,13 @@ local function GetClosestBuffAgent(data, targetai, target, key, filter, encounte
 	end
 end
 
+local function _DispelCanDoHostile(spellid, key, agent)
+	if (key == "Magic" and agent:GetClass() == CLASS_PRIEST) then
+		return true;
+	end
+	return false;
+end
+
 -- data is the partyData.dispel table
 local function GetClosestDispelAgent(data, targetai, target, key, friendly, encounter)
 	if (not data[key]) then
@@ -135,15 +142,17 @@ local function GetClosestDispelAgent(data, targetai, target, key, friendly, enco
 	local t = GetBuffAgentsTbl(data, target, key);
 	for i = 1, #t do
 		local agent = t[i];
-		if ((false == agent:CanAttack(target) or false == friendly) and agent:GetRole() ~= ROLE_SCRIPT) then
+		local ai = agent:GetAI();
+		local aidata = ai:GetData();
+		local spellid = aidata.dispels[key];
+		if ((false == agent:CanAttack(target) or false == friendly or _DispelCanDoHostile(spellid, key, agent)) and agent:GetRole() ~= ROLE_SCRIPT) then
 		
-			local ai = agent:GetAI();
 			local cmd = ai:CmdType();
 			local healmax = encounter and encounter.healmax;
 			
 			if (not healmax or ai:GetRole() ~= ROLE_HEALER) then
 				local healTarget = (cmd == CMD_HEAL or nil) and GetUnitByGuid(agent, ai:CmdArgs());
-				local hot = ai:GetData().hot;
+				local hot = aidata.hot;
 				local healPriority = Healer_GetHealPriority(healTarget, agent:GetPowerPct(POWER_MANA), hot, healmax);
 				
 				-- Print("Dispel search: heal target, heal priority =", healTarget and healTarget:GetName(), healPriority);
@@ -151,8 +160,6 @@ local function GetClosestDispelAgent(data, targetai, target, key, friendly, enco
 				local healLowPrio = healTarget and not healmax and healPriority < 3;
 				-- Print(cmd, cmd == CMD_HEAL and Healer_GetHealPriority(healTarget, agent:GetPowerPct(POWER_MANA)));
 				if (cmd == CMD_FOLLOW or cmd == CMD_NONE or cmd == CMD_ENGAGE or healLowPrio) then
-					local aidata = ai:GetData();
-					local spellid = aidata.dispels[key];
 					local valid = friendly or not target:IsImmuneToSpell(spellid);
 					if (spellid and valid and AI_IsAvailableToCast(ai, agent, target, spellid)) then
 						return agent;
@@ -457,8 +464,8 @@ function Hive_OOCUpdate(hive, data)
 	
 	IssueBuffCommands(hive, data, agents);
 	IssueBuffCommands(hive, data, data.tracked);
-	IssueDispelCommands(hive, data, agents, true);
-	IssueDispelCommands(hive, data, data.tracked, true);
+	IssueDispelCommands(hive, data, agents, true, true);
+	IssueDispelCommands(hive, data, data.tracked, true, true);
 	
 	if (not data.owner) then
 		return;
@@ -479,7 +486,8 @@ function Hive_OOCUpdate(hive, data)
 			end
 			
 			local dist = agent:GetDistance(data.owner);
-			if (dist > 50 and (ai:CmdType() == CMD_FOLLOW or agent:GetMapId() ~= data.owner:GetMapId() or dist > 200)) then
+			local notBusy = ai:CmdType() == CMD_FOLLOW or ai:CmdType() == CMD_NONE;
+			if (dist > 50 and (notBusy or agent:GetMapId() ~= data.owner:GetMapId() or dist > 200)) then
 				ai:GoName(data.owner:GetName());
 			else
 				
@@ -501,7 +509,38 @@ function Hive_OOCUpdate(hive, data)
 	
 end
 
-function IssueDispelCommands(hive, data, agents, friendly)
+local function ShouldIssueDispel(hive, data, target, friendly, nonCombat)
+	
+	local dungeon = data.dungeon;
+	if (nonCombat or not dungeon or not dungeon.dispelFilter) then
+		return nil;
+	end
+	return dungeon.dispelFilter(target, hive, data, agents, friendly);
+	
+end
+
+function IssueDispelCommands(hive, data, agents, friendly, nonCombat)
+	
+	local function DoIssue(ai, agent, key)
+		-- print("Key", key, agent:GetName(), agent:HasLostControl());
+		if (AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
+			return true;
+		end
+		if (key ~= "Poison" or false == agent:HasAura(SPELL_DRD_ABOLISH_POISON)) then
+			local ally = GetClosestDispelAgent(data.dispel, ai, agent, key, friendly, data.encounter);
+			if (ally) then
+				local allyAi = ally:GetAI();
+				-- if (allyAi:CmdType() == CMD_FOLLOW) then
+					-- AI_PostBuff(ally:GetGuid(), agent:GetGuid(), "Dispel", true);
+					-- hive:CmdDispel(allyAi, agent:GetGuid(), key);
+					Command_IssueDispel(allyAi, hive, agent:GetGuid(), key);
+					Print("CmdDispel issued to", ally:GetName(), key, agent:GetName(), "Rep =", agent:GetReactionTo(ally), ally:CanAttack(agent));
+					-- not currently allowed to dispel multiple types at the same time
+					return true;
+				-- end
+			end
+		end
+	end
 	
 	for i = 1, #agents do
 		
@@ -512,29 +551,23 @@ function IssueDispelCommands(hive, data, agents, friendly)
 			data._needTremor = agent:HasAuraWithMechanics(Mask(MECHANIC_CHARM) | Mask(MECHANIC_FEAR) | Mask(MECHANIC_SLEEP));
 		end
 		
-		if (agent:IsPlayer() and agent:IsAlive() and false == AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
+		if (agent:IsPlayer()
+		and agent:IsAlive()
+		and false == AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
 			
-			local dispelTbl = agent:GetDispelsTbl(not friendly);
-			for key in next,dispelTbl do
-				-- print("Key", key, agent:GetName(), agent:HasLostControl());
-				if (AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
-					break;
-				end
-				if (key ~= "Poison" or false == agent:HasAura(SPELL_DRD_ABOLISH_POISON)) then
-					local ally = GetClosestDispelAgent(data.dispel, ai, agent, key, friendly, data.encounter);
-					if (ally) then
-						local allyAi = ally:GetAI();
-						-- if (allyAi:CmdType() == CMD_FOLLOW) then
-							-- AI_PostBuff(ally:GetGuid(), agent:GetGuid(), "Dispel", true);
-							-- hive:CmdDispel(allyAi, agent:GetGuid(), key);
-							Command_IssueDispel(allyAi, hive, agent:GetGuid(), key);
-							Print("CmdDispel issued to", ally:GetName(), key, agent:GetName(), "Rep =", agent:GetReactionTo(ally), ally:CanAttack(agent));
-							-- not currently allowed to dispel multiple types at the same time
-							break;
-						-- end
+			local should,key = ShouldIssueDispel(hive, data, agent, friendly, nonCombat);
+			if (should == true) then
+				DoIssue(ai, agent, key);
+			elseif (should == nil) then
+			
+				local dispelTbl = agent:GetDispelTbl(not friendly);
+				for key in next,dispelTbl do
+					if (DoIssue(ai, agent, key)) then
+						break;
 					end
 				end
-			end			
+			
+			end
 		end
 		
 	end
@@ -720,8 +753,8 @@ function Hive_CombatUpdate(hive, data)
 		end
 	end
 	
-	IssueDispelCommands(hive, data, data.agents, true);
-	IssueDispelCommands(hive, data, data.tracked, true);
+	IssueDispelCommands(hive, data, data.agents, true, false);
+	IssueDispelCommands(hive, data, data.tracked, true, false);
 	IssueBuffCommands(hive, data, data.agents, true);
 	IssueBuffCommands(hive, data, data.tracked, true);
 	

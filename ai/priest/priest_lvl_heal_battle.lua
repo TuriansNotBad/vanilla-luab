@@ -204,7 +204,7 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 
 	local guid = ai:CmdArgs();
 	local target = GetUnitByGuid(agent, guid);
-	local isTank = target == nil and false or target:IsTanking();
+	local isTank = target ~= nil and target:IsTanking();
 	-- condition here to cancel healing charmed ones?
 	if (not target or not target:IsAlive() or target:GetHealthPct() > 95) then
 		-- interrupt healing high health targets;
