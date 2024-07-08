@@ -100,6 +100,9 @@ function Command_DefaultUpdate(ai, goal)
 	if (AI_IsIncapacitated(agent)) then
 		goal:ClearSubGoal();
 		ai:SetHealTarget(nil);
+		if (ai:GetCCTarget()) then
+			party:RemoveCC(ai:GetCCTarget():GetGuid());
+		end
 		ai:SetCCTarget(nil);
 		Command_ClearAll(ai, "Agent incapacitated");
 		return false;

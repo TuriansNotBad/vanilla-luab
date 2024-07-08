@@ -127,6 +127,8 @@ function WarriorLevelTank_Activate(ai, goal)
 	
 	-- talents
 	data._hasShieldSlam = Builds.Select(agent, "1.6.1", 148, agent.HasTalent, 0);
+	data._hasLastStand  = agent:HasTalent(153, 0);
+	Print(data._hasLastStand, "LS");
 	data._hasTacticalMs = agent:HasTalent(641, 1) or agent:HasTalent(641, 2) or agent:HasTalent(641, 3) or agent:HasTalent(641, 4);
 	
 	data.UpdateShapeshift = WarriorUpdateStance;
@@ -401,7 +403,7 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 		if (level >= 10 and goal:IsFinishTimer(0) and hp > 50) then
 			
 			-- sapper charge
-			if (Unit_AECheck(agent, 5.0, 2, false, partyData.attackers) and agent:CastSpell(agent, SPELL_GEN_GOBLIN_SAPPER_CHARGE, false) == CAST_OK) then
+			if (Unit_AECheck(agent, 5.0, 3, false, partyData.attackers) and agent:CastSpell(agent, SPELL_GEN_GOBLIN_SAPPER_CHARGE, false) == CAST_OK) then
 				print("Goblin Sapper Charge", agent:GetName(), target:GetName());
 				goal:SetTimer(0, 300);
 				goal:SetTimer(1, 60);
@@ -424,7 +426,21 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	WarriorTankPotions(agent, goal, data);
 	
 	-- try to save ourselves
-	if (hp < 30) then
+	if (hp < 30 and not agent:HasAura(SPELL_WAR_SHIELD_WALL) and not agent:HasAura(SPELL_WAR_LAST_STAND)) then
+		
+		if (hp < 15) then
+			if (level >= 28 and not agent:IsSpellReady(SPELL_WAR_SHIELD_WALL)) then
+				if (agent:CastSpell(agent, SPELL_WAR_SHIELD_WALL, false) == CAST_OK) then
+					return true;
+				end
+			end
+			
+			if (data._hasLastStand and agent:IsSpellReady(SPELL_WAR_LAST_STAND)) then
+				if (agent:CastSpell(agent, SPELL_WAR_LAST_STAND, false) == CAST_OK) then
+					return true;
+				end
+			end
+		end
 		
 		-- Shield Block
 		if (level >= 16 and not agent:HasAura(SPELL_WAR_SHIELD_BLOCK) and agent:CastSpell(agent, SPELL_WAR_SHIELD_BLOCK, false) == CAST_OK) then

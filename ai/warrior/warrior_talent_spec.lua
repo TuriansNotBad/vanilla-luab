@@ -32,6 +32,7 @@ t_LevelWarriorTankSpec = {
 				
 				{"Shield Specialization", 5, 1601},
 				{"Improved Bloodrage", 2, 142}, {"Toughness", 3, 140},
+				{"Last Stand", 1, 153},
 				{"Defiance", 5, 144},
 				{"Improved Taunt", 2, 143}, {"Improved Sunder Armor", 3, 146},
 				{"Toughness", 5, 140}, {"Concussion Blow", 1, 152}, {"Improved Shield Block", 3, 145},
@@ -41,7 +42,7 @@ t_LevelWarriorTankSpec = {
 				{"Anger Management", 1, 137},
 				
 				{"Cruelty", 5, 157},
-				{"Unbridled Wrath", 3, 159},
+				{"Unbridled Wrath", 2, 159},
 			},
 		},
 	},

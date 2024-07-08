@@ -170,7 +170,7 @@ end
 
 function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 	
-	if (x and target:GetDistance(x,y,z) > 4.5) then
+	if (x and target:GetDistanceEx(x,y,z,2) > 3.5) then
 		
 		-- can't do anything
 		if (target:GetVictim() ~= agent and false == target:HasAuraType(AURA_MOD_TAUNT)) then

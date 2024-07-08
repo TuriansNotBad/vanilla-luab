@@ -55,6 +55,7 @@ function MageLevelDps_Activate(ai, goal)
 	
 	local data = ai:GetData();
 	
+	data.blizzard   = ai:GetSpellMaxRankForMe(SPELL_MAG_BLIZZARD);
 	data.fireball   = ai:GetSpellMaxRankForMe(SPELL_MAG_FIREBALL);
 	data.frostbolt  = ai:GetSpellMaxRankForMe(SPELL_MAG_FROSTBOLT);
 	data.fireblast  = ai:GetSpellMaxRankForMe(SPELL_MAG_FIRE_BLAST);
@@ -161,6 +162,21 @@ function MageSelfBuff(agent, data)
 	
 end
 
+local function GetAEThreat(ai, agent, targets)
+	local minDiff = 99999999;
+	if (#targets < 1) then return minDiff; end
+	for idx,target in ipairs(targets) do
+		if (not Unit_IsCrowdControlled(target)) then
+			local _,tankThreat = target:GetHighestThreat();
+			local diff = (tankThreat - ai:GetStdThreat()) - target:GetThreat(agent);
+			if (diff < minDiff) then
+				minDiff = diff;
+			end
+		end
+	end
+	return math.max(0, minDiff);
+end
+
 function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	
 	local level = agent:GetLevel();
@@ -217,6 +233,21 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), SPELL_MAG_COUNTERSPELL, "Interrupt", 3.0);
 		AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
 		return true;
+	end
+	
+	-- Blizzard
+	if (level >= 20) then
+		
+		if (Unit_AECheck(target, 8.0, 3, not partyData.aoe, partyData.attackers)) then
+			local d,t = agent:GetSpellDamageAndThreat(agent,  data.blizzard, false, true);
+			local maxThreat = GetAEThreat(ai, agent, partyData.attackers);
+			if (d * 7 < maxThreat) then
+				if (agent:CastSpell(target, data.blizzard, false) == CAST_OK) then
+					return true;
+				end
+			end
+		end
+		
 	end
 	
 	-- spammable

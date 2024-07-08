@@ -307,7 +307,8 @@ end
 function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData)
 	
 	local heals = data.heals;
-	local maxheal = (partyData.encounter and partyData.encounter.healmax) or (not partyData.attackers or #partyData.attackers == 0);
+	local nAttacker = not partyData.attackers and 0 or #partyData.attackers;
+	local maxheal = (partyData.encounter and partyData.encounter.healmax) or nAttacker == 0;
 	local targetIsTank = target:IsTanking() or (target:GetRole() == ROLE_TANK and target:GetAttackersNum() > 0);
 	-- pick the strongest spell that makes sense
 	if (targetIsTank) then
@@ -321,6 +322,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 			local id = heals[i];
 			if (agent:GetPowerCost(id) < agent:GetPower(POWER_MANA)) then
 				local value, threat = agent:GetSpellDamageAndThreat(target, id, true, false);
+				threat = threat/nAttacker;
 				if (threat < maxThreat) then
 					threatFail = false;
 				end
@@ -364,6 +366,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 		local id = heals[i];
 		if (agent:GetPowerCost(id) < agent:GetPower(POWER_MANA)) then
 			local value, threat = agent:GetSpellDamageAndThreat(target, id, true, false);
+			threat = threat/nAttacker;
 			-- Print("Picking spell for", target:GetName(), "ratio =", value/hpdiff, "threat =", threat, maxThreat, GetSpellName(id), i);
 			if (value / hpdiff < 1.1 and threat < maxThreat) then
 				Print("Chose spell", id, value, threat, "missing", hpdiff, hp, target:GetName());
@@ -375,6 +378,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 	-- have to use something...
 	if (agent:GetPowerCost(heals[1]) < agent:GetPower(POWER_MANA)) then
 		local value, threat = agent:GetSpellDamageAndThreat(target, heals[1], true, false);
+		threat = threat/nAttacker;
 		if (threat < maxThreat) then
 			return heals[1], value, threat;
 		end

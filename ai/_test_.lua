@@ -1,9 +1,9 @@
 local t_agentInfo = {
 	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
 	-- {"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
 	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
+	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
@@ -306,7 +306,10 @@ function Hive_Update(hive)
 				-- Print(x,y,z, "you (", px,py,pz, ") D =", ownerVictim:GetDistance(data.owner));
 				-- Print("you (", px,py,pz, ")");
 			-- end
-			-- Print(data.owner:GetPosition());
+			-- local x,y,z = data.owner:GetPosition();
+			-- fmtprint("x = %.3f, y = %.3f, z = %.3f", x, y, z);
+			-- fmtprint("%.3f, %.3f, %.3f", x, y, z);
+			-- Print(data.owner:GetCurrentSpellId(3));
 			if (not data.attackers[1]) then
 				-- odd bug with owner victim being stuck on ally due to gnomeregan irradiated status
 				if (ownerVictim and ownerVictim:CanAttack(data.owner)) then
@@ -436,6 +439,7 @@ function Hive_OOCUpdate(hive, data)
 	
 	-- data.encounter = nil;
 	data.reverse = nil;
+	data.aoe = false;
 	local agents = data.agents;
 	
 	if (#data.healers > 0) then
@@ -519,6 +523,7 @@ local function ShouldIssueDispel(hive, data, target, friendly, nonCombat)
 	
 end
 
+-- todo: threat check
 function IssueDispelCommands(hive, data, agents, friendly, nonCombat)
 	
 	local function DoIssue(ai, agent, key)
@@ -585,26 +590,30 @@ function Hive_CombatUpdate(hive, data)
 	end
 	
 	local minTargetsForCC = 2;
-	for i = #data.ccAgents, 1, -1 do
-		local guid, spellid = data.ccAgents[i][1], data.ccAgents[i][2];
-		-- target assigned
-		local pendingCC = Party_GetCCTarget(spellid, hive, data.attackers, minTargetsForCC, true);
-		if (nil ~= pendingCC and pendingCC:IsAlive()) then
-			local agent = GetPlayerByGuid(guid);
-			if (not agent or false == AI_IsAvailableToCast(agent:GetAI(), agent, pendingCC, spellid)) then
-				if (not agent) then
-					table.remove(data.ccAgents, i);
-				end
-			else
-				local ai = agent:GetAI();
-				local bRoleTarget = pendingCC:GetRole() ~= ROLE_TANK and pendingCC:GetRole() ~= ROLE_HEALER and pendingCC:CanAttack(agent);
-				if (nil == ai:GetCCTarget() and bRoleTarget) then
-					local pendingGuid = pendingCC:GetGuid();
-					ai:SetCCTarget(pendingGuid);
-					hive:AddCC(guid, pendingGuid);
+	if (#data.attackers < 6 and not data.aoe) then
+		for i = #data.ccAgents, 1, -1 do
+			local guid, spellid = data.ccAgents[i][1], data.ccAgents[i][2];
+			-- target assigned
+			local pendingCC = Party_GetCCTarget(spellid, hive, data.attackers, minTargetsForCC, true);
+			if (nil ~= pendingCC and pendingCC:IsAlive()) then
+				local agent = GetPlayerByGuid(guid);
+				if (not agent or false == AI_IsAvailableToCast(agent:GetAI(), agent, pendingCC, spellid)) then
+					if (not agent) then
+						table.remove(data.ccAgents, i);
+					end
+				else
+					local ai = agent:GetAI();
+					local bRoleTarget = pendingCC:GetRole() ~= ROLE_TANK and pendingCC:GetRole() ~= ROLE_HEALER and pendingCC:CanAttack(agent);
+					if (nil == ai:GetCCTarget() and bRoleTarget) then
+						local pendingGuid = pendingCC:GetGuid();
+						ai:SetCCTarget(pendingGuid);
+						hive:AddCC(guid, pendingGuid);
+					end
 				end
 			end
 		end
+	else
+		data.aoe = true;
 	end
 	
 	local attackCc = false;
@@ -692,6 +701,7 @@ function Hive_CombatUpdate(hive, data)
 	end
 	
 	-- cc
+	-- todo: test with multiple mages
 	for i = 1, #data.cc do
 		local ai = data.cc[i].agent;
 		local agent = ai:GetPlayer();
@@ -806,6 +816,11 @@ function Hive_FormationRectGetAngle( drone, idx, forward, x, y, ori )
 	-- calculate my row and column
 	local myRow = math.ceil(idx/columns);
 	local myCol = idx - (myRow - 1) * columns; -- disregard all columns from previous rows
+	
+	if (drone:GetRole() == ROLE_TANK) then
+		myRow = -2;
+		myCol = 2;
+	end
 	
 	-- get left vector
 	local left = {x = -forward.y * colSize, y = forward.x * colSize};
