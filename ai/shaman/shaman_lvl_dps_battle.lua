@@ -209,7 +209,9 @@ function ShamanPotions(agent, goal, data)
 	
 end
 
-function ShamanDpsRotation(ai, agent, goal, data, target)
+function ShamanDpsRotation(ai, agent, goal, data, partyData, target)
+
+	local encounter = partyData.encounter;
 
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
@@ -229,9 +231,17 @@ function ShamanDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
+	-- check interruptable
+	local interruptFilter = encounter and encounter.interruptFilter;
+	local interruptCheck;
+	if (interruptFilter) then
+		interruptCheck = interruptFilter(ai, agent, party, target, partyData.attackers, false, 15.0);
+	else
+		interruptCheck = target:IsCastingInterruptableSpell();
+	end
 	-- interrupt
 	if (level >= 4
-	and target:IsCastingInterruptableSpell()
+	and interruptCheck
 	and agent:IsSpellReady(data.eshock)
 	and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
 		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), data.eshock, "Interrupt", 3.0);
@@ -246,7 +256,7 @@ function ShamanThreatActions(ai, agent, goal, party, data, partyData, target)
 	local partyData = party:GetData();
 	ShamanTotems(ai, agent, goal, data, partyData);
 	ShamanPotions(agent, goal, data);
-	ShamanDpsRotation(ai, agent, goal, data, target);
+	ShamanDpsRotation(ai, agent, goal, data, partyData, target);
 end
 
 --[[*****************************************************

@@ -62,6 +62,7 @@ local function Cmd_EngageOnBegin(ai, agent, goal, party, data, partyData)
 	agent:InterruptSpell(CURRENT_GENERIC_SPELL);
 end
  
+ -- todo: allow killing totems when moving
 local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	
 	-- do combat!
@@ -75,7 +76,16 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 		return;
 	end
 	
+	local area = partyData._holdPos;
+	local encounter = partyData.encounter;
+	local distancingR = encounter and encounter.distancingR or 5.0;
+	local rchrpos = encounter and encounter.rchrpos;
+	local noTotemsToKill = true;--partyData.hostileTotems and #partyData.hostileTotems == 0;
+	
 	if (goal:GetSubGoalNum() > 0) then
+		if (rchrpos and not noTotemsToKill) then
+			goal:ClearSubGoal();
+		end
 		return;
 	end
 	
@@ -100,9 +110,9 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	
 	-- use tank's target if threat is too high
 	if (nil == target and partyData:HasTank()) then
-		local tank = partyData.tanks[1];
-		if (tank:GetPlayer():IsInCombat()) then
-			target = tank:GetPlayer():GetVictim();
+		local _,tank = partyData:GetFirstActiveTank();
+		if (tank:IsInCombat()) then
+			target = tank:GetVictim();
 		end
 	end
 	
@@ -120,10 +130,6 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	end
 	
 	-- movement
-	local area = partyData._holdPos;
-	local encounter = partyData.encounter;
-	local distancingR = encounter and encounter.distancingR or 5.0;
-	local rchrpos = encounter and encounter.rchrpos;
 	if (area and false == AI_TargetInHoldingArea(target, area)) then
 		
 		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
@@ -145,13 +151,21 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 			end
 		end
 		
-		if (shouldGoToSpot) then
+		if (shouldGoToSpot and noTotemsToKill) then
 			if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
 				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
 				return;
 			end
 		else
-			Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+			if (params.bRanged) then
+			
+				if (false == AI_DistanceIfNeeded(ai, agent, goal, party, distancingR, target)) then
+					Dps_RangedChase(ai, agent, target, bAllowThreatActions);
+				end
+				
+			else
+				Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+			end
 		end
 		
 	else

@@ -78,10 +78,10 @@ function WarriorLevelTank_Activate(ai, goal)
 	local race = agent:GetRace();
 	if (race == RACE_ORC) then
 		info.WeaponType = {"Axe"};
-		if (ai:GetSpec() == "LvlTankSwapOnly") then
-			info.WeaponType = {"Axe2H"};
-			info.OffhandType = nil;
-		end
+		-- if (ai:GetSpec() == "LvlTankSwapOnly") then
+			-- info.WeaponType = {"Axe2H"};
+			-- info.OffhandType = nil;
+		-- end
 	elseif (race == RACE_HUMAN) then
 		info.WeaponType = {"Sword"};
 		if (ai:GetSpec() == "LvlTankSwapOnly") then
@@ -128,7 +128,6 @@ function WarriorLevelTank_Activate(ai, goal)
 	-- talents
 	data._hasShieldSlam = Builds.Select(agent, "1.6.1", 148, agent.HasTalent, 0);
 	data._hasLastStand  = agent:HasTalent(153, 0);
-	Print(data._hasLastStand, "LS");
 	data._hasTacticalMs = agent:HasTalent(641, 1) or agent:HasTalent(641, 2) or agent:HasTalent(641, 3) or agent:HasTalent(641, 4);
 	
 	data.UpdateShapeshift = WarriorUpdateStance;
@@ -190,16 +189,24 @@ function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyDat
 		return;
 	end
 	
-	local bThreatCheck = agent:IsInDungeon() and partyData:HasTank();
+	local target;
+	local bAllowThreatActions = true; 
 	
-	local target = Tank_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck, ai:GetStdThreat());
-	local bAllowThreatActions = target ~= nil;
+	if (partyData.hostileTotems) then
+		target = Dps_GetNearestTarget(agent, partyData.hostileTotems);
+	end
+	
+	if (nil == target) then
+		local bThreatCheck = agent:IsInDungeon() and partyData:HasTank() and not targets.ignoreThreat;
+		target = Tank_GetLowestHpTarget(ai, agent, party, targets, bThreatCheck, ai:GetStdThreat());
+		bAllowThreatActions = target ~= nil;
+	end
 	
 	-- use tank's target if threat is too high
-	if (nil == target and partyData:HasTank()) then
-		local tank = partyData.tanks[1];
-		if (tank:GetPlayer():IsInCombat()) then
-			target = tank:GetPlayer():GetVictim();
+	if (nil == target) then
+		local _,tank = partyData:GetFirstActiveTank();
+		if (tank and tank:IsInCombat()) then
+			target = tank:GetVictim();
 		end
 	end
 	
@@ -465,7 +472,7 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	end
 	
 	-- oil of immolation
-	if ((levelDiff > 3 or agent:GetAttackersNum() > 3) and false == agent:HasAura(11350)) then
+	if ((levelDiff > 3 or agent:GetAttackersNum() > 3 or (partyData.encounter and #partyData.attackers > 1)) and false == agent:HasAura(11350)) then
 		agent:CastSpell(agent, 11350, true);
 	end
 	
@@ -700,7 +707,7 @@ function WarriorTankDpsRotation(ai, agent, goal, data, partyData, target)
 	
 	-- Strike
 	if (agent:CastSpell(target, data.heroic, false) == CAST_OK) then
-		-- print("Heroic Strike", agent:GetName(), target:GetName());
+		print("Heroic Strike", agent:GetName(), target:GetName());
 		return true;
 	end
 	

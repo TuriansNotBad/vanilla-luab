@@ -160,7 +160,7 @@ function PriestLevelHeal_Activate(ai, goal)
 	end
 	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
-	ai:SetStdThreat(2.0*threat);
+	ai:SetStdThreat(threat);
 	
 	-- Command params
 	Cmd_EngageSetParams(data, true, nil, AI_DummyActions);
@@ -206,9 +206,9 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 	local target = GetUnitByGuid(agent, guid);
 	local isTank = target ~= nil and target:IsTanking();
 	-- condition here to cancel healing charmed ones?
-	if (not target or not target:IsAlive() or target:GetHealthPct() > 95) then
+	if (not target or not target:IsAlive() or target:GetHealthPct() > 95 or target:CanAttack(agent)) then
 		-- interrupt healing high health targets;
-		print("redundant reset", target and target:GetName(), target and target:GetHealthPct());
+		Print("Redundant reset", target and target:GetName(), target and target:GetHealthPct(), target and target:CanAttack(agent));
 		return CmdHealReset(ai, agent, goal, agent:IsInCombat(), true);
 	end
 	
@@ -238,7 +238,7 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 		end
 		
 		if (not PriestLevelHeal_InterruptPrecastHeals(agent, goal, target, isTank, hpdiff)
-			and not PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, goal:GetNumber(0), goal:GetNumber(1)))
+			and not PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, partyData, target, goal:GetNumber(0), goal:GetNumber(1)))
 		then
 			return GOAL_RESULT_Continue;
 		end
@@ -268,10 +268,10 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 	PriestPotions(agent, goal, data);
 	
 	local maxThreat;
-	if (target:IsTanking() and hp < 30) then
-		maxThreat = 1000.0;
+	if (target:IsTanking() and hp < 40) then
+		maxThreat = 5000.0;
 	else
-		maxThreat = GetAEThreat(ai, agent, partyData.attackers);
+		maxThreat = GetAEThreat(ai, agent, partyData, partyData.attackers);
 	end
 	local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData);
 	
@@ -303,13 +303,15 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 
 end
 
--- partyData isn't guaranteed to be the real partyData table
 function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData)
 	
 	local heals = data.heals;
-	local nAttacker = not partyData.attackers and 0 or #partyData.attackers;
-	local maxheal = (partyData.encounter and partyData.encounter.healmax) or nAttacker == 0;
+	local maxheal = (partyData.encounter and partyData.encounter.healmax) or #partyData.attackers == 0;
 	local targetIsTank = target:IsTanking() or (target:GetRole() == ROLE_TANK and target:GetAttackersNum() > 0);
+	
+	-- avoid div by zero
+	local threatDiv = math.max(#partyData.attackers, 1);
+	
 	-- pick the strongest spell that makes sense
 	if (targetIsTank) then
 		-- emergency heal?
@@ -322,7 +324,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 			local id = heals[i];
 			if (agent:GetPowerCost(id) < agent:GetPower(POWER_MANA)) then
 				local value, threat = agent:GetSpellDamageAndThreat(target, id, true, false);
-				threat = threat/nAttacker;
+				threat = threat/threatDiv;
 				if (threat < maxThreat) then
 					threatFail = false;
 				end
@@ -366,7 +368,7 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 		local id = heals[i];
 		if (agent:GetPowerCost(id) < agent:GetPower(POWER_MANA)) then
 			local value, threat = agent:GetSpellDamageAndThreat(target, id, true, false);
-			threat = threat/nAttacker;
+			threat = threat/threatDiv;
 			-- Print("Picking spell for", target:GetName(), "ratio =", value/hpdiff, "threat =", threat, maxThreat, GetSpellName(id), i);
 			if (value / hpdiff < 1.1 and threat < maxThreat) then
 				Print("Chose spell", id, value, threat, "missing", hpdiff, hp, target:GetName());
@@ -378,14 +380,14 @@ function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff
 	-- have to use something...
 	if (agent:GetPowerCost(heals[1]) < agent:GetPower(POWER_MANA)) then
 		local value, threat = agent:GetSpellDamageAndThreat(target, heals[1], true, false);
-		threat = threat/nAttacker;
+		threat = threat/threatDiv;
 		if (threat < maxThreat) then
 			return heals[1], value, threat;
 		end
 	end
 	
 	-- non combat backup
-	if (not agent:IsInCombat()) then
+	if (#partyData.attackers == 0) then
 		return heals[1], agent:GetSpellDamageAndThreat(target, heals[1], true, false);
 	end
 	
@@ -421,7 +423,7 @@ function PriestLevelHeal_InterruptPrecastHeals(agent, goal, target, precastable,
 	return false;
 end
 
-function PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, castHealth, castEffect)
+function PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, partyData, target, castHealth, castEffect)
 	
 	-- never cast any spells
 	if (castEffect <= 0) then
@@ -447,7 +449,7 @@ function PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, cas
 		local spell = agent:GetCurrentSpellId();
 		local partyData = ai:GetPartyIntelligence():GetData();
 		-- no longer care for threat checks here
-		local newSpell = PriestLevelHeal_BestHealSpell(ai, agent, goal, ai:GetData(), target, target:GetHealthPct(), hpdiff, 9999999, {});
+		local newSpell = PriestLevelHeal_BestHealSpell(ai, agent, goal, ai:GetData(), target, target:GetHealthPct(), hpdiff, 9999999, partyData);
 		if (newSpell ~= spell) then
 			fmtprint("Spell %s %d interrupted due to batching diff=%.2f, eff=%.2f, new=%d",
 				GetSpellName(spell), spell, hpdiff, castEffect, newSpell and newSpell or 0);
@@ -460,11 +462,12 @@ function PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, target, cas
 	
 end
 
-function GetAEThreat(ai, agent, targets)
+function GetAEThreat(ai, agent, partyData, targets)
 	local minDiff = 99999999;
 	if (#targets < 1) then return minDiff; end
 	for idx,target in ipairs(targets) do
 		if (not Unit_IsCrowdControlled(target)) then
+			-- local tankThreat = Tank_GetTankThreat(partyData, target);
 			local _,tankThreat = target:GetHighestThreat();
 			local diff = (tankThreat - ai:GetStdThreat()) - target:GetThreat(agent);
 			if (diff < minDiff) then

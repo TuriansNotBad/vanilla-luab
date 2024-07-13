@@ -7,3 +7,13 @@ function table.ifind(t, v)
 	end
 	return 0;
 end
+
+function table.merge(t, ...)
+	for i = 1, select("#", ...) do
+		local rhs = select(i, ...);
+		for j = 1, #rhs do
+			table.insert(t, rhs[j]);
+		end
+	end
+	return t;
+end

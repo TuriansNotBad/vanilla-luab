@@ -7,6 +7,7 @@
 local SHOULD_HEAL_UNABLE_TO_CAST         =  0;
 local SHOULD_HEAL_REQUIREMENT_NOT_MET    = -1;
 local SHOULD_HEAL_TARGET_IS_LOW_PRIORITY = -2;
+local SHOULD_HEAL_TARGET_IS_HOSTILE      = -3;
 
 function Healer_GetHealPriority(target, mp, hot, bTopAll)
 	
@@ -66,6 +67,10 @@ function Healer_ShouldHealTarget(ai, target, bTopAll)
 	
 	if (AI_IsIncapacitated(agent) or cmd == CMD_DISPEL or agent:GetStandState() ~= STAND_STATE_STAND) then
 		return SHOULD_HEAL_UNABLE_TO_CAST;
+	end
+	
+	if (target:CanAttack(agent)) then
+		return SHOULD_HEAL_TARGET_IS_HOSTILE;
 	end
 	
 	-- take on anyone

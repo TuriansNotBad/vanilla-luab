@@ -180,6 +180,7 @@ end
 function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	
 	local level = agent:GetLevel();
+	local encounter = partyData.encounter;
 	
 	if (agent:IsNonMeleeSpellCasted()) then
 		return false;
@@ -205,7 +206,7 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 		return false;
 	end
 	
-	if (data.attackmode == "burst" and level >= 6) then
+	if ((data.attackmode == "burst" or (level > 20 and target:GetHealth() < 101)) and level >= 6) then
 		if (agent:GetDistance(target) < 19) then
 			if (agent:CastSpell(target, data.fireblast, false) == CAST_OK) then
 				print("Fire Blast", agent:GetName(), target:GetName());
@@ -225,9 +226,17 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 		return true;
 	end
 	
+	-- check interruptable
+	local interruptFilter = encounter and encounter.interruptFilter;
+	local interruptCheck;
+	if (interruptFilter) then
+		interruptCheck = interruptFilter(ai, agent, party, target, partyData.attackers, false, 25.0);
+	else
+		interruptCheck = target:IsCastingInterruptableSpell();
+	end
 	-- interrupt
 	if (level >= 24
-	and target:IsCastingInterruptableSpell()
+	and interruptCheck
 	and agent:IsSpellReady(SPELL_MAG_COUNTERSPELL)
 	and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
 		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), SPELL_MAG_COUNTERSPELL, "Interrupt", 3.0);

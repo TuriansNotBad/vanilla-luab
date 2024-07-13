@@ -235,7 +235,7 @@ end
 function Uldaman.Altar:Update(hive, data)
 
 local GO_ALTAR_KEEPERS   = 130511;
-local GO_ALTAR_ARCHAEDAS = 133234
+local GO_ALTAR_ARCHAEDAS = 133234;
 
 	local pos_preboss = {
 		{x = 106.643, y = 268.510, z =-26.532},

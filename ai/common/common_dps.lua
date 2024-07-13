@@ -35,25 +35,39 @@ function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 end
 
 function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threatCheck, maxInterruptDist)
+	local partyData = party:GetData();
+	local encounter = partyData.encounter;
+	local interruptFilter = encounter and encounter.interruptFilter;
 	local hpTarget;
 	local minDiff = ai:GetStdThreat();
+	
 	for i = 1, #targets do
 		local target = targets[i];
 		local tankThreat = Tank_GetTankThreat(party:GetData(), target);
 		local diff  = tankThreat - target:GetThreat(agent);
 		if (diff > ai:GetStdThreat() or false == threatCheck) and (nil == party or false == party:IsCC(target)) then
-			if (target:GetDistance(agent) <= maxInterruptDist
-			and target:IsCastingInterruptableSpell()
-			and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
+			
+			-- check interruptable
+			local interruptCheck;
+			if (interruptFilter) then
+				interruptCheck = interruptFilter(ai, agent, party, target, targets, threatCheck, maxInterruptDist);
+			else
+				interruptCheck = target:GetDistance(agent) <= maxInterruptDist and target:IsCastingInterruptableSpell();
+			end
+			
+			if (interruptCheck and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
 				return target;
 			end
+			
+			-- save lowest health target
 			if (hpTarget == nil) then
 				hpTarget = target;
 			end
+			
 		end
 	end
-	return hpTarget;
 	
+	return hpTarget;
 end
 
 function Dps_RangedChase(ai, agent, target, bAttack)
@@ -114,6 +128,7 @@ function Dps_MeleeChase(ai, agent, target, bAttack)
 		if (bAttack) then
 			agent:Attack(target);
 		end
+		-- Print("Dps_MeleeChase: ", agent:GetName(), "target", target:GetName());
 		agent:MoveChase(target, 1.5, 2.0, 1.5, math.rad(math.random(160, 200)), math.pi/4.0, false, true);
 		return;
 	end

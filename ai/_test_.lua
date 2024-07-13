@@ -1,9 +1,9 @@
 local t_agentInfo = {
 	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	-- {"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
+	{"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
+	-- {"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
 	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
-	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
+	-- {"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
@@ -160,7 +160,7 @@ local function GetClosestDispelAgent(data, targetai, target, key, friendly, enco
 				local healLowPrio = healTarget and not healmax and healPriority < 3;
 				-- Print(cmd, cmd == CMD_HEAL and Healer_GetHealPriority(healTarget, agent:GetPowerPct(POWER_MANA)));
 				if (cmd == CMD_FOLLOW or cmd == CMD_NONE or cmd == CMD_ENGAGE or healLowPrio) then
-					local valid = friendly or not target:IsImmuneToSpell(spellid);
+					local valid = --[[friendly or]] not target:IsImmuneToSpell(spellid);
 					if (spellid and valid and AI_IsAvailableToCast(ai, agent, target, spellid)) then
 						return agent;
 					end
@@ -196,11 +196,20 @@ local function HasTank(data)
 	if (#data.tanks > 0) then
 		for i,ai in ipairs(data.tanks) do
 			if (not ai:GetPlayer():HasAuraType(AURA_MOD_CHARM)) then
+			-- if (not AI_IsIncapacitated(ai:GetPlayer())) then
 				return true;
 			end
 		end
 	end
 	return false;
+end
+
+local function GetFirstActiveTank(data)
+	for i,ai in ipairs(data.tanks) do
+		if (ai:CmdType() == CMD_TANK) then
+			return ai, ai:GetPlayer();
+		end
+	end
 end
 
 local function RegisterCC(data, agent, spellid)
@@ -218,6 +227,7 @@ function Hive_Init(hive)
 	data.RegisterCC = RegisterCC;
 	data.RegisterDispel = RegisterDispel;
 	data.HasTank = HasTank;
+	data.GetFirstActiveTank = GetFirstActiveTank;
 	data.dungeon = nil;
 	data.encounter = nil;
 	-- local item = Item_GetItemFromId(12048);
@@ -289,6 +299,7 @@ function Hive_Update(hive)
 	data.tracked = {};
 	data.healTargets = {};
 	data.cc = hive:GetCC();
+	data.forcedCc = {min = 1};
 	data._needTremor = nil;
 	data._needPoisonCleansing = nil;
 	data._holdPos = nil;
@@ -500,7 +511,7 @@ function Hive_OOCUpdate(hive, data)
 				and ai:CmdType() ~= CMD_HEAL
 				and ai:CmdType() ~= CMD_BUFF
 				and ai:CmdType() ~= CMD_DISPEL) then
-					local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori);
+					local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori, data.tanks);
 					-- Print("CmdFollow issued to", agent:GetName(), ai:CmdType());
 					Command_IssueFollow(ai, hive, ai:GetMasterGuid(), D, A);
 					-- hive:CmdFollow(ai, ai:GetMasterGuid(), D, A);
@@ -589,12 +600,20 @@ function Hive_CombatUpdate(hive, data)
 		Print("Hive reverse", data.reverse);
 	end
 	
+	local encounter = data.encounter;
+	local isForcedCc = encounter and encounter.useForcedCc;
+	
 	local minTargetsForCC = 2;
-	if (#data.attackers < 6 and not data.aoe) then
+	if (isForcedCc or (#data.attackers < 6 and not data.aoe)) then
 		for i = #data.ccAgents, 1, -1 do
 			local guid, spellid = data.ccAgents[i][1], data.ccAgents[i][2];
 			-- target assigned
-			local pendingCC = Party_GetCCTarget(spellid, hive, data.attackers, minTargetsForCC, true);
+			local pendingCC;
+			if (isForcedCc) then
+				pendingCC = Party_GetCCTarget(spellid, hive, data.forcedCc, data.forcedCc.min, true);
+			else
+				pendingCC = Party_GetCCTarget(spellid, hive, data.attackers, minTargetsForCC, true);
+			end
 			if (nil ~= pendingCC and pendingCC:IsAlive()) then
 				local agent = GetPlayerByGuid(guid);
 				if (not agent or false == AI_IsAvailableToCast(agent:GetAI(), agent, pendingCC, spellid)) then
@@ -603,7 +622,7 @@ function Hive_CombatUpdate(hive, data)
 					end
 				else
 					local ai = agent:GetAI();
-					local bRoleTarget = pendingCC:GetRole() ~= ROLE_TANK and pendingCC:GetRole() ~= ROLE_HEALER and pendingCC:CanAttack(agent);
+					local bRoleTarget = (isForcedCc) or (pendingCC:GetRole() ~= ROLE_TANK and pendingCC:GetRole() ~= ROLE_HEALER and pendingCC:CanAttack(agent));
 					if (nil == ai:GetCCTarget() and bRoleTarget) then
 						local pendingGuid = pendingCC:GetGuid();
 						ai:SetCCTarget(pendingGuid);
@@ -620,7 +639,8 @@ function Hive_CombatUpdate(hive, data)
 	local nCC = 0;
 	for i = #data.attackers, 1, -1 do
 		local attacker = data.attackers[i];
-		-- attacker:SetHealthPct(100.0);
+		-- attacker:Kill(); -- kill all cheat
+		-- attacker:SetHealthPct(1.0);
 		-- io.write(attacker:GetName() .. i);
 		-- for i,target in ipairs(attacker:GetThreatTbl()) do
 			-- io.write(": " .. target:GetName() .. " = " .. attacker:GetThreat(target) .. "; ");
@@ -653,22 +673,21 @@ function Hive_CombatUpdate(hive, data)
 	local nTanks = 0;
 	-- clear out invalid tanks
 	for i = 1, #data.tanks do
-		
 		nTanks = nTanks + 1;
 		local tank = data.tanks[i];
-		if (tank:CmdType() == CMD_TANK) then
-			local agent = tank:GetPlayer();
-			if (AI_IsIncapacitated(agent)) then
-				tank:CmdComplete();
-				nTanks = nTanks - 1;
+		local agent = tank:GetPlayer();
+		if (AI_IsIncapacitated(agent)) then
+			if (tank:CmdType() == CMD_TANK) then
+				Command_ClearAll(tank, "Tank incapacitated");
 			end
+			nTanks = nTanks - 1;
 		end
 	end
 	
 	local tankTargets = Tank_GetTargetList(data.attackers, data.tanks);
 	for j = 1, #tankTargets do
 		local target = tankTargets[j][3];
-				if (nil ~= target and (false == hive:IsCC(target) or attackCc)) then
+		if (nil ~= target and (false == hive:IsCC(target) or attackCc)) then
 			-- find closest tank that matches
 			table.sort(data.tanks, function(a,b) return a:GetPlayer():GetDistance(target) < b:GetPlayer():GetDistance(target); end);
 			for i = 1, #data.tanks do
@@ -736,7 +755,8 @@ function Hive_CombatUpdate(hive, data)
 	end
 	
 	-- todo: Healer_ShouldHealTarget currently declines if CMD_DISPEL is active
-	local healTargets = Healer_GetTargetList(data.tracked, data.agents);
+	data.healTargets = Healer_GetTargetList(data.tracked, data.agents);
+	local healTargets = data.healTargets;
 	for j = 1, #healTargets do
 		local target = healTargets[j];
 		-- choose healers based on mana
@@ -795,7 +815,7 @@ function Hive_CombatUpdate(hive, data)
 
 end
 
-function Hive_FormationRectGetAngle( drone, idx, forward, x, y, ori )
+function Hive_FormationRectGetAngle( drone, idx, forward, x, y, ori, tanks )
 	
 	-- settings
 	
@@ -817,9 +837,20 @@ function Hive_FormationRectGetAngle( drone, idx, forward, x, y, ori )
 	local myRow = math.ceil(idx/columns);
 	local myCol = idx - (myRow - 1) * columns; -- disregard all columns from previous rows
 	
+	-- tanks go in front, if multiple spread over columns
 	if (drone:GetRole() == ROLE_TANK) then
-		myRow = -2;
-		myCol = 2;
+		if (#tanks == 1) then
+			myRow = -2;
+			myCol = 2;
+		else
+			for i = 1, #tanks do
+				if (tanks[i]:GetPlayer():GetGuid() == drone:GetGuid()) then
+					myRow = -2;
+					myCol = i;
+					break;
+				end
+			end
+		end
 	end
 	
 	-- get left vector

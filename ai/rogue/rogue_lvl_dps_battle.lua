@@ -104,7 +104,7 @@ end
 
 function RogueThreatActions(ai, agent, goal, party, data, partyData, target)
 	RoguePotions(agent, goal, data);
-	RogueDpsRotation(ai, agent, goal, data, target);
+	RogueDpsRotation(ai, agent, goal, data, partyData, target);
 end
 
 function RoguePotions(agent, goal, data)
@@ -118,8 +118,10 @@ function RoguePotions(agent, goal, data)
 	
 end
 
-function RogueDpsRotation(ai, agent, goal, data, target)
-
+function RogueDpsRotation(ai, agent, goal, data, partyData, target)
+	
+	local encounter = partyData.encounter;
+	
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
 	end
@@ -141,9 +143,17 @@ function RogueDpsRotation(ai, agent, goal, data, target)
 		return false;
 	end
 	
+	-- check interruptable
+	local interruptFilter = encounter and encounter.interruptFilter;
+	local interruptCheck;
+	if (interruptFilter) then
+		interruptCheck = interruptFilter(ai, agent, party, target, partyData.attackers, false, 10.0);
+	else
+		interruptCheck = target:IsCastingInterruptableSpell();
+	end
 	if (level >= 12
 	and agent:IsSpellReady(data.kick)
-	and target:IsCastingInterruptableSpell()
+	and interruptCheck
 	and false == AI_HasBuffAssigned(target:GetGuid(), "Interrupt", BUFF_SINGLE)) then
 		goal:AddSubGoal(GOAL_COMMON_CastAlone, 5.0, target:GetGuid(), data.kick, "Interrupt", 0.0);
 		AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);

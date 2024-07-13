@@ -118,6 +118,7 @@ function FeralLevelDps_Activate(ai, goal)
 	data.mark  = ai:GetSpellMaxRankForMe(SPELL_DRD_MARK_OF_THE_WILD);
 	data.gift  = ai:GetSpellMaxRankForMe(SPELL_DRD_GIFT_OF_THE_WILD);
 	data.motw  = level >= 50 and data.gift or data.mark;
+	data.rejuv = ai:GetSpellMaxRankForMe(SPELL_DRD_REJUVENATION);
 	
 	-- consumes
 	data.food    = Consumable_GetFood(level);
@@ -299,7 +300,7 @@ local function DruidFeralDoDebuffs(ai, agent, goal, data, partyData, level, targ
 		return false;
 	end
 	
-	if (ai:GetShapeshiftForm() == FORM_BEAR) then
+	if (agent:GetShapeshiftForm() == FORM_BEAR) then
 		-- Demoralizing Shout
 		if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
 			-- print("Demoralizing Shout", agent:GetName(), target:GetName());
@@ -308,7 +309,7 @@ local function DruidFeralDoDebuffs(ai, agent, goal, data, partyData, level, targ
 	end
 	
 	-- At low level use Rip
-	if (ai:GetShapeshiftForm() == FORM_CAT and agent:GetComboPoints() == 5 and level < 32) then
+	if (agent:GetShapeshiftForm() == FORM_CAT and agent:GetComboPoints() == 5 and level < 32) then
 		if (agent:CastSpell(target, data.rip, false) == CAST_OK) then
 			print("Rip", agent:GetName(), target:GetName());
 			return true;
@@ -330,6 +331,21 @@ local function DruidFeralDoDebuffs(ai, agent, goal, data, partyData, level, targ
 
 end
 
+local function GetAEThreat(ai, agent, targets)
+	local minDiff = 99999999;
+	if (#targets < 1) then return minDiff; end
+	for idx,target in ipairs(targets) do
+		if (not Unit_IsCrowdControlled(target)) then
+			local _,tankThreat = target:GetHighestThreat();
+			local diff = (tankThreat - ai:GetStdThreat()) - target:GetThreat(agent);
+			if (diff < minDiff) then
+				minDiff = diff;
+			end
+		end
+	end
+	return math.max(0, minDiff);
+end
+
 function DruidCatRotation(ai, agent, goal, data, partyData, target)
 
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
@@ -346,6 +362,24 @@ function DruidCatRotation(ai, agent, goal, data, partyData, target)
 	-- item buffs
 	if (DruidApplyItemBuffs(ai, agent, goal, data, level)) then
 		return true;
+	end
+	
+	-- rejuv
+	if (level >= 4 and agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true) and #partyData.healTargets > 0) then
+		local maxThreat = GetAEThreat(ai, agent, partyData.attackers);
+		local _,threat = agent:GetSpellDamageAndThreat(target, data.rejuv, true, false);
+		threat = threat/#partyData.attackers;
+		if (threat < maxThreat) then
+			for i,ally in ipairs(partyData.healTargets) do
+				local hp = ally:GetHealthPct();
+				if (ally:GetRole() == ROLE_TANK and hp < 50 or hp < 35) then
+					if (false == ally:HasAura(data.rejuv) and false == ally:CanAttack(agent)) then
+						goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, ally:GetGuid(), data.rejuv, FORM_NONE, 5.0);
+						return true;
+					end	
+				end
+			end
+		end
 	end
 	
 	ai:SetForm(FORM_CAT);

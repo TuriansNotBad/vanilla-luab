@@ -170,7 +170,7 @@ end
 
 function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 	
-	if (x and target:GetDistanceEx(x,y,z,2) > 3.5) then
+	if (x and target:GetDistanceEx(x,y,z,2) > 4) then
 		
 		-- can't do anything
 		if (target:GetVictim() ~= agent and false == target:HasAuraType(AURA_MOD_TAUNT)) then
@@ -182,13 +182,15 @@ function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 		end
 		
 		local agentD = agent:GetDistance(x,y,z);
-		if (agent:GetMotionType() ~= MOTION_POINT and agentD > 2) then
+		if (agent:GetMotionType() ~= MOTION_POINT and agentD > 1) then
 			agent:ClearMotion();
 			agent:MovePoint(x,y,z,false);
+			Print("Tank_BringTargetToPos: moving to point. Distance =", agentD, target:GetDistanceEx(x,y,z,2), agent:GetName());
+			return false;
 		end
 		
-		if (agentD <= 2 and agent:CanReachWithMelee(target)) then
-			Print("I can't get it any closer, targetD =", target:GetDistance(x,y,z));
+		if (agentD <= 1 and agent:CanReachWithMelee(target)) then
+			Print("Tank_BringTargetToPos: standing at point but targetD =", target:GetDistanceEx(x,y,z,2), "agentD =", agentD, agent:GetName());
 			return true;
 		end
 		
