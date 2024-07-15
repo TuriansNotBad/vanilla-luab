@@ -250,7 +250,7 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 		if (Unit_AECheck(target, 8.0, 3, not partyData.aoe, partyData.attackers)) then
 			local d,t = agent:GetSpellDamageAndThreat(agent,  data.blizzard, false, true);
 			local maxThreat = GetAEThreat(ai, agent, partyData.attackers);
-			if (d * 7 < maxThreat) then
+			if (d * 6 < maxThreat) then
 				if (agent:CastSpell(target, data.blizzard, false) == CAST_OK) then
 					return true;
 				end

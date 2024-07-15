@@ -97,6 +97,10 @@ function Pull_Update(ai, goal)
 		return GOAL_RESULT_Success;
 	end
 	
+	if (agent:GetAuraTypeTimeLeft(AURA_MOD_ROOT) > 3000) then
+		agent:CastSpell(agent, 24364, true);
+	end
+	
 	-- ranged detection...
 	if (goal:GetNumber(SN_FAR) == 0) then
 		for i,attacker in ipairs(partyData.attackers) do

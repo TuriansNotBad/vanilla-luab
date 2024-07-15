@@ -109,9 +109,9 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	end
 	
 	-- use tank's target if threat is too high
-	if (nil == target and partyData:HasTank()) then
+	if (nil == target) then
 		local _,tank = partyData:GetFirstActiveTank();
-		if (tank:IsInCombat()) then
+		if (tank and tank:IsInCombat()) then
 			target = tank:GetVictim();
 		end
 	end

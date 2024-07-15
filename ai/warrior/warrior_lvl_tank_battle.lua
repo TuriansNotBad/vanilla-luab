@@ -272,6 +272,7 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	-- do tank!
 	local guid = ai:CmdArgs();
 	local target = GetUnitByGuid(agent, guid);
+	local encounter = partyData.encounter;
 	
 	-- target expired
 	if (nil == target or false == target:IsAlive() or party:IsCC(target)) then
@@ -319,8 +320,9 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 					agent:MoveChase(target, 2.0, 2.0, 1.0, 0.0, math.pi, false, true);
 				end
 				if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
+					local tanko = encounter and encounter.tanko;
 					if (data.tankrot == nil) then
-						data.tankrot = ai:GetAngleForTanking(target, reverse, reverse);
+						data.tankrot = tanko or ai:GetAngleForTanking(target, reverse, reverse);
 					end
 					if (data.tankrot) then
 						if (data.tankrot ~= data.__oldrot or data.__oldori ~= target:GetOrientation()) then
@@ -473,7 +475,9 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	
 	-- oil of immolation
 	if ((levelDiff > 3 or agent:GetAttackersNum() > 3 or (partyData.encounter and #partyData.attackers > 1)) and false == agent:HasAura(11350)) then
-		agent:CastSpell(agent, 11350, true);
+		if (Unit_AECCCheck(agent, party, 6, partyData.attackers)) then
+			agent:CastSpell(agent, 11350, true);
+		end
 	end
 	
 	-- crystal spire
@@ -599,7 +603,9 @@ function WarriorTankMaintainThreatRotation(ai, agent, goal, data, partyData, tar
 	
 	-- oil of immolation
 	if ((levelDiff > 3 or agent:GetAttackersNum() > 3) and false == agent:HasAura(11350)) then
-		agent:CastSpell(agent, 11350, true);
+		if (Unit_AECCCheck(agent, party, 6, partyData.attackers)) then
+			agent:CastSpell(agent, 11350, true);
+		end
 	end
 	
 	-- bloodrage

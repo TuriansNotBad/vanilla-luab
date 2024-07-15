@@ -130,6 +130,7 @@ AURA_MOD_FEAR                 = 7;
 AURA_MOD_TAUNT                = 11;
 AURA_MOD_STUN                 = 12;
 AURA_MOD_DAMAGE_DONE          = 13;
+AURA_MOD_ROOT                 = 26;
 AURA_MOD_SHAPESHIFT           = 36;
 AURA_MOD_HEALING_DONE         = 135;
 AURA_MOD_HEALING_DONE_PERCENT = 136;

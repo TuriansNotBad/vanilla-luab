@@ -1,9 +1,9 @@
 local t_agentInfo = {
 	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	{"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	-- {"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
+	-- {"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
+	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
 	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
-	-- {"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
+	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
