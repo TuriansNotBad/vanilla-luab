@@ -391,9 +391,9 @@ function Hive_Update(hive)
 		if (ai:GetPlayer():IsInCombat()) then
 			data.anyAgentInCombat = true;
 		end
-		ai:GetPlayer():SetHealthPct(100.0);
-		ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
-		ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);
+		-- ai:GetPlayer():SetHealthPct(100.0);
+		-- ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
+		-- ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);
 		local role = ai:GetRole();
 		if (role == ROLE_TANK) then
 			table.insert(data.tanks, ai);
@@ -461,8 +461,9 @@ function Hive_OOCUpdate(hive, data)
 			local healerScores = {};
 			for i = 1, #data.healers do
 				local healer = data.healers[i];
+				local healerAgent = healer:GetPlayer();
 				local maxHeal = data.encounter and data.encounter.healmax;
-				if (not AI_IsIncapacitated(healer:GetPlayer()) and healer:CmdType() ~= CMD_BUFF) then
+				if (not AI_IsIncapacitated(healer:GetPlayer()) and healer:CmdType() ~= CMD_BUFF and healerAgent:GetHealthPct() > 90) then
 					table.insert(healerScores, {healer, Healer_ShouldHealTarget(healer, target, true)});
 				end
 			end

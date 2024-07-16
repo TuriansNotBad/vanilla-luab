@@ -361,7 +361,17 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	end
 end
 
-local function WarriorTankPotions(agent, goal, data)
+local function WarriorTankPotions(agent, goal, data, partyData)
+	
+	-- encounter forced potion
+	local tankPot = partyData.encounter and partyData.encounter.tankPot
+	if (tankPot) then
+		if (goal:IsFinishTimer(ST_POT) and agent:CastSpell(agent, tankPot, false) == CAST_OK) then
+			Print("Tank Encounter Potion", agent:GetName(), GetSpellName(tankPot));
+			goal:SetTimer(ST_POT, 120);
+		end
+		return;
+	end
 	
 	-- Rage Potion
 	if (data.ragepot and goal:IsFinishTimer(ST_POT) and agent:CastSpell(agent, data.ragepot, false) == CAST_OK) then
@@ -434,7 +444,7 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	end
 	
 	-- Potions
-	WarriorTankPotions(agent, goal, data);
+	WarriorTankPotions(agent, goal, data, partyData);
 	
 	-- try to save ourselves
 	if (hp < 30 and not agent:HasAura(SPELL_WAR_SHIELD_WALL) and not agent:HasAura(SPELL_WAR_LAST_STAND)) then
@@ -465,7 +475,7 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	if (false == agent:CanReachWithMelee(target)) then
 		local nonTankThreat,tankThreat = target:GetHighestThreat();
 		local threatDiff = nonTankThreat - tankThreat;
-		if (agent:IsMoving() and (threatDiff > 25.0 or target:GetDistance(agent) < 10)) then
+		if (agent:GetMotionType() ~= MOTION_IDLE --[[or (threatDiff > 25.0 or target:GetDistance(agent) < 10)]]) then
 			return false;
 		end
 		-- assume target is outside holding area, must use ranged

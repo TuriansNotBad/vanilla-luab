@@ -423,5 +423,12 @@ t_dungeons[230].encounters = {
 	{name = "Pyromancer Loregrain"},
 	{name = "Bael'Gar"},
 	{name = "Ambassador Flamelash"},
-	{name = "Magmus", tpos = {1381.345, -558.352, -92.054}, rchrpos = {x = 1360.602, y = -557.804, z = -92.054, melee="dance"}, healmax = true, tanko = 6.21},
+	{
+		name      = "Magmus",
+		tpos      = {1379.953, -701.518, -92.054},
+		rchrpos   = {x = 1364.845, y = -706.544, z = -92.068, melee="dance"},
+		healmax   = true,
+		tanko     = 6.21,
+		-- tankPot   = 17543, -- fire protection potion
+	},
 };

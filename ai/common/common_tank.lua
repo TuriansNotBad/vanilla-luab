@@ -170,7 +170,7 @@ end
 
 function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 	
-	if (x and target:GetDistanceEx(x,y,z,2) > 4) then
+	if (x and target:GetDistanceEx(x,y,z,2) > 3) then
 		
 		-- can't do anything
 		if (target:GetVictim() ~= agent and false == target:HasAuraType(AURA_MOD_TAUNT)) then
@@ -181,10 +181,18 @@ function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 			return true;
 		end
 		
-		local agentD = agent:GetDistance(x,y,z);
+		local r = 5.0; -- todo: maybe better to use a fraction of target's combat reach and specify maximum r for each tpos
+		local tx,ty,tz = target:GetPosition();
+		local dx,dy,dz = x - tx, y - ty, z - tz;
+		local dm       = math.sqrt(dx*dx + dy*dy + dz*dz);
+		dx,dy,dz       = dx/dm,dy/dm,dz/dm;
+		dx,dy,dz       = r*dx,r*dy,r*dz;
+		local ax,ay,az = x+dx,y+dy,z+dz;
+		
+		local agentD = agent:GetDistance(ax,ay,az);
 		if (agent:GetMotionType() ~= MOTION_POINT and agentD > 1) then
 			agent:ClearMotion();
-			agent:MovePoint(x,y,z,false);
+			agent:MovePoint(ax,ay,az,false);
 			Print("Tank_BringTargetToPos: moving to point. Distance =", agentD, target:GetDistanceEx(x,y,z,2), agent:GetName());
 			return false;
 		end
