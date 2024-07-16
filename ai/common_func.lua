@@ -62,6 +62,12 @@ function AI_Replenish(agent, goal, hpThresh, mpThresh, form)
 
 end
 
+function AI_GetDefaultChaseSeparation(target)
+	local cr = target:GetCombatReach();
+	local r  = target:GetBoundingRadius();
+	return math.max(1.0, (cr - r)/2);
+end
+
 function AI_DistanceIfNeeded(ai, agent, goal, party, dist2close, atkTarget)
 	if (ai:IsCLineAvailable() and 0 == agent:GetAttackersNum()) then
 		local data = party:GetData();

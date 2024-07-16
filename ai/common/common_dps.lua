@@ -122,14 +122,15 @@ function Dps_MeleeChase(ai, agent, target, bAttack)
 	end
 	
 	local isOnWrongTarget = (bAttack and agent:GetVictim() ~= target) or (false == bAttack and ai:GetChaseTarget() ~= target);
-	if (isOnWrongTarget or (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) or ai:GetChaseDist() > 2.0) then
+	local r = AI_GetDefaultChaseSeparation(target);
+	if (isOnWrongTarget or (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) or ai:GetChaseDist() > r + .1) then
 		agent:AttackStop();
 		agent:ClearMotion();
 		if (bAttack) then
 			agent:Attack(target);
 		end
 		-- Print("Dps_MeleeChase: ", agent:GetName(), "target", target:GetName());
-		agent:MoveChase(target, 1.5, 2.0, 1.5, math.rad(math.random(160, 200)), math.pi/4.0, false, true);
+		agent:MoveChase(target, r, r/2, r/2, math.rad(math.random(160, 200)), math.pi/4.0, false, true);
 		return;
 	end
 end

@@ -391,9 +391,9 @@ function Hive_Update(hive)
 		if (ai:GetPlayer():IsInCombat()) then
 			data.anyAgentInCombat = true;
 		end
-		-- ai:GetPlayer():SetHealthPct(100.0);
-		-- ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
-		-- ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);
+		ai:GetPlayer():SetHealthPct(100.0);
+		ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
+		ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);
 		local role = ai:GetRole();
 		if (role == ROLE_TANK) then
 			table.insert(data.tanks, ai);

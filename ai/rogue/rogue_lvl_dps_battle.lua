@@ -87,14 +87,37 @@ function RogueLevelDps_Activate(ai, goal)
 		(CMD_FOLLOW, nil, nil, nil, true)
 		(CMD_ENGAGE, nil, nil, nil, true)
 	;
-
+	-- agent:SetGameMaster(false);
+	-- agent:SetGameMaster(true);
 end
 
 --[[*****************************************************
 	Goal update.
 *******************************************************]]
 function RogueLevelDps_Update(ai, goal)
-
+	
+	-- local agent     = ai:GetPlayer();
+	-- local party     = ai:GetPartyIntelligence();
+	-- local partyData = party:GetData();
+	
+	-- local owner = partyData.owner;
+	-- if (not owner) then return GOAL_RESULT_Continue; end
+	
+	-- local target = owner:GetVictim()--or owner;
+	-- if (not target) then agent:AttackStop(); agent:ClearMotion(); return GOAL_RESULT_Continue; end
+	-- agent:Attack(target);
+	-- if (agent:GetMotionType() ~= MOTION_CHASE --[[or ai:GetChaseTarget() ~= target]]) then
+		-- agent:ClearMotion();
+		
+		-- local r = AI_GetDefaultChaseSeparation(target);
+		-- Print(r, r/2, target:GetBoundingRadius(), target:GetCombatReach());
+		-- agent:MoveChase(target, r, r/2, r/2, math.pi, math.pi/4.0, true, true);
+		-- -- agent:MoveChase(target, 1.5, 2.0, 1.5, math.rad(math.random(160, 200)), math.pi/4.0, false, true);
+	-- end
+	-- target:SetHealthPct(100)
+	
+	-- if true then return GOAL_RESULT_Continue; end
+	
 	-- handle commands
 	Command_DefaultUpdate(ai, goal);
 	
