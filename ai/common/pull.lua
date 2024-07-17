@@ -45,7 +45,7 @@ function Pull_Activate(ai, goal)
 	-- reset motion master if needed and go
 	agent:ClearMotion();
 	agent:Attack(target);
-	agent:MoveChase(target, 2.0, 0.7, 1.0, 0.0, math.pi, false, true);
+	agent:MoveChase(target, 2.0, 0.7, 1.0, 0.0, math.pi, false, true, false);
 	-- print("Begin pull");
 	
 	if (nil == ai:GetData().PullRotation) then

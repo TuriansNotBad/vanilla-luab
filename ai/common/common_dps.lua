@@ -85,12 +85,14 @@ function Dps_RangedChase(ai, agent, target, bAttack)
 		if (bAttack) then
 			agent:Attack(target);
 		end
-		agent:MoveChase(target, defD, defMinT, defMaxT, math.rad(math.random(160, 200)), math.pi/4.0, true, false);
+		Print("Dps_RangedChase:", agent:GetName(), target:GetName(), target:GetGuid(), "chase", target:GetDistanceEx(agent, 0));
+		agent:MoveChase(target, defD, defMinT, defMaxT, 0.0, 3.14, true, false, true);
 		return;
 	end
 	
 	if (false == agent:IsInLOS(target)) then
 		if (ai:GetChaseDist() > 1.01) then
+			Print("Dps_RangedChase:", agent:GetName(), target:GetName(), "chase dist too far. No LoS.", ai:GetChaseDist());
 			ai:SetChaseValues(1.0, 0.5, 0.5);
 		end
 	else
@@ -110,6 +112,7 @@ function Dps_RangedChase(ai, agent, target, bAttack)
 			-- end
 		-- end
 		if (ai:GetChaseDist() ~= defD) then
+			Print("Dps_RangedChase:", agent:GetName(), target:GetName(), "chase dist too close. Have LoS.", ai:GetChaseDist(), defD);
 			ai:SetChaseValues(defD, defMinT, defMaxT);
 		end
 	end
@@ -130,7 +133,7 @@ function Dps_MeleeChase(ai, agent, target, bAttack)
 			agent:Attack(target);
 		end
 		-- Print("Dps_MeleeChase: ", agent:GetName(), "target", target:GetName());
-		agent:MoveChase(target, r, r/2, r/2, math.rad(math.random(160, 200)), math.pi/4.0, false, true);
+		agent:MoveChase(target, r, r/2, r/2, math.rad(math.random(160, 200)), math.pi/4.0, false, true, false);
 		return;
 	end
 end

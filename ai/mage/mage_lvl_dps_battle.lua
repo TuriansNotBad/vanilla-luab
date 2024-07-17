@@ -121,7 +121,8 @@ function MageLevelDps_Activate(ai, goal)
 		(CMD_SCRIPT, nil, nil, nil, true)
 		(CMD_CC,     nil, nil, nil, true)
 	;
-
+	-- agent:SetGameMaster(false);
+	-- agent:SetGameMaster(true);
 end
 
 --[[*****************************************************
@@ -129,6 +130,31 @@ end
 *******************************************************]]
 function MageLevelDps_Update(ai, goal)
 	
+	-- local agent     = ai:GetPlayer();
+	-- local party     = ai:GetPartyIntelligence();
+	-- local partyData = party:GetData();
+	
+	-- local owner = partyData.owner;
+	-- if (not owner) then return GOAL_RESULT_Continue; end
+	
+	-- local target = owner:GetVictim() or owner;
+	-- if (target == owner) then
+		-- if (agent:GetMotionType() ~= MOTION_FOLLOW) then
+			-- agent:MoveFollow(target, 0, 0);
+		-- end
+		-- return GOAL_RESULT_Continue
+	-- end
+	-- if (not target) then agent:AttackStop(); agent:ClearMotion(); return GOAL_RESULT_Continue; end
+	-- print(target:GetDistanceEx(agent, 0))
+	-- agent:Attack(target);
+	-- if (agent:GetMotionType() ~= MOTION_CHASE or ai:GetChaseTarget() ~= target) then
+		-- agent:ClearMotion();
+		-- Dps_RangedChase(ai, agent, target, false)
+	-- end
+	-- target:SetHealthPct(100)
+	
+	-- if true then return GOAL_RESULT_Continue; end
+
 	-- handle commands
 	if (not Command_DefaultUpdate(ai, goal)) then
 		return GOAL_RESULT_Continue;

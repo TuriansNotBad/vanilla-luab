@@ -312,14 +312,14 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 				if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
 					if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
 						local r = AI_GetDefaultChaseSeparation(target);
-						agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true);
+						agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true, false);
 						data.tankrot = nil;
 					end
 				end
 			else
 				if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
 					local r = AI_GetDefaultChaseSeparation(target);
-					agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true);
+					agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true, false);
 				end
 				if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
 					local tanko = encounter and encounter.tanko;

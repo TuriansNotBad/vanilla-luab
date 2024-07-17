@@ -598,6 +598,7 @@ function Hive_CombatUpdate(hive, data)
 	
 	if (data.reverse == nil and data.owner ~= nil and hive:HasCLineFor(data.owner)) then
 		data.reverse = hive:ShouldReverseCLine(data.owner, data.attackers[1]);
+		print "-----------------------------------------------------------------------";
 		Print("Hive reverse", data.reverse);
 	end
 	

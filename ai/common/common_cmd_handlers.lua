@@ -20,6 +20,10 @@ local function Cmd_FollowOnBegin(ai, agent, goal, party, data, partyData)
 	goal:ClearSubGoal();
 end
 
+local function Cmd_FollowOnEnd(ai)
+	ai:GetPlayer():ClearMotion();
+end
+
 local function Cmd_FollowUpdate(ai, agent, goal, party, data, partyData)
 	if (goal:GetSubGoalNum() > 0 or agent:IsNonMeleeSpellCasted()) then
 		return;
@@ -60,6 +64,7 @@ local function Cmd_EngageOnBegin(ai, agent, goal, party, data, partyData)
 	Print(agent:GetName(), agent:GetClass(), "CMD_ENGAGE OnBegin default handler");
 	goal:ClearSubGoal();
 	agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+	agent:ClearMotion();
 end
  
  -- todo: allow killing totems when moving
@@ -338,7 +343,7 @@ end
 -- Set default handlers
 --------------------------------------------------
 function Cmd_InitDefaultHandlers()
-	Command_SetDefaultHandlers(CMD_FOLLOW, Cmd_FollowOnBegin, Cmd_FollowUpdate, nil);
+	Command_SetDefaultHandlers(CMD_FOLLOW, Cmd_FollowOnBegin, Cmd_FollowUpdate, Cmd_FollowOnEnd);
 	Command_SetDefaultHandlers(CMD_ENGAGE, Cmd_EngageOnBegin, Cmd_EngageUpdate, nil);
 	Command_SetDefaultHandlers(CMD_DISPEL, Cmd_DispelOnBegin, Cmd_DispelUpdate, Cmd_DispelOnEnd);
 	Command_SetDefaultHandlers(CMD_BUFF  , Cmd_BuffOnBegin,   Cmd_BuffUpdate,   Cmd_BuffOnEnd);

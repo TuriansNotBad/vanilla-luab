@@ -108,7 +108,6 @@ function Unit_AECCCheck(agent, party, r, attackers)
 	for i = 1, #attackers do
 		local attacker = attackers[i];
 		if (attacker:GetDistance(agent) <= r) then
-			print(party:IsCC(attacker));
 			if (party:IsCC(attacker) or Unit_IsCrowdControlled(attacker)) then
 				return false;
 			end
