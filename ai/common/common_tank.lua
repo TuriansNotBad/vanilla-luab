@@ -112,13 +112,15 @@ function Tank_ShouldTankTarget(ai, target, threatNotTank, threatTank, aoeTarget)
 		return false;
 	end
 	
-	local curTarget = ai:CmdType() == CMD_TANK and GetUnitByGuid(agent, ai:CmdArgs()) or agent:GetVictim();
+	local curTankTarget = ai:CmdType() == CMD_TANK and GetUnitByGuid(agent, ai:CmdArgs());
+	local curVictim     = agent:GetVictim();
+	local curTarget     = curTankTarget or curVictim;
 	if (nil == curTarget) then
 		-- Print("Switching target because I had no target", agent:GetName(), ai:CmdType(), ai:CmdType() > 0 and ai:CmdArgs());
 		return true, 0.0;
 	end
 	
-	if (curTarget:GetVictim() ~= agent) then
+	if (curTarget:GetVictim() ~= agent or curTankTarget == target) then
 		return false;
 	end
 	
@@ -131,7 +133,7 @@ function Tank_ShouldTankTarget(ai, target, threatNotTank, threatTank, aoeTarget)
 	local bCurCriticalThreat 	= ai:CmdType() == CMD_TANK and curThreatDiff < ai:GetStdThreat() * 2;
 	
 	-- tank was dpsing target (or idling) when other tank switched target or died (or never existed)
-	if (curTarget == target) then
+	if (not curTankTarget and curTarget == target) then
 		return true, threatTank + stdThreat;
 	end
 	

@@ -273,7 +273,7 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	-- Blizzard
 	if (level >= 20) then
 		
-		if (Unit_AECheck(target, 8.0, 3, not partyData.aoe, partyData.attackers)) then
+		if (Unit_AECheck(target, 8.0, 4, not partyData.aoe, partyData.attackers)) then
 			local d,t = agent:GetSpellDamageAndThreat(agent,  data.blizzard, false, true);
 			local maxThreat = GetAEThreat(ai, agent, partyData.attackers);
 			if (d * 6 < maxThreat) then

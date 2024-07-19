@@ -599,7 +599,7 @@ function WarriorTankMaintainThreatRotation(ai, agent, goal, data, partyData, tar
 	local partyData = party:GetData();
 	
 	-- Potions
-	WarriorTankPotions(agent, goal, data);
+	WarriorTankPotions(agent, goal, data, partyData);
 	
 	-- check if we can do melee
 	if (false == agent:CanReachWithMelee(target)) then
@@ -681,7 +681,7 @@ function WarriorTankDpsRotation(ai, agent, goal, data, partyData, target)
 	local partyData = party:GetData();
 	
 	-- Potions
-	WarriorTankPotions(agent, goal, data);
+	WarriorTankPotions(agent, goal, data, partyData);
 	
 	-- Charge
 	if (level >= 4 and agent:CastSpell(target, data.charge, false) == CAST_OK) then

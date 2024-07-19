@@ -301,7 +301,8 @@ local function Cmd_CCUpdate(ai, agent, goal, party, data, partyData)
 	local target = GetUnitByGuid(agent, guid);
 	
 	if (nil == target or false == target:IsAlive() or (party and false == party:IsCC(target))) then
-		Command_Complete(ai, "CMD_CC completed");
+		Print("CMD_CC interrupted:", target, "is cc =", target and party:IsCC(target));
+		Command_Complete(ai, "CMD_CC interrupted. target is gone or is no longer cc target");
 		return;
 	end
 	

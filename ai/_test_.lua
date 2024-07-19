@@ -1,14 +1,19 @@
 local t_agentInfo = {
 	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
+	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	-- {"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
 	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
-	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
-	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
-	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
+	-- {"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
+	{"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
 	-- {"Man",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
-	-- {"Cynt",LOGIC_ID_Party,"LvlDps"}, -- mage
+	-- {"Zakom",LOGIC_ID_Party,"LvlDps"}, -- rogue
+	{"Ahc",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
+	{"Cynt",LOGIC_ID_Party,"LvlDps"}, -- mage
+	{"Yapri",LOGIC_ID_Party,"LvlDps"}, -- mage
+	{"Dan",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
+	{"Nad",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 };
 
 local Hive_FormationRectGetAngle;
@@ -388,12 +393,13 @@ function Hive_Update(hive)
 	
 	for i = 1, #data.agents do
 		local ai = data.agents[i];
-		if (ai:GetPlayer():IsInCombat()) then
+		local agent = ai:GetPlayer();
+		if (agent:IsInCombat()) then
 			data.anyAgentInCombat = true;
 		end
-		-- ai:GetPlayer():SetHealthPct(100.0);
-		-- ai:GetPlayer():SetPowerPct(POWER_RAGE, 100.0);
-		-- ai:GetPlayer():SetPowerPct(POWER_MANA, 100.0);
+		-- agent:SetHealthPct(100.0);
+		-- agent:SetPowerPct(POWER_MANA, 100.0);
+		-- agent:SetPowerPct(POWER_RAGE, 100.0);
 		local role = ai:GetRole();
 		if (role == ROLE_TANK) then
 			table.insert(data.tanks, ai);
@@ -404,7 +410,6 @@ function Hive_Update(hive)
 		elseif (role == ROLE_MDPS) then
 			table.insert(data.mdps, ai);
 		end
-		-- local agent = ai:GetPlayer();
 		-- print(data.owner:GetDistance(agent));
 	end
 	
@@ -440,6 +445,71 @@ local function IssueBuffCommands(hive, data, agents, iscombat)
 						-- end
 					end
 				end
+			end
+		end
+		
+	end
+end
+
+local function ShouldIssueDispel(hive, data, target, friendly, nonCombat)
+	
+	local dungeon = data.dungeon;
+	if (nonCombat or not dungeon or not dungeon.dispelFilter) then
+		return nil;
+	end
+	return dungeon.dispelFilter(target, hive, data, agents, friendly);
+	
+end
+
+-- todo: threat check
+local function IssueDispelCommands(hive, data, agents, friendly, nonCombat)
+	
+	local function DoIssue(ai, agent, key)
+		-- print("Key", key, agent:GetName(), agent:HasLostControl());
+		if (AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
+			return true;
+		end
+		if (key ~= "Poison" or false == agent:HasAura(SPELL_DRD_ABOLISH_POISON)) then
+			local ally = GetClosestDispelAgent(data.dispel, ai, agent, key, friendly, data.encounter);
+			if (ally) then
+				local allyAi = ally:GetAI();
+				-- if (allyAi:CmdType() == CMD_FOLLOW) then
+					-- AI_PostBuff(ally:GetGuid(), agent:GetGuid(), "Dispel", true);
+					-- hive:CmdDispel(allyAi, agent:GetGuid(), key);
+					Command_IssueDispel(allyAi, hive, agent:GetGuid(), key);
+					Print("CmdDispel issued to", ally:GetName(), key, agent:GetName(), "Rep =", agent:GetReactionTo(ally), ally:CanAttack(agent));
+					-- not currently allowed to dispel multiple types at the same time
+					return true;
+				-- end
+			end
+		end
+	end
+	
+	for i = 1, #agents do
+		
+		local ai = agents[i];
+		local agent = ai.GetPlayer and ai:GetPlayer() or ai;
+		
+		if (agent:IsAlive() and data._needTremor ~= true) then
+			data._needTremor = agent:HasAuraWithMechanics(Mask(MECHANIC_CHARM) | Mask(MECHANIC_FEAR) | Mask(MECHANIC_SLEEP));
+		end
+		
+		if (agent:IsPlayer()
+		and agent:IsAlive()
+		and false == AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
+			
+			local should,key = ShouldIssueDispel(hive, data, agent, friendly, nonCombat);
+			if (should == true) then
+				DoIssue(ai, agent, key);
+			elseif (should == nil) then
+			
+				local dispelTbl = agent:GetDispelTbl(not friendly);
+				for key in next,dispelTbl do
+					if (DoIssue(ai, agent, key)) then
+						break;
+					end
+				end
+			
 			end
 		end
 		
@@ -496,6 +566,9 @@ function Hive_OOCUpdate(hive, data)
 		
 		if (ai:GetRole() ~= ROLE_SCRIPT) then
 			local agent = ai:GetPlayer();
+			-- agent:SetHealthPct(100.0);
+			-- agent:SetPowerPct(POWER_MANA, 100.0);
+			-- agent:SetPowerPct(POWER_RAGE, 100.0);
 			
 			if (agent:GetLevel() ~= data.owner:GetLevel()) then
 				ai:SetDesiredLevel(data.owner:GetLevel());
@@ -525,71 +598,6 @@ function Hive_OOCUpdate(hive, data)
 	
 end
 
-local function ShouldIssueDispel(hive, data, target, friendly, nonCombat)
-	
-	local dungeon = data.dungeon;
-	if (nonCombat or not dungeon or not dungeon.dispelFilter) then
-		return nil;
-	end
-	return dungeon.dispelFilter(target, hive, data, agents, friendly);
-	
-end
-
--- todo: threat check
-function IssueDispelCommands(hive, data, agents, friendly, nonCombat)
-	
-	local function DoIssue(ai, agent, key)
-		-- print("Key", key, agent:GetName(), agent:HasLostControl());
-		if (AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
-			return true;
-		end
-		if (key ~= "Poison" or false == agent:HasAura(SPELL_DRD_ABOLISH_POISON)) then
-			local ally = GetClosestDispelAgent(data.dispel, ai, agent, key, friendly, data.encounter);
-			if (ally) then
-				local allyAi = ally:GetAI();
-				-- if (allyAi:CmdType() == CMD_FOLLOW) then
-					-- AI_PostBuff(ally:GetGuid(), agent:GetGuid(), "Dispel", true);
-					-- hive:CmdDispel(allyAi, agent:GetGuid(), key);
-					Command_IssueDispel(allyAi, hive, agent:GetGuid(), key);
-					Print("CmdDispel issued to", ally:GetName(), key, agent:GetName(), "Rep =", agent:GetReactionTo(ally), ally:CanAttack(agent));
-					-- not currently allowed to dispel multiple types at the same time
-					return true;
-				-- end
-			end
-		end
-	end
-	
-	for i = 1, #agents do
-		
-		local ai = agents[i];
-		local agent = ai.GetPlayer and ai:GetPlayer() or ai;
-		
-		if (agent:IsAlive() and data._needTremor ~= true) then
-			data._needTremor = agent:HasAuraWithMechanics(Mask(MECHANIC_CHARM) | Mask(MECHANIC_FEAR) | Mask(MECHANIC_SLEEP));
-		end
-		
-		if (agent:IsPlayer()
-		and agent:IsAlive()
-		and false == AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
-			
-			local should,key = ShouldIssueDispel(hive, data, agent, friendly, nonCombat);
-			if (should == true) then
-				DoIssue(ai, agent, key);
-			elseif (should == nil) then
-			
-				local dispelTbl = agent:GetDispelTbl(not friendly);
-				for key in next,dispelTbl do
-					if (DoIssue(ai, agent, key)) then
-						break;
-					end
-				end
-			
-			end
-		end
-		
-	end
-end
-
 function Hive_CombatUpdate(hive, data)
 	
 	-- should always attack lowest health target by default
@@ -605,9 +613,18 @@ function Hive_CombatUpdate(hive, data)
 	local encounter = data.encounter;
 	local isForcedCc = encounter and encounter.useForcedCc;
 	
+	-- check that we don't overassign
+	local num_cc_now = 0;
+	for i = #data.attackers, 1, -1 do
+		if (hive:IsCC(data.attackers[i])) then
+			num_cc_now = num_cc_now + 1;
+		end
+	end
+	
 	local minTargetsForCC = 2;
 	if (isForcedCc or (#data.attackers < 6 and not data.aoe)) then
 		for i = #data.ccAgents, 1, -1 do
+			if (#data.attackers - num_cc_now <= 1) then break; end
 			local guid, spellid = data.ccAgents[i][1], data.ccAgents[i][2];
 			-- target assigned
 			local pendingCC;
@@ -629,6 +646,7 @@ function Hive_CombatUpdate(hive, data)
 						local pendingGuid = pendingCC:GetGuid();
 						ai:SetCCTarget(pendingGuid);
 						hive:AddCC(guid, pendingGuid);
+						num_cc_now = num_cc_now + 1;
 					end
 				end
 			end
@@ -638,7 +656,6 @@ function Hive_CombatUpdate(hive, data)
 	end
 	
 	local attackCc = false;
-	local nCC = 0;
 	for i = #data.attackers, 1, -1 do
 		local attacker = data.attackers[i];
 		-- attacker:Kill(); -- kill all cheat
@@ -651,11 +668,9 @@ function Hive_CombatUpdate(hive, data)
 		
 		-- never attack charmed allies
 		if (attacker:IsPlayer() and attacker:HasAuraType(AURA_MOD_CHARM)) then
+			num_cc_now = num_cc_now - 1;
 			table.remove(data.attackers, i);
 		else
-			if (hive:IsCC(attacker)) then
-				nCC = nCC + 1;
-			end
 			local totems = attacker:GetTotems();
 			for i = 1, #totems do
 				if (totems[i]:IsAlive()) then
@@ -670,7 +685,7 @@ function Hive_CombatUpdate(hive, data)
 			end
 		end
 	end
-	attackCc = nCC == #data.attackers;
+	attackCc = num_cc_now == #data.attackers;
 	
 	local nTanks = 0;
 	-- clear out invalid tanks
