@@ -32,7 +32,15 @@ local function CmdHealReset(ai, agent, goal, interrupt, complete)
 	return GOAL_RESULT_Continue;
 end
 
-local function PriestPotions(agent, goal, data)
+local function PriestPotions(agent, goal, data, defensePot)
+
+	if (defensePot and false == agent:HasAura(defensePot)) then
+		if (goal:IsFinishTimer(ST_POT) and agent:CastSpell(agent, defensePot, true) == CAST_OK) then
+			print("Defense Potion", GetSpellName(defensePot), agent:GetName());
+			goal:SetTimer(ST_POT, 120);
+		end
+		return;
+	end
 	
 	local mp = agent:GetPowerPct(POWER_MANA);
 	-- Rage Potion
@@ -125,9 +133,11 @@ function PriestLevelHeal_Activate(ai, goal)
 	data.food    = Consumable_GetFood(level);
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
+	data.flask   = Consumable_GetFlask(SPELL_GEN_FLASK_OF_DISTILLED_WISDOM, level);
 	
 	data.dispels = {
 		Magic = data.dispel,
+		Disease = level >= 32 and SPELL_PRI_ABOLISH_DISEASE or SPELL_PRI_CURE_DISEASE,
 	};
 	
 	local party = ai:GetPartyIntelligence();
@@ -153,6 +163,9 @@ function PriestLevelHeal_Activate(ai, goal)
 			};
 			partyData:RegisterBuff(agent, "Fear Ward", 1, data.fearward, BUFF_SINGLE, 3*6e4, filter, true);
 			partyData:RegisterBuff(agent, "Fear Ward NC", 1, data.fearward, BUFF_SINGLE, 3*6e4, {dungeon = {fear = true}});
+		end
+		if (level >= 14) then
+			partyData:RegisterDispel(agent, "Disease");
 		end
 		if (level >= 18) then
 			partyData:RegisterDispel(agent, "Magic");
@@ -265,7 +278,7 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 		-- end
 	end
 	
-	PriestPotions(agent, goal, data);
+	PriestPotions(agent, goal, data, encounter and encounter.defensepot);
 	
 	local maxThreat;
 	if (target:IsTanking() and hp < 40) then

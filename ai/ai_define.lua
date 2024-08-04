@@ -157,6 +157,7 @@ CURRENT_CHANNELED_SPELL         = 3;
 SpellSchoolMask = {
 	Nature = 8,
 	Frost  = 16,
+	Shadow = 32,
 	Arcane = 64,
 };
 

@@ -118,6 +118,7 @@ function WarriorLevelTank_Activate(ai, goal)
 	data.food    = Consumable_GetFood(level);
 	data.water   = Consumable_GetWater(level);
 	data.ragepot = Consumable_GetRagePotion(level);
+	data.flask   = Consumable_GetFlask(SPELL_GEN_FLASK_OF_THE_TITANS, level);
 	
 	-- dps
 	data.charge			= ai:GetSpellMaxRankForMe(SPELL_WAR_CHARGE);
@@ -287,6 +288,7 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	
 	-- changing target
 	if (target ~= agent:GetVictim()) then
+		agent:AttackStop();
 		agent:ClearMotion();
 		agent:Attack(target);
 	end
@@ -479,9 +481,9 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 			return false;
 		end
 		-- assume target is outside holding area, must use ranged
-		if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
-			return true;
-		end
+		-- if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
+			-- return true;
+		-- end
 		return false;
 	end
 	
@@ -607,9 +609,9 @@ function WarriorTankMaintainThreatRotation(ai, agent, goal, data, partyData, tar
 			return false;
 		end
 		-- assume target is outside holding area, must use ranged
-		if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
-			return true;
-		end
+		-- if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
+			-- return true;
+		-- end
 		return false;
 	end
 	
@@ -695,9 +697,9 @@ function WarriorTankDpsRotation(ai, agent, goal, data, partyData, target)
 			return false;
 		end
 		-- assume target is outside holding area, must use ranged
-		if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
-			return true;
-		end
+		-- if (CAST_OK == agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 2.5) and CAST_OK == agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)) then
+			-- return true;
+		-- end
 		return false;
 	end
 	

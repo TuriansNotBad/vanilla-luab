@@ -77,6 +77,7 @@ function MageLevelDps_Activate(ai, goal)
 	data.food    = Consumable_GetFood(level);
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
+	data.flask   = Consumable_GetFlask(SPELL_GEN_FLASK_OF_SUPREME_POWER, level);
 	
 	-- dispels
 	if (level >= 18) then
@@ -104,6 +105,7 @@ function MageLevelDps_Activate(ai, goal)
 		end
 		partyData:RegisterBuff(agent, "Arcane Intellect", 1, data.aint, type, 5*6e4);
 		partyData:RegisterCC(agent, data.poly);
+		data.ccspell = data.poly;
 		if (level >= 18) then
 			partyData:RegisterDispel(agent, "Curse");
 		end
@@ -168,7 +170,15 @@ function MageLevelDps_Update(ai, goal)
 	
 end
 
-local function MagePotions(agent, goal, data)
+local function MagePotions(agent, goal, data, defensePot)
+	
+	if (defensePot and false == agent:HasAura(defensePot)) then
+		if (goal:IsFinishTimer(ST_POT) and agent:CastSpell(agent, defensePot, true) == CAST_OK) then
+			print("Defense Potion", GetSpellName(defensePot), agent:GetName());
+			goal:SetTimer(ST_POT, 120);
+		end
+		return;
+	end
 	
 	local mp = agent:GetPowerPct(POWER_MANA);
 	-- Rage Potion
@@ -206,7 +216,7 @@ end
 function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	
 	local level = agent:GetLevel();
-	local encounter = partyData.encounter;
+	local encounter = partyData.encounter or {};
 	
 	if (agent:IsNonMeleeSpellCasted()) then
 		return false;
@@ -224,7 +234,7 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	MageSelfBuff(agent, data);
 	
 	-- Potions
-	MagePotions(agent, goal, data);
+	MagePotions(agent, goal, data, encounter.defensepot);
 	
 	-- los/dist checks
 	if (CAST_OK ~= agent:IsInPositionToCast(target, data.frostbolt, 2.5)) then
@@ -253,7 +263,7 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	end
 	
 	-- check interruptable
-	local interruptFilter = encounter and encounter.interruptFilter;
+	local interruptFilter = encounter.interruptFilter;
 	local interruptCheck;
 	if (interruptFilter) then
 		interruptCheck = interruptFilter(ai, agent, party, target, partyData.attackers, false, 25.0);

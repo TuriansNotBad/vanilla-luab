@@ -9,7 +9,18 @@
 		- Artisan    = 35 (300)
 *********************************************************************************************]]
 
-SPELL_GEN_GOBLIN_SAPPER_CHARGE = 13241; -- requires skill 205 - level 10.
+SPELL_GEN_GOBLIN_SAPPER_CHARGE          = 13241; -- requires skill 205 - level 10.
+SPELL_GEN_FLASK_OF_THE_TITANS           = 17626; -- requires level 50
+SPELL_GEN_FLASK_OF_DISTILLED_WISDOM     = 17627; -- requires level 50
+SPELL_GEN_FLASK_OF_SUPREME_POWER        = 17628; -- requires level 50
+SPELL_GEN_FLASK_OF_CHROMATIC_RESISTANCE = 17629; -- requires level 50
+
+local flask = {
+	[SPELL_GEN_FLASK_OF_SUPREME_POWER] = 50,
+	[SPELL_GEN_FLASK_OF_THE_TITANS] = 50,
+	[SPELL_GEN_FLASK_OF_DISTILLED_WISDOM] = 50,
+	[SPELL_GEN_FLASK_OF_CHROMATIC_RESISTANCE] = 50,
+};
 
 local food = {
 	{45, 1131}, -- Alterac Swiss: 8932. Restores 2148 health.
@@ -82,4 +93,10 @@ end
 
 function Consumable_GetManaPotion(level)
 	return GetLeveledItemFromTbl(mana, level);
+end
+
+function Consumable_GetFlask(spellid, level)
+	if (flask[spellid] and flask[spellid] <= level) then
+		return spellid;
+	end
 end

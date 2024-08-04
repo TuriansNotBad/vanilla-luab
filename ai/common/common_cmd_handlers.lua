@@ -84,7 +84,7 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	local area = partyData._holdPos;
 	local encounter = partyData.encounter;
 	local distancingR = encounter and encounter.distancingR or 5.0;
-	local rchrpos = encounter and encounter.rchrpos;
+	local rchrpos = data.rchrpos or (encounter and encounter.rchrpos);
 	local noTotemsToKill = true;--partyData.hostileTotems and #partyData.hostileTotems == 0;
 	
 	if (goal:GetSubGoalNum() > 0) then
@@ -286,6 +286,7 @@ end
 
 local function Cmd_CCOnBegin(ai, agent, goal, party, data, partyData)
 	agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+	agent:InterruptSpell(CURRENT_CHANNELED_SPELL);
 	agent:AttackStop();
 	agent:ClearMotion();
 	goal:ClearSubGoal();
@@ -311,7 +312,7 @@ local function Cmd_CCUpdate(ai, agent, goal, party, data, partyData)
 	end
 	
 	ai:SetCCTarget(guid);
-	goal:AddSubGoal(GOAL_COMMON_Cc, 20.0, guid, data.poly);
+	goal:AddSubGoal(GOAL_COMMON_Cc, 20.0, guid, data.ccspell);
 end
 
 --------------------------------------------------

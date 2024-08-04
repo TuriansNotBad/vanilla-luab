@@ -114,11 +114,22 @@ t_agentSpecs[CLASS_SHAMAN].LvlDps = {
 	ROGUE
 *******************************************************]]
 
--- Priest general info
+-- Rogue general info
 t_agentSpecs[CLASS_ROGUE] = {};
 t_agentSpecs[CLASS_ROGUE].LvlDps = {
 	BattleGoalID = GOAL_RogueLevelDps_Battle,
 	TalentInfo = "t_LevelRogueDpsSpec",
+};
+
+--[[*****************************************************
+	WARLOCK
+*******************************************************]]
+
+-- Warlock general info
+t_agentSpecs[CLASS_WARLOCK] = {};
+t_agentSpecs[CLASS_WARLOCK].LvlDps = {
+	BattleGoalID = GOAL_WarlockLevelDps_Battle,
+	TalentInfo = "t_LevelWarlockDpsSpec",
 };
 
 --[[*****************************************************

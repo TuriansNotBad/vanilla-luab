@@ -112,6 +112,10 @@ function Command_DefaultUpdate(ai, goal)
 		data:UpdateShapeshift(ai, agent, goal);
 	end
 	
+	if (data.flask and false == agent:HasAura(data.flask)) then
+		agent:CastSpell(agent, data.flask, true);
+	end
+	
 	local CommandHandlers = Command_GetTable(data)[cmd];
 	if (CommandHandlers) then
 		if (ai:CmdState() == CMD_STATE_WAITING) then

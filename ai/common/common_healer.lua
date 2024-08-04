@@ -140,3 +140,16 @@ function Healer_GetTargetList(tracked, targets)
 	return list;
 	
 end
+
+function Healer_AnyHealerOnTarget(healers, target)
+	for i = 1, #healers do
+		local ai = healers[i];
+		if (ai:CmdType() == CMD_HEAL) then
+			local guid = ai:CmdArgs();
+			if (guid == target:GetGuid()) then
+				return true;
+			end
+		end
+	end
+	return false;
+end

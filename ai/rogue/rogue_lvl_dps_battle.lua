@@ -130,7 +130,15 @@ function RogueThreatActions(ai, agent, goal, party, data, partyData, target)
 	RogueDpsRotation(ai, agent, goal, data, partyData, target);
 end
 
-function RoguePotions(agent, goal, data)
+function RoguePotions(agent, goal, data, defensePot)
+	
+	if (defensePot and false == agent:HasAura(defensePot)) then
+		if (goal:IsFinishTimer(ST_POT) and agent:CastSpell(agent, defensePot, true) == CAST_OK) then
+			print("Defense Potion", GetSpellName(defensePot), agent:GetName());
+			goal:SetTimer(ST_POT, 120);
+		end
+		return;
+	end
 	
 	local energy = agent:GetPowerPct(POWER_ENERGY);
 	-- Rage Potion

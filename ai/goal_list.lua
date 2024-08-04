@@ -36,6 +36,7 @@ GOAL_MageLevelDps_Battle					= 10004;
 GOAL_DruidFeralLevelDps_Battle              = 10005;
 GOAL_RogueLevelDps_Battle                   = 10006;
 GOAL_ShamanLevelDps_Battle                  = 10007;
+GOAL_WarlockLevelDps_Battle                 = 10008;
 
 -- Open World Pvp
 GOAL_WARRIOR_OpenWorldPvp = 11000;

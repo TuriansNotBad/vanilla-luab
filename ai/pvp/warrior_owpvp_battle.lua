@@ -114,7 +114,7 @@ function WarriorPvpOW_Update(ai, goal)
 		-- attack nearest guy
 		if (_closestTarget and _closestTarget ~= myTarget) then
 			agent:Attack(_closestTarget);
-			agent:MoveChase(_closestTarget, 1, 5, 2, 0, math.pi * 2, true, false);
+			agent:MoveChase(_closestTarget, 1, 5, 2, 0, math.pi * 2, true, false, false);
 		end
 		
 	end
@@ -140,7 +140,7 @@ function WarriorPvpOW_Update(ai, goal)
 		
 		if (not agent:IsMoving()) then
 			if (agent:GetMotionType() == MOTION_IDLE) then
-				agent:MoveChase(target, 1, 5, 2, 0, math.pi * 2, true, false);
+				agent:MoveChase(target, 1, 5, 2, 0, math.pi * 2, true, false, false);
 			end
 		end
 		
@@ -177,7 +177,7 @@ function WarriorPvpOW_Update(ai, goal)
 		-- attack our guy
 		if (_pvpTarget ~= agent:GetVictim()) then
 			agent:Attack(_pvpTarget);
-			agent:MoveChase(_pvpTarget, 1, 5, 2, 0, math.pi * 2, true, false);
+			agent:MoveChase(_pvpTarget, 1, 5, 2, 0, math.pi * 2, true, false, false);
 			-- print(agent:(), "_pvptarget branch");
 		end
 		

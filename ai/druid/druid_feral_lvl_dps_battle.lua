@@ -124,6 +124,7 @@ function FeralLevelDps_Activate(ai, goal)
 	data.food    = Consumable_GetFood(level);
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
+	data.flask   = Consumable_GetFlask(SPELL_GEN_FLASK_OF_THE_TITANS, level);
 	
 	-- talents
 	data._hasCatFire = agent:HasTalent(1162, 0);
@@ -169,7 +170,7 @@ function FeralLevelDps_Activate(ai, goal)
 	end
 	
 	-- Command params
-	Cmd_EngageSetParams(data, true, 25.0, MageDpsRotation);
+	Cmd_EngageSetParams(data, false, nil, FeralLvlDpsActions);
 	Cmd_FollowSetParams(data, 90.0, 96.0);
 	-- register commands
 	Command_MakeTable(ai)
@@ -245,7 +246,9 @@ end
 
 function FeralLvlDpsActions(ai, agent, goal, party, data, partyData, target)
 	-- Potions
-	DruidPotions(agent, goal, data);
+	if (DruidPotions(agent, goal, data, partyData.encounter and partyData.encounter.defensepot)) then
+		return;
+	end
 	
 	-- save all mana for dispels
 	if (partyData.encounter and partyData.encounter.dispelFocus) then
@@ -265,7 +268,19 @@ function FeralLvlDpsActions(ai, agent, goal, party, data, partyData, target)
 	end
 end
 
-function DruidPotions(agent, goal, data)
+function DruidPotions(agent, goal, data, defensePot)
+	
+	if (defensePot and false == agent:HasAura(defensePot)) then
+		if (agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true)) then
+			if (goal:IsFinishTimer(ST_POT)) then
+				goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, agent:GetGuid(), defensePot, FORM_NONE, 5.0);
+				print("Defense Potion", GetSpellName(defensePot), agent:GetName());
+				goal:SetTimer(ST_POT, 120);
+				return true;
+			end
+		end
+		return;
+	end
 	
 	if (agent:GetShapeshiftForm() ~= FORM_NONE) then
 		return;
@@ -302,7 +317,7 @@ local function DruidFeralDoDebuffs(ai, agent, goal, data, partyData, level, targ
 	
 	if (agent:GetShapeshiftForm() == FORM_BEAR) then
 		-- Demoralizing Shout
-		if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
+		if (level >= 14 and false == target:HasAura(data.demo) and agent:CastSpell(target, data.demo, false) == CAST_OK) then
 			-- print("Demoralizing Shout", agent:GetName(), target:GetName());
 			return true;
 		end
