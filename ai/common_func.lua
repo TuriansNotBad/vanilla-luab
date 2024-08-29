@@ -68,12 +68,12 @@ function AI_GetDefaultChaseSeparation(target)
 	return math.max(1.0, (cr - r)/2);
 end
 
-function AI_DistanceIfNeeded(ai, agent, goal, party, dist2close, atkTarget)
-	if (ai:IsCLineAvailable() and 0 == agent:GetAttackersNum()) then
+function AI_DistanceIfNeeded(ai, agent, goal, party, dist2close, atkTarget, fDist, bIgnoreAttackers)
+	if (ai:IsCLineAvailable() and (bIgnoreAttackers or 0 == agent:GetAttackersNum())) then
 		local data = party:GetData();
 		local enemy = Unit_GetFirstEnemyInR(agent, dist2close, false, data.attackers);
 		if (enemy) then
-			local seekDist = atkTarget and 18 - enemy:GetDistance(atkTarget) or 15;
+			local seekDist = fDist or (atkTarget and 18 - enemy:GetDistance(atkTarget) or 15);
 			if (seekDist - 3 > 2) then
 				local x,y,z = party:GetCLinePInLosAtD(agent, enemy, atkTarget or enemy, seekDist - 3, seekDist, 1, not data.reverse);
 				if (x) then

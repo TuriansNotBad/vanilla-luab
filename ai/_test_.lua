@@ -393,6 +393,14 @@ function Hive_Update(hive)
 						end
 					end
 				end
+				if (encounter.enemyPrio) then
+					local function sortprio(a,b)
+						local prioa = encounter.enemyPrio[a:GetEntry()] or 0;
+						local priob = encounter.enemyPrio[b:GetEntry()] or 0;
+						return prioa > priob;
+					end
+					table.sort(data.attackers, sortprio);
+				end
 				if (encounter.script) then
 					local script = encounter.script;
 					script:Update(hive, data);
@@ -582,8 +590,8 @@ function Hive_OOCUpdate(hive, data)
 		
 		if (ai:GetRole() ~= ROLE_SCRIPT) then
 			local agent = ai:GetPlayer();
-			-- agent:SetHealthPct(100.0);
-			-- agent:SetPowerPct(POWER_MANA, 100.0);
+			agent:SetHealthPct(100.0);
+			agent:SetPowerPct(POWER_MANA, 100.0);
 			-- agent:SetPowerPct(POWER_RAGE, 100.0);
 			
 			if (agent:GetLevel() ~= data.owner:GetLevel()) then
@@ -777,7 +785,9 @@ function Hive_CombatUpdate(hive, data)
 					-- hive:CmdCC(ai, target:GetGuid());
 					Command_IssueCc(ai, hive, target);
 				else
-					hive:RemoveCC(target:GetGuid());
+					if (false == Unit_IsCrowdControlled(target)) then
+						hive:RemoveCC(target:GetGuid());
+					end
 				end
 			elseif (attackCc) then
 				hive:RemoveCC(target:GetGuid());

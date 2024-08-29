@@ -119,7 +119,7 @@ function Dps_RangedChase(ai, agent, target, bAttack)
 	
 end
 
-function Dps_MeleeChase(ai, agent, target, bAttack)
+function Dps_MeleeChase(ai, agent, target, bAttack, keepDist)
 	if (AI_HasMotionAura(agent)) then
 		return;
 	end

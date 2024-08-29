@@ -101,9 +101,13 @@ function Command_DefaultUpdate(ai, goal)
 		goal:ClearSubGoal();
 		ai:SetHealTarget(nil);
 		if (ai:GetCCTarget()) then
-			party:RemoveCC(ai:GetCCTarget():GetGuid());
+			if (not Unit_IsCrowdControlled(ai:GetCCTarget())) then
+				party:RemoveCC(ai:GetCCTarget():GetGuid());
+				ai:SetCCTarget(nil);
+			end
+		else
+			ai:SetCCTarget(nil);
 		end
-		ai:SetCCTarget(nil);
 		Command_ClearAll(ai, "Agent incapacitated");
 		return false;
 	end
