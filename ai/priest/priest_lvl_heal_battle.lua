@@ -231,7 +231,7 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 	
 	local encounter = partyData.encounter;
 	local distancingR = encounter and encounter.distancingR or 5.0;
-	local rchrpos = encounter and encounter.rchrpos;
+	local rchrpos = data.rchrpos or (encounter and encounter.rchrpos);
 	if (rchrpos) then
 		if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
 			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);

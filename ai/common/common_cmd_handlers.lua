@@ -49,8 +49,8 @@ end
 --                  CMD_ENGAGE
 --------------------------------------------------
 
-function Cmd_EngageSetParams(aidata, bRanged, interruptR, fnThreatActions)
-	aidata._cmdEngageParams = {bRanged = bRanged, interruptR = interruptR, fnThreatActions = fnThreatActions};
+function Cmd_EngageSetParams(aidata, bRanged, interruptR, fnThreatActions, fnNonThreatActions)
+	aidata._cmdEngageParams = {bRanged = bRanged, interruptR = interruptR, fnThreatActions = fnThreatActions, fnNonThreatActions = fnNonThreatActions};
 end
 
 local function Cmd_EngageGetParams(aidata)
@@ -192,8 +192,11 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 		params.fnThreatActions(ai, agent, goal, party, data, partyData, target);
 	else
 		agent:AttackStop();
-		agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-		agent:InterruptSpell(CURRENT_MELEE_SPELL);
+		-- agent:InterruptSpell(CURRENT_GENERIC_SPELL);
+		-- agent:InterruptSpell(CURRENT_MELEE_SPELL);
+		if (params.fnNonThreatActions) then
+			params.fnNonThreatActions(ai, agent, goal, party, data, partyData, target);
+		end
 	end
 	
 	return;

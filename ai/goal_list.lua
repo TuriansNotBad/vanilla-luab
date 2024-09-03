@@ -22,6 +22,7 @@ GOAL_COMMON_CastAlone       = 10;
 GOAL_COMMON_Totem           = 11;
 GOAL_COMMON_UseObj          = 12;
 GOAL_COMMON_UseItemObj      = 13;
+GOAL_COMMON_TotemXYZ        = 14;
 
 --===============================================================
 -- Individual top goals

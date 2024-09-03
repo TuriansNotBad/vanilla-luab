@@ -17,3 +17,7 @@ function table.merge(t, ...)
 	end
 	return t;
 end
+
+function dist2sqr(x,y,a,b)
+	return (x-a)*(x-a) + (y-b)*(y-b);
+end

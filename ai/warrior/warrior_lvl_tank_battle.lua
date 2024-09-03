@@ -23,6 +23,15 @@ local function GetForms()
 	};
 end
 
+local function WarriorIncapacitatedUpdate(ai, agent, goal, party, data, partyData)
+	if (agent:GetLevel() >= 32 and agent:HasAuraType(AURA_MOD_FEAR) and agent:GetShapeshiftForm() == FORM_BERSERKERSTANCE) then
+		if (agent:CastSpell(agent, SPELL_WAR_BERSERKER_RAGE, false) == CAST_OK) then
+			print("Berserker Rage", agent:GetName());
+			return true;
+		end
+	end
+end
+
 local function WarriorUpdateStance(data, ai, agent, goal)
 	
 	local form = ai:GetForm();
@@ -43,7 +52,11 @@ end
 
 local function WarriorTankShapeshift(ai, agent, level)
 	if (level >= 10) then
-		ai:SetForm(FORM_DEFENSIVESTANCE);
+		if (ai:GetData().attackmode == "fury" and level >= 30) then
+			ai:SetForm(FORM_BERSERKERSTANCE);
+		else
+			ai:SetForm(FORM_DEFENSIVESTANCE);
+		end
 	elseif (FORM_BATTLESTANCE ~= agent:GetShapeshiftForm()) then
 		ai:SetForm(FORM_BATTLESTANCE);
 	end
@@ -131,7 +144,8 @@ function WarriorLevelTank_Activate(ai, goal)
 	data._hasLastStand  = agent:HasTalent(153, 0);
 	data._hasTacticalMs = agent:HasTalent(641, 1) or agent:HasTalent(641, 2) or agent:HasTalent(641, 3) or agent:HasTalent(641, 4);
 	
-	data.UpdateShapeshift = WarriorUpdateStance;
+	data.UpdateShapeshift    = WarriorUpdateStance;
+	data.IncapacitatedUpdate = WarriorIncapacitatedUpdate;
 	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, data.sunder, false, true);;
 	if (false == agent:HasAura(SPELL_WAR_DEFENSIVE_STANCE)) then
@@ -227,6 +241,7 @@ function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyDat
 	
 	-- movement
 	local area = partyData._holdPos;
+	local rchrpos = data.rchrpos or (partyData.encounter and partyData.encounter.rchrpos);
 	local bSwap = partyData.encounter and partyData.encounter.tankswap and target:GetName() == partyData.encounter.name;
 	local _,threat = target:GetHighestThreat();
 	local threatdiff = threat - target:GetThreat(agent);
@@ -238,6 +253,29 @@ function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyDat
 			return;
 		end
 	
+	elseif (rchrpos) then
+		
+		local shouldGoToSpot = not bAllowThreatActions;
+		do
+			local meleeMode = rchrpos.melee;
+			if (meleeMode == "ignore") then
+				shouldGoToSpot = false;
+			elseif (meleeMode == "dance") then
+				-- already set to this mode
+			else
+				shouldGoToSpot = true;
+			end
+		end
+		
+		if (shouldGoToSpot) then
+			if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
+				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
+				return;
+			end
+		else
+			Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+		end
+		
 	else
 	
 		Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
@@ -265,7 +303,6 @@ function WarriorLevelTank_CmdTankOnBegin(ai, agent, goal, party, data, partyData
 end
 
 function WarriorLevelTank_CmdTankOnEnd(ai)
-	ai:GetPlayer():ClearMotion();
 	ai:GetPlayer():AttackStop();
 end
 
@@ -288,7 +325,6 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	
 	-- changing target
 	if (target ~= agent:GetVictim()) then
-		agent:AttackStop();
 		agent:ClearMotion();
 		agent:Attack(target);
 	end
@@ -507,11 +543,11 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	-- Taunt
 	-- Timer for spell batching issues
 	if (level >= 10 and goal:IsFinishTimer(ST_TAUNT) and target:GetVictim() and target:GetVictim() ~= agent and not target:HasAuraType(AURA_MOD_TAUNT)) then
-		local result = agent:CastSpell(target, SPELL_WAR_TAUNT, false);
-		if (result == CAST_OK) then
-			print("!!!!! Taunt", agent:GetName(), target:GetName());
+	
+		if (agent:IsSpellReady(SPELL_WAR_TAUNT)) then
+			print("!!!!! Taunt attempt", agent:GetName(), target:GetName());
+			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), SPELL_WAR_TAUNT, FORM_DEFENSIVESTANCE, 0.0);
 			goal:SetTimer(ST_TAUNT, 1);
-			return true;
 		end
 		
 		if (level >= 16 and data._hasTacticalMs and rage >= 10 and agent:IsSpellReady(data.mock)) then
@@ -528,6 +564,17 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 				return true;
 			end
 		end
+	end
+	
+	if (data.attackmode == "fury") then
+		
+		if (level >= 32 and agent:HasAuraType(AURA_MOD_FEAR)) then
+			if (agent:CastSpell(agent, SPELL_WAR_BERSERKER_RAGE, false) == CAST_OK) then
+				print("Berserker Rage", agent:GetName());
+				return true;
+			end
+		end
+		
 	end
 	
 	-- Revenge
@@ -561,7 +608,7 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	end
 	
 	-- Strike
-	if (rage > 50 and agent:CastSpell(target, data.heroic, false) == CAST_OK) then
+	if ((rage > 50 or data.attackmode == "fury") and agent:CastSpell(target, data.heroic, false) == CAST_OK) then
 		-- print("Heroic Strike", agent:GetName(), target:GetName());
 		return true;
 	end

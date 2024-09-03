@@ -78,6 +78,9 @@ function Command_DefaultUpdate(ai, goal)
 	
 	local cmd = ai:CmdType();
 	if (cmd == CMD_NONE or nil == party) then
+		if (AI_IsIncapacitated(agent) and data.IncapacitatedUpdate) then
+			data.IncapacitatedUpdate(ai, agent, goal, party, data, partyData);
+		end
 		return false;
 	end
 	
@@ -98,6 +101,9 @@ function Command_DefaultUpdate(ai, goal)
 	end
 	
 	if (AI_IsIncapacitated(agent)) then
+		if (data.IncapacitatedUpdate) then
+			data.IncapacitatedUpdate(ai, agent, goal, party, data, partyData);
+		end
 		goal:ClearSubGoal();
 		ai:SetHealTarget(nil);
 		if (ai:GetCCTarget()) then

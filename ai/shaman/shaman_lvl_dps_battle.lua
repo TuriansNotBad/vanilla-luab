@@ -74,7 +74,7 @@ function ShamanLevelDps_Activate(ai, goal)
 	ai:SetStdThreat(2.0*threat);
 	
 	-- Command params
-	Cmd_EngageSetParams(data, false, 15.0, ShamanThreatActions);
+	Cmd_EngageSetParams(data, false, 15.0, ShamanThreatActions, ShamanNonThreatActions);
 	Cmd_FollowSetParams(data, 90.0, 90.0);
 	-- register commands
 	Command_MakeTable(ai)
@@ -124,13 +124,19 @@ local function HasTotemType(agent, slot, type)
 	return earthEntry ~= nil and t_totems[slot][type][earthEntry] == true;
 end
 
-local function GetTotemTarget(agent, partyData)
-	if (partyData.encounter and partyData.encounter.rchrpos) then
+local function GetTotemTarget(agent, partyData, rchrpos, encTotemPos)
+	
+	if (encTotemPos) then
+		return {x = encTotemPos.x, y = encTotemPos.y, z = encTotemPos.z}, encTotemPos.d, encTotemPos.a;
+	end
+	
+	if (rchrpos and rchrpos.melee == nil) then
 		if (agent:IsMoving()) then
 			return nil;
 		end
 		return agent, 0, 0;
 	end
+	
 	local target = partyData.owner;
 	if (#partyData.tanks > 0) then
 		for i,tank in ipairs(partyData.tanks) do
@@ -140,61 +146,64 @@ local function GetTotemTarget(agent, partyData)
 			end
 		end
 	end
+	
 	if (target:IsMoving()) then
 		return nil;
 	end
+	
 	return target, 8.0, 0.0;
+	
+end
+
+local function ShamanTotemDoTotem(ai, agent, goal, data, partyData, totemSlot, totemType, totemSpell)
+	
+	local rchrpos = data.rchrpos or (partyData.encounter and partyData.encounter.rchrpos);
+	
+	if (false == HasTotemType(agent, totemSlot, totemType) and agent:HasEnoughPowerFor(totemSpell, false)) then
+		local target, D, A = GetTotemTarget(agent, partyData, rchrpos, partyData.encounter and partyData.encounter.totemPos);
+		if (type(target) == "table") then
+			goal:AddSubGoal(GOAL_COMMON_TotemXYZ, 10.0, target.x, target.y, target.z, totemSpell, totemSlot, D, A);
+		elseif (target) then
+			goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), totemSpell, totemSlot, D, A);
+		end
+		return true;
+	end
+	return false;
+	
 end
 
 function ShamanTotems(ai, agent, goal, data, partyData)
 	
 	if (goal:GetSubGoalNum() > 0) then
-		return true;
+		return;
 	end
 	
 	local level = agent:GetLevel();
 	
 	-- earth
 	if (level >= 18 and true == partyData._needTremor) then
-		if (false == HasTotemType(agent, TOTEM_EARTH, "Tremor") and agent:HasEnoughPowerFor(data.ttremor, false)) then
-			local target, D, A = GetTotemTarget(agent, partyData);
-			if (target) then
-				goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.ttremor, TOTEM_EARTH, D, A);
-			end
-			return false;
+		if (ShamanTotemDoTotem(ai, agent, goal, data, partyData, TOTEM_EARTH, "Tremor", data.ttremor)) then
+			return;
 		end
-	elseif (level >= 10 and false == HasTotemType(agent, TOTEM_EARTH, "Strength") and agent:HasEnoughPowerFor(data.tstr, false)) then
-		
-		local target, D, A = GetTotemTarget(agent, partyData);
-		if (target) then
-			goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.tstr, TOTEM_EARTH, D, A);
+	elseif (level >= 10) then
+		if (ShamanTotemDoTotem(ai, agent, goal, data, partyData, TOTEM_EARTH, "Strength", data.tstr)) then
+			return;
 		end
-		return false;
 	end
 	
 	-- water
 	if (level >= 22 and true == partyData._needPoisonCleansing) then
-		if (false == HasTotemType(agent, TOTEM_WATER, "Poison") and agent:HasEnoughPowerFor(SPELL_SHA_POISON_CLEANSING_TOTEM, false)) then
-			local target, D, A = GetTotemTarget(agent, partyData);
-			if (target) then
-				goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), SPELL_SHA_POISON_CLEANSING_TOTEM, TOTEM_WATER, D, A);
-			end
-			return false;
+		if (ShamanTotemDoTotem(ai, agent, goal, data, partyData, TOTEM_WATER, "Poison", SPELL_SHA_POISON_CLEANSING_TOTEM)) then
+			return;
 		end
 	end
 	
 	-- air
 	if (level >= 32) then
-		if (false == HasTotemType(agent, TOTEM_AIR, "Windfury") and agent:HasEnoughPowerFor(data.twind, false)) then
-			local target, D, A = GetTotemTarget(agent, partyData);
-			if (target) then
-				goal:AddSubGoal(GOAL_COMMON_Totem, 10.0, target:GetGuid(), data.twind, TOTEM_AIR, D, A);
-			end
-			return false;
+		if (ShamanTotemDoTotem(ai, agent, goal, data, partyData, TOTEM_AIR, "Windfury", data.twind)) then
+			return;
 		end
 	end
-	
-	return true;
 	
 end
 
@@ -210,18 +219,24 @@ function ShamanPotions(agent, goal, data)
 end
 
 function ShamanDpsRotation(ai, agent, goal, data, partyData, target)
+	
+	local mp = agent:GetPowerPct(POWER_MANA);
 
 	local encounter = partyData.encounter;
+	local rchrpos = data.rchrpos or (encounter and encounter.rchrpos);
 
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
 	end
 	
+	local bRanged = encounter.bestRanged == true;	
+	Cmd_EngageSetParams(data, bRanged, 15.0, ShamanThreatActions, ShamanNonThreatActions);
+	
 	local level = agent:GetLevel();
 	
 	-- check if we can do melee
-	if (false == agent:CanReachWithMelee(target)) then
-		if (agent:IsMoving()) then
+	if (not bRanged and false == agent:CanReachWithMelee(target)) then
+		if (agent:IsMoving() or (rchrpos and rchrpos.melee == "ignore")) then
 			return false;
 		end
 		-- assume target is outside holding area, must use ranged
@@ -248,15 +263,28 @@ function ShamanDpsRotation(ai, agent, goal, data, partyData, target)
 		AI_PostBuff(agent:GetGuid(), target:GetGuid(), "Interrupt", true);
 		return true;
 	end
-
+	
+	if (bRanged and mp > 30) then
+		print(agent:IsInPositionToCast(target, data.bolt, 2.5));
+		if (CAST_OK == agent:IsInPositionToCast(target, data.bolt, 2.5) and CAST_OK == agent:CastSpell(target, data.bolt, false)) then
+			return true;
+		end	
+	end
+	
 end
 
 function ShamanThreatActions(ai, agent, goal, party, data, partyData, target)
-	local party = ai:GetPartyIntelligence();
-	local partyData = party:GetData();
 	ShamanTotems(ai, agent, goal, data, partyData);
 	ShamanPotions(agent, goal, data);
 	ShamanDpsRotation(ai, agent, goal, data, partyData, target);
+end
+
+function ShamanNonThreatActions(ai, agent, goal, party, data, partyData, target)
+	local tank = partyData:GetFirstActiveTank();
+	if (not tank or not tank:GetPlayer():IsInCombat()) then
+		return;
+	end
+	ShamanTotems(ai, agent, goal, data, partyData);
 end
 
 --[[*****************************************************

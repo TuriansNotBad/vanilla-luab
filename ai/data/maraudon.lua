@@ -406,14 +406,84 @@ function Maraudon.Sludge:Update(hive, data)
 	
 end
 
+-- todo: this is terrible script
+Maraudon.Princess =
+{
+	DustField = 21909,
+	TankFleePos = {x = 27.724, y = 20.001, z = -126.253},
+	RangeFleePos = {x = 30.003, y = -4.187, z = -127.362},
+	MeleeFleePos = {x = 27.391, y = 13.286, z = -126.916},
+};
+
+function Maraudon.Princess:OnBegin(hive, data)
+	for i,ai in ipairs(data.agents) do
+		if (ai:GetRole() == ROLE_TANK) then
+			-- ai:GetData().attackmode = "fury";
+		end
+	end
+end
+
+function Maraudon.Princess:OnEnd(hive, data)
+	for i,ai in ipairs(data.agents) do
+		ai:GetData().rchrpos = nil;
+		ai:GetData().attackmode = nil;
+	end
+end
+
+function Maraudon.Princess:Update(hive, data)
+	
+	-- non tanks avoid dust field
+	local dfTarget = false;
+	for i,target in ipairs(data.attackers) do
+		if (target:GetAuraTimeLeft(self.DustField) > 2000) then
+			dfTarget = target;
+		end
+	end
+	
+	for i,ai in ipairs(data.agents) do
+	
+		local agent = ai:GetPlayer();
+		if (ai:GetRole() ~= ROLE_TANK and ((dfTarget and agent:GetDistance(dfTarget) < 22) or agent:GetHealthPct() < 50)) then
+			if (ai:GetRole() == ROLE_MDPS) then
+				ai:GetData().rchrpos = self.RangeFleePos;
+			else
+				ai:GetData().rchrpos = self.MeleeFleePos;
+			end
+		end
+		
+	end
+	
+	if (dfTarget) then
+		return;	
+	end
+	
+	for j,ai in ipairs(data.agents) do
+		if (ai:GetRole() == ROLE_TANK and ai:CmdType() ~= CMD_TANK) then
+			ai:GetData().rchrpos = self.TankFleePos;
+		else
+			ai:GetData().rchrpos = nil;
+		end
+	end
+	
+end
+
 t_dungeons[349].encounters = {
 	{name = "Creeping Sludge", script = Maraudon.Sludge},
 	{name = "Lord Vyletongue"},
-	{name = "Noxxion"},
+	{name = "Noxxion", tpos = {1139.853, -216.895, -79.264}, rchrpos = {x = 1142.188, y = -234.245, z = -79.264, melee = "dance"}, defensepot = 17546},
 	{name = "Razorlash"},
 	{name = "Celebras the Cursed", enemyPrio = {[12225] = 1}},
 	{name = "Tinkerer Gizlock"},
-	{name = "Landslide"},
-	{name = "Princess Theradras"},
+	{name = "Landslide", tpos = {356.890, -185.147, -59.898}, rchrpos = {x = 339.584, y = -204.271, z = -59.898, melee = "dance"}, tanko = 0.73},
+	{
+		name = "Princess Theradras",
+		tpos = {29.709, 44.964, -125.933},
+		totemPos = {x = 29.709, y = 44.964, z = -125.933, d = 5.0, a = 4.66};
+		rchrpos = {x = 27.391, y = 13.286, z = -126.916, melee = "ignore"},
+		healmax = true,
+		fear = true,
+		script = Maraudon.Princess,
+		bestRanged = true,
+	},
 	{name = "Rotgrip"},
 };

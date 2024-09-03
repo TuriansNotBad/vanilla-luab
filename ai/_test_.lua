@@ -429,7 +429,9 @@ function Hive_Update(hive)
 			table.insert(data.mdps, ai);
 		end
 		-- print(data.owner:GetDistance(agent));
+		-- io.write(agent:GetName() .. " " .. tostring(agent:HasLostControl()) .. " ");
 	end
+	-- Print"";
 	
 	if (#data.attackers == 0) then
 		Hive_OOCUpdate(hive, data);
