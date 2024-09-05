@@ -444,7 +444,7 @@ function Maraudon.Princess:Update(hive, data)
 	
 		local agent = ai:GetPlayer();
 		if (ai:GetRole() ~= ROLE_TANK and ((dfTarget and agent:GetDistance(dfTarget) < 22) or agent:GetHealthPct() < 50)) then
-			if (ai:GetRole() == ROLE_MDPS) then
+			if (ai:GetRole() ~= ROLE_MDPS) then
 				ai:GetData().rchrpos = self.RangeFleePos;
 			else
 				ai:GetData().rchrpos = self.MeleeFleePos;

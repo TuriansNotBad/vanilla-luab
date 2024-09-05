@@ -81,16 +81,7 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 		return;
 	end
 	
-	local area = partyData._holdPos;
-	local encounter = partyData.encounter;
-	local distancingR = encounter and encounter.distancingR or 5.0;
-	local rchrpos = data.rchrpos or (encounter and encounter.rchrpos);
-	local noTotemsToKill = true;--partyData.hostileTotems and #partyData.hostileTotems == 0;
-	
 	if (goal:GetSubGoalNum() > 0) then
-		if (rchrpos and not noTotemsToKill) then
-			goal:ClearSubGoal();
-		end
 		return;
 	end
 	
@@ -135,65 +126,13 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	end
 	
 	-- movement
-	if (area and false == AI_TargetInHoldingArea(target, area)) then
-		
-		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
-			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
-			return;
-		end
-	
-	elseif (rchrpos) then
-		
-		local shouldGoToSpot = params.bRanged or not bAllowThreatActions;
-		if (not params.bRanged) then
-			local meleeMode = rchrpos.melee;
-			if (meleeMode == "ignore") then
-				shouldGoToSpot = false;
-			elseif (meleeMode == "dance") then
-				-- already set to this mode
-			else
-				shouldGoToSpot = true;
-			end
-		end
-		
-		if (shouldGoToSpot and noTotemsToKill) then
-			if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
-				return;
-			end
-		else
-			if (params.bRanged) then
-			
-				if (false == AI_DistanceIfNeeded(ai, agent, goal, party, distancingR, target)) then
-					Dps_RangedChase(ai, agent, target, bAllowThreatActions);
-				end
-				
-			else
-				Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
-			end
-		end
-		
-	else
-	
-		if (params.bRanged) then
-		
-			if (false == AI_DistanceIfNeeded(ai, agent, goal, party, distancingR, target)) then
-				Dps_RangedChase(ai, agent, target, bAllowThreatActions);
-			end
-			
-		else
-			Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
-		end
-		
-	end
+	Movement_Process(ai, goal, party, target, params.bRanged, bAllowThreatActions);
 	
 	-- attacks
 	if (bAllowThreatActions) then
 		params.fnThreatActions(ai, agent, goal, party, data, partyData, target);
 	else
 		agent:AttackStop();
-		-- agent:InterruptSpell(CURRENT_GENERIC_SPELL);
-		-- agent:InterruptSpell(CURRENT_MELEE_SPELL);
 		if (params.fnNonThreatActions) then
 			params.fnNonThreatActions(ai, agent, goal, party, data, partyData, target);
 		end

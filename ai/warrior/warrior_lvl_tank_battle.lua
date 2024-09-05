@@ -14,6 +14,7 @@ local ST_BOMB = 0; -- dynamite cooldown
 local ST_SAPP = 1; -- goblin sapper charge cooldown
 local ST_POT  = 2; -- potion cooldown
 local ST_TAUNT= 3; -- taunt cooldown
+local SN_JUSTTAUNTED = 4;
 
 
 local function GetForms()
@@ -147,6 +148,8 @@ function WarriorLevelTank_Activate(ai, goal)
 	data.UpdateShapeshift    = WarriorUpdateStance;
 	data.IncapacitatedUpdate = WarriorIncapacitatedUpdate;
 	
+	Movement_Init(data);
+	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, data.sunder, false, true);;
 	if (false == agent:HasAura(SPELL_WAR_DEFENSIVE_STANCE)) then
 		threat = threat * 1.3;
@@ -240,47 +243,7 @@ function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyDat
 	end
 	
 	-- movement
-	local area = partyData._holdPos;
-	local rchrpos = data.rchrpos or (partyData.encounter and partyData.encounter.rchrpos);
-	local bSwap = partyData.encounter and partyData.encounter.tankswap and target:GetName() == partyData.encounter.name;
-	local _,threat = target:GetHighestThreat();
-	local threatdiff = threat - target:GetThreat(agent);
-	
-	if (area and false == AI_TargetInHoldingArea(target, area) and (not bSwap or threatdiff < 1000)) then
-		
-		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
-			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
-			return;
-		end
-	
-	elseif (rchrpos) then
-		
-		local shouldGoToSpot = not bAllowThreatActions;
-		do
-			local meleeMode = rchrpos.melee;
-			if (meleeMode == "ignore") then
-				shouldGoToSpot = false;
-			elseif (meleeMode == "dance") then
-				-- already set to this mode
-			else
-				shouldGoToSpot = true;
-			end
-		end
-		
-		if (shouldGoToSpot) then
-			if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
-				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
-				return;
-			end
-		else
-			Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
-		end
-		
-	else
-	
-		Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
-		
-	end
+	Movement_Process(ai, goal, party, target, false, bAllowThreatActions);
 	
 	-- attacks
 	if (bAllowThreatActions) then
@@ -332,16 +295,8 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	local reverse = party:GetData().reverse;
 	
 	-- move
-	
-	local area = partyData._holdPos;
-	if (area and false == AI_TargetInHoldingArea(target, area) and target:GetVictim() == agent) then
-		
-		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
-			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
-			return;
-		end
-		
-	else
+	-- todo: untangle this mess
+	if (Movement_Process(ai, goal, party, target, false, true)) then
 	
 		local tpx,tpy,tpz = ai:GetPosForTanking(target);
 		
@@ -457,6 +412,11 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	local party = ai:GetPartyIntelligence();
 	local partyData = party:GetData();
 	
+	if (goal:GetNumber(SN_JUSTTAUNTED) == 1) then
+		goal:SetTimer(ST_TAUNT, 0.5);
+		goal:SetNumber(SN_JUSTTAUNTED, 0);
+	end
+	
 	if (data.grenade and party and agent:GetDistance(target) < 10.0 and false == target:IsMoving() and false == agent:IsMoving()) then
 		
 		if (level >= 10 and goal:IsFinishTimer(0) and hp > 50) then
@@ -547,20 +507,21 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 		if (agent:IsSpellReady(SPELL_WAR_TAUNT)) then
 			print("!!!!! Taunt attempt", agent:GetName(), target:GetName());
 			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), SPELL_WAR_TAUNT, FORM_DEFENSIVESTANCE, 0.0);
-			goal:SetTimer(ST_TAUNT, 1);
+			goal:SetNumber(SN_JUSTTAUNTED, 1);
+			return true;
 		end
 		
 		if (level >= 16 and data._hasTacticalMs and rage >= 10 and agent:IsSpellReady(data.mock)) then
 			Print("!!!!! Mocking blow attempt");
 			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.mock, FORM_BATTLESTANCE, 0.0);
-			goal:SetTimer(ST_TAUNT, 1);
+			goal:SetNumber(SN_JUSTTAUNTED, 1);
 			return true;
 		end
 		
 		if (level >= 26 and agent:IsSpellReady(SPELL_WAR_CHALLENGING_SHOUT)) then
 			if (agent:CastSpell(target, SPELL_WAR_CHALLENGING_SHOUT, false) == CAST_OK) then
 				print("!!!!! Challenging Shout", agent:GetName(), target:GetName());
-				goal:SetTimer(ST_TAUNT, 1);
+				goal:SetNumber(SN_JUSTTAUNTED, 1);
 				return true;
 			end
 		end

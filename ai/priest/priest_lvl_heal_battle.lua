@@ -172,6 +172,10 @@ function PriestLevelHeal_Activate(ai, goal)
 		end
 	end
 	
+	Movement_Init(data);
+	data.ShouldInterruptPrecast = PriestLevelHeal_ShouldInterruptPrecast;
+	data.InterruptCurrentHealingSpell = PriestLevelHeal_InterruptCurrentHealingSpell;
+	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
 	ai:SetStdThreat(threat);
 	
@@ -230,25 +234,11 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 	ai:SetHealTarget(guid);
 	
 	local encounter = partyData.encounter;
-	local distancingR = encounter and encounter.distancingR or 5.0;
-	local rchrpos = data.rchrpos or (encounter and encounter.rchrpos);
-	if (rchrpos) then
-		if (agent:GetDistance(rchrpos.x, rchrpos.y, rchrpos.z) > 3.0) then
-			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, rchrpos.x, rchrpos.y, rchrpos.z);
-			return GOAL_RESULT_Continue;
-		end
-	end
+	-- todo: target:GetVictim() - replace with target selection from cmd_engage handler
+	Movement_Process(ai, goal, party, target:GetVictim(), true, false);
 	
 	-- interrupt preheals
 	if (agent:IsNonMeleeSpellCasted()) then
-		
-		-- reposition check
-		if (PriestLevelHeal_ShouldInterruptPrecast(agent, target, isTank, hpdiff)) then
-			if (AI_DistanceIfNeeded(ai, agent, goal, party, distancingR, target)) then
-				PriestLevelHeal_InterruptCurrentHealingSpell(ai, agent, goal);
-				return GOAL_RESULT_Continue;
-			end
-		end
 		
 		if (not PriestLevelHeal_InterruptPrecastHeals(agent, goal, target, isTank, hpdiff)
 			and not PriestLevelHeal_InterruptBatchInvalidHeals(ai, agent, goal, partyData, target, goal:GetNumber(0), goal:GetNumber(1)))
@@ -291,13 +281,12 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 	-- threat check not passed or just have no mana
 	-- or if healing nontank hpdiff isn't low enough
 	if (nil == spell) then
-		AI_DistanceIfNeeded(ai, agent, goal, party, distancingR, target);
 		return GOAL_RESULT_Continue;
 	end
 	
 	-- los/dist checks
-	if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 5.0) and not rchrpos) then
-		goal:AddSubGoal(GOAL_COMMON_MoveInPosToCast, 10.0, guid, spell, 5.0);
+	if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 2.0)--[[and not rchrpos]]) then
+		Movement_RequestMoveInPosToCast(data, guid, spell, 2.0);
 	end
 	
 	if (agent:CastSpell(target, spell, false) == CAST_OK) then
