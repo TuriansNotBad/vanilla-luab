@@ -68,6 +68,10 @@ function AI_GetDefaultChaseSeparation(target)
 	return math.max(1.0, (cr - r)/2);
 end
 
+function AI_IsAttackingTarget(agent, target)
+	return agent:HasUnitState(1) and agent:GetVictim() == target;
+end
+
 function AI_DistanceIfNeeded(ai, agent, goal, party, dist2close, atkTarget, fDist, bIgnoreAttackers)
 	if (ai:IsCLineAvailable() and (bIgnoreAttackers or 0 == agent:GetAttackersNum())) then
 		local data = party:GetData();
@@ -220,7 +224,7 @@ end
 
 function AI_IsAvailableToCast(ai, agent, target, spellid)
 	-- agent has control
-	if (agent:HasLostControl() or false == agent:IsAlive()) then
+	if (AI_IsIncapacitated(agent)) then
 		return false;
 	end
 	-- cast is not possible

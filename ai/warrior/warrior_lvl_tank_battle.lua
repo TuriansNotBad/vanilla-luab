@@ -287,8 +287,13 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	end
 	
 	-- changing target
-	if (target ~= agent:GetVictim()) then
-		agent:ClearMotion();
+	if (not AI_IsAttackingTarget(agent, target)) then
+		if (agent:GetMotionType() == MOTION_CHASE) then
+			agent:ClearMotion();
+		end
+		if (agent:GetVictim() ~= nil) then
+			agent:AttackStop();
+		end
 		agent:Attack(target);
 	end
 	
@@ -341,7 +346,7 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 		end
 		
 	end
-	
+
 	-- do abilities
 	if (WarriorTankRotation(ai, agent, goal, data, partyData, target) and false == ai:CmdIsRequirementMet()) then
 		local threat = target:GetThreat(agent);
