@@ -209,3 +209,66 @@ function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 	return true;
 	
 end
+
+function Tank_CombatMovement(ai, agent, target, partyData)
+	if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
+		Tank_Chase(ai, agent, target, partyData);
+	end
+end
+
+function Tank_Chase(ai, agent, target, partyData)
+	
+	local reverse = partyData.reverse;
+	
+	if (false == agent:CanReachWithMelee(target)) then
+	
+		if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
+			if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
+				local r = AI_GetDefaultChaseSeparation(target);
+				agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true, false);
+				data.tankrot = nil;
+			end
+		end
+		
+	else
+		
+		-- motion
+		if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
+			local r = AI_GetDefaultChaseSeparation(target);
+			agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true, false);
+		end
+		
+		-- facing
+		if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
+			
+			local tanko = encounter and encounter.tanko;
+			if (data.tankrot == nil) then
+				data.tankrot = tanko or ai:GetAngleForTanking(target, reverse, reverse);
+			end
+			
+			if (data.tankrot) then
+			
+				if (data.tankrot ~= data.__oldrot or data.__oldori ~= target:GetOrientation()) then
+					-- Print(data.tankrot, target:GetOrientation(), ai:IsUsingAbsAngle(), data.fliptankrot);
+					data.__oldrot, data.__oldori = data.tankrot, target:GetOrientation();
+				end
+				
+				local adiff = math.abs(target:GetOrientation() - data.tankrot);
+				adiff = math.min(2*math.pi - adiff, adiff);
+				if (adiff > 0.78) then
+					if (not ai:IsUsingAbsAngle()) then
+						ai:SetAbsAngle(data.tankrot);
+						print("set angle", adiff);
+					end
+				elseif (ai:IsUsingAbsAngle()) then
+					print("unset angle");
+					ai:UnsetAbsAngle();
+				end
+				
+			end
+			
+		end
+		
+	end
+	
+end

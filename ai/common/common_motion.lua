@@ -87,8 +87,11 @@ end
 
 local function Movement_HandleDefaultChase(ai, agent, goal, party, data, target, role, distancingR, bRanged, bAllowThreatActions)
 	
-	-- todo: tanks have their own chase movement handling until refactored
-	if (CMD_TANK == ai:CmdType()) then return false; end
+	-- tanks have their own chase movement
+	if (CMD_TANK == ai:CmdType()) then
+		Tank_CombatMovement(ai, agent, target, party:GetData());
+		return true;
+	end
 	
 	local bHealer = ROLE_HEALER == role and CMD_HEAL == ai:CmdType();
 	local bHealerCasting = bHealer and agent:IsNonMeleeSpellCasted();
@@ -133,9 +136,13 @@ function Movement_Process(ai, goal, party, target, bRanged, bAllowThreatActions)
 	local rchrpos     = Data_GetRchrpos(data, encounter);
 	local distancingR = Data_GetEncounterDistancingR(encounter, 5.0);
 	
-	-- todo: active tanks only care about hold area and have their own chase movement handling until refactored
+	-- active tanks only care about hold area
 	if (ai:CmdType() == CMD_TANK) then
-		return not Movement_HandleHoldArea(ai, agent, goal, target, area, role);
+		if          (Movement_HandleHoldArea(ai, agent, goal, target, area, role))
+		then elseif (Movement_HandleDefaultChase(ai, agent, goal, party, data, target, role, distancingR, bRanged, bAllowThreatActions))
+		then
+			return true;
+		end
 	end
 	
 	if          (Movement_HandleHoldArea(ai, agent, goal, target, area, role))

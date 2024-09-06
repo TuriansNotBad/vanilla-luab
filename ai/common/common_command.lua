@@ -53,6 +53,7 @@ function Command_Complete(ai, reason)
 		end
 		ai:CmdComplete();
 		ai:GetTopGoal():ClearSubGoal();
+		Movement_ClearRequests(ai:GetData());
 	end
 end
 
@@ -66,6 +67,18 @@ function Command_ClearAll(ai, reason)
 		end
 		ai:CmdFail();
 		ai:GetTopGoal():ClearSubGoal();
+		Movement_ClearRequests(ai:GetData());
+	end
+end
+
+local function _UpdateCcTarget(ai, party)
+	if (ai:GetCCTarget()) then
+		if (not Unit_IsCrowdControlled(ai:GetCCTarget())) then
+			party:RemoveCC(ai:GetCCTarget():GetGuid());
+			ai:SetCCTarget(nil);
+		end
+	else
+		ai:SetCCTarget(nil);
 	end
 end
 
@@ -78,8 +91,11 @@ function Command_DefaultUpdate(ai, goal)
 	
 	local cmd = ai:CmdType();
 	if (cmd == CMD_NONE or nil == party) then
-		if (AI_IsIncapacitated(agent) and data.IncapacitatedUpdate) then
-			data.IncapacitatedUpdate(ai, agent, goal, party, data, partyData);
+		if (AI_IsIncapacitated(agent)) then
+			_UpdateCcTarget(ai, party);
+			if (data.IncapacitatedUpdate) then
+				data.IncapacitatedUpdate(ai, agent, goal, party, data, partyData);
+			end
 		end
 		return false;
 	end
@@ -106,14 +122,7 @@ function Command_DefaultUpdate(ai, goal)
 		end
 		goal:ClearSubGoal();
 		ai:SetHealTarget(nil);
-		if (ai:GetCCTarget()) then
-			if (not Unit_IsCrowdControlled(ai:GetCCTarget())) then
-				party:RemoveCC(ai:GetCCTarget():GetGuid());
-				ai:SetCCTarget(nil);
-			end
-		else
-			ai:SetCCTarget(nil);
-		end
+		_UpdateCcTarget(ai, party);
 		Command_ClearAll(ai, "Agent incapacitated");
 		return false;
 	end
