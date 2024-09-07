@@ -446,7 +446,7 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	
 	-- oil of immolation
 	if ((levelDiff > 3 or agent:GetAttackersNum() > 3 or (partyData.encounter and #partyData.attackers > 1)) and false == agent:HasAura(11350)) then
-		if (Unit_AECCCheck(agent, party, 6, partyData.attackers)) then
+		if (Unit_AECCCheck(agent, party, 10, partyData.attackers)) then
 			agent:CastSpell(agent, 11350, true);
 		end
 	end

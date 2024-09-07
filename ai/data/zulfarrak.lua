@@ -1,3 +1,5 @@
+-- When moving from stairs to hydromancer best avoid pulling from the pathway
+
 t_dungeons[209] = {
 	-- Line 1: To intersection
 	{
@@ -137,12 +139,89 @@ t_dungeons[209] = {
 	},
 };
 
-t_dungeons[209].encounters = {
+local Zulfarrak = t_dungeons[209];
+
+local function Zulfarrak_OnLoad(self, hive, data, player)
+	
+-- Entries
+local NPC_BLY = 7604;
+	
+	Print("Zulfarrak_OnLoad: initialized by player", player:GetName(), "; Guid:", tostring(player:GetGuid()), player:GetMapId());
+
+	-- find bly
+	local x,y,z,r = Zulfarrak.Bly.Pos.x, Zulfarrak.Bly.Pos.y, Zulfarrak.Bly.Pos.z, 100.0;
+	local bly = GetUnitsWithEntryNear(player, NPC_BLY, x, y, z, r, false, false)[1];
+	if (not bly) then
+		Print("Failed to find Blastmaster at coords = (", x, y, z, ") with radius =", r, "entry =", NPC_BLY);
+		error("Zulfarrak_OnLoad: Bly not found in map. Entry = " .. tostring(NPC_BLY));
+	end
+	self.Ids.Bly = bly:GetGuid();
+	
+end
+
+
+local function Shadowhunter_Update(self, hive, data)
+	
+local NPC_SHADOWHUNTER = 7246;
+
+	for i,target in ipairs(data.attackers) do
+		if (target:GetEntry() == NPC_SHADOWHUNTER) then
+			table.insert(data.forcedCc, target);
+		end
+	end
+	
+end
+
+Zulfarrak.Bly = 
+{
+	Pos = {x = 1882.890, y =1299.270, z = 48.384};
+};
+
+function Zulfarrak.Bly.Test(hive, data)
+	
+	local player = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
+	if (player) then
+		local bly = GetUnitByGuid(player, Zulfarrak.encounters.Ids.Bly);
+		if (bly) then
+			return bly:GetDistance(player) < 50.0 and bly:GetDistance(Zulfarrak.Bly.Pos.x, Zulfarrak.Bly.Pos.y, Zulfarrak.Bly.Pos.z) > 5.0;
+		end
+	end
+	return false;
+	
+end
+
+function Zulfarrak.Bly.Update(self, hive, data)
+	
+	local bly;
+	local player = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
+	if (player) then
+		bly = GetUnitByGuid(player, Zulfarrak.encounters.Ids.Bly);
+	end
+	
+	if (not bly) then return; end
+	
+	for i = #data.attackers,1,-1 do
+		local target = data.attackers[i];
+		if (target:GetDistance(bly) > 30.0) then
+			table.remove(data.attackers, i);
+		end
+	end
+	
+end
+
+Zulfarrak.encounters = {
 	{name = "Antu'sul"},
 	{name = "Theka the Martyr"},
 	{name = "Witch Doctor Zum'rah"},
 	{name = "Nekrum Gutchewer"},
+	{name = "Stairs Encounter", script = Zulfarrak.Bly, test = Zulfarrak.Bly.Test},
 	{name = "Sergeant Bly"},
 	{name = "Chief Ukorz Sandscalp"},
 	{name = "Gahz'rilla"},
+	{name = "Sandfury Shadowhunter", useForcedCc = true, script = {Update = Shadowhunter_Update}},
+	OnLoad = Zulfarrak_OnLoad,
+	Ids =
+	{
+		Bly = nil,
+	},
 };

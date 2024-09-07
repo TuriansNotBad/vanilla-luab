@@ -788,9 +788,7 @@ function Hive_CombatUpdate(hive, data)
 					-- hive:CmdCC(ai, target:GetGuid());
 					Command_IssueCc(ai, hive, target);
 				else
-					if (false == Unit_IsCrowdControlled(target)) then
-						hive:RemoveCC(target:GetGuid());
-					end
+					hive:RemoveCC(target:GetGuid());
 				end
 			elseif (attackCc) then
 				hive:RemoveCC(target:GetGuid());
