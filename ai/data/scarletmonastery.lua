@@ -255,6 +255,96 @@ t_dungeons[189] = {
 	},
 };
 
-t_dungeons[189].encounters = {
+local ScarletMonastery = t_dungeons[189];
+ScarletMonastery.Arcanist =
+{
+	key          = "ScarletMonastery.Arcanist.OldRole",
+	DetonationId = 9435,
+	PolymorphId  = 13323,
+	Entry        = 6487,
+	RetreatPos   = {x = 181.222, y = -429.309, z = 18.532},
 	
+	WhirlwindId  = 8989,
+	EntryHerod   = 3975,
+	RetreatHerod = {x = 1948.347, y = -431.939, z = 16.367},
+};
+
+function ScarletMonastery.Arcanist:OnBegin(hive, data)
+	Encounter_PreprocessAgents(self.key, data);
+end
+
+function ScarletMonastery.Arcanist:OnEnd(hive, data)
+	local function restore_agent(ai, agent, aidata, data)
+		aidata.rchrpos = nil;
+		aidata.forceBurstThreat = nil;
+	end
+	Encounter_RestoreAgents(self.key, data, restore_agent);
+end
+
+function ScarletMonastery.Arcanist:Update(hive, data)
+	
+	local iscasting, retreat = false;
+	for i,target in ipairs(data.attackers) do
+		if (target:GetEntry() == self.Entry) then
+			iscasting = target:GetCurrentSpellId() == self.DetonationId;
+			retreat = self.RetreatPos;
+			break;
+		elseif (target:GetEntry() == self.EntryHerod) then
+			iscasting = target:GetCurrentSpellId(CURRENT_CHANNELED_SPELL) == self.WhirlwindId;
+			retreat = self.RetreatHerod;
+			break;
+		end
+	end
+	
+	-- run away when it's casting the aoe
+	if (iscasting) then
+		
+		for i,ai in ipairs(data.agents) do
+			local agent = ai:GetPlayer();
+			if (ai:GetRole() == ROLE_TANK) then
+				Encounter_ChangeRole(ai, self.key, ROLE_RDPS);
+				Command_ClearAll(ai, self.key .. " claiming agent");
+				Print(self.key, "taking over", agent:GetName());
+			end
+			
+			ai:GetData().rchrpos = retreat;
+		end
+		return;
+		
+	end
+	
+	-- reset
+	for i,ai in ipairs(data.agents) do
+		local agent = ai:GetPlayer();
+		if (ai:GetRole() ~= Encounter_GetRealRole(ai, self.key)) then
+			Encounter_RestoreRole(ai, self.key);
+		end
+		if (ai:CmdType() == CMD_TANK) then
+			if (false == agent:HasAura(11350)) then
+				agent:CastSpell(agent, 11350, true);
+			end
+			ai:GetData().forceBurstThreat = true;
+		end
+		ai:GetData().rchrpos = nil;
+	end
+	
+end
+
+ScarletMonastery.encounters = {
+	{name = "Interrogator Vishas"},
+	{name = "Bloodmage Thalnos"},
+	{name = "Houndmaster Loksey"},
+	{
+		name = "Arcanist Doan",
+		tpos = {136.328, -429.092, 18.494},
+		rchrpos = {x = 165.039, y = -429.154, z = 18.516, melee = "dance"},
+		script = ScarletMonastery.Arcanist,
+		interruptFilter = function(ai, agent, party, target, targets, threatCheck, maxInterruptDist)
+			return target:GetCurrentSpellId() == ScarletMonastery.Arcanist.PolymorphId;
+		end
+	},
+	{name = "Herod", script = ScarletMonastery.Arcanist, rchrpos = {x = 1948.347, y = -431.939, z = 16.367, melee = "ignore"}, tpos = {1964.527, -431.589, 6.178}},
+	{name = "Scarlet Commander Mograine"},
+	{name = "High Inquisitor Whitemane"},
+	{name = "Scarlet Trainee", script = {Update = function(self, hive, data) data.attackers.ignoreThreat = true; end}}
 };

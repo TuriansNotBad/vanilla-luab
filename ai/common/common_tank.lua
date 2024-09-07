@@ -210,13 +210,13 @@ function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 	
 end
 
-function Tank_CombatMovement(ai, agent, target, partyData)
+function Tank_CombatMovement(ai, agent, target, data, partyData)
 	if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
-		Tank_Chase(ai, agent, target, partyData);
+		Tank_Chase(ai, agent, target, data, partyData);
 	end
 end
 
-function Tank_Chase(ai, agent, target, partyData)
+function Tank_Chase(ai, agent, target, data, partyData)
 	
 	local reverse = partyData.reverse;
 	

@@ -649,7 +649,8 @@ function Hive_CombatUpdate(hive, data)
 	end
 	
 	local minTargetsForCC = 2;
-	if (isForcedCc or (#data.attackers < 6 and not data.aoe)) then
+	local ccVsAoeCheck = #data.attackers < 6 and not data.aoe;
+	if (isForcedCc or ccVsAoeCheck) then
 		for i = #data.ccAgents, 1, -1 do
 			if (#data.attackers - num_cc_now <= 1) then break; end
 			local guid, spellid, isfear = data.ccAgents[i][1], data.ccAgents[i][2], data.ccAgents[i].isfear;
@@ -783,7 +784,7 @@ function Hive_CombatUpdate(hive, data)
 		else
 			
 			if (false == attackCc and false == Unit_IsCrowdControlled(target) and ai:CmdType() ~= CMD_CC) then
-				if (false == AI_IsIncapacitated(agent)) then
+				if (false == AI_IsIncapacitated(agent) and ccVsAoeCheck) then
 					-- hive:CmdCC(ai, target:GetGuid());
 					Command_IssueCc(ai, hive, target);
 				else

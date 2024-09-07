@@ -89,7 +89,7 @@ local function Movement_HandleDefaultChase(ai, agent, goal, party, data, target,
 	
 	-- tanks have their own chase movement
 	if (CMD_TANK == ai:CmdType()) then
-		Tank_CombatMovement(ai, agent, target, party:GetData());
+		Tank_CombatMovement(ai, agent, target, data, party:GetData());
 		return true;
 	end
 	
@@ -143,6 +143,8 @@ function Movement_Process(ai, goal, party, target, bRanged, bAllowThreatActions)
 		then
 			return true;
 		end
+		
+		return false;
 	end
 	
 	if          (Movement_HandleHoldArea(ai, agent, goal, target, area, role))

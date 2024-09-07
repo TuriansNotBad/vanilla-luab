@@ -381,7 +381,8 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 		if (level >= 10 and goal:IsFinishTimer(0) and hp > 50) then
 			
 			-- sapper charge
-			if (Unit_AECheck(agent, 5.0, 3, false, partyData.attackers) and agent:CastSpell(agent, SPELL_GEN_GOBLIN_SAPPER_CHARGE, false) == CAST_OK) then
+			if ((Unit_AECheck(agent, 5.0, 3, false, partyData.attackers) or data.forceBurstThreat)
+			and agent:CastSpell(agent, SPELL_GEN_GOBLIN_SAPPER_CHARGE, false) == CAST_OK) then
 				print("Goblin Sapper Charge", agent:GetName(), target:GetName());
 				goal:SetTimer(0, 300);
 				goal:SetTimer(1, 60);
@@ -391,7 +392,8 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 		elseif (goal:IsFinishTimer(1)) then
 			
 			-- throw dynamite
-			if (Unit_AECheck(target, 5.0, 2, false, partyData.attackers) and agent:CastSpell(target, data.grenade, false) == CAST_OK) then
+			if ((Unit_AECheck(target, 5.0, 2, false, partyData.attackers) or data.forceBurstThreat)
+			and agent:CastSpell(target, data.grenade, false) == CAST_OK) then
 				print("Dynamite", agent:GetName(), target:GetName());
 				goal:SetTimer(1, 60);
 				return true;
