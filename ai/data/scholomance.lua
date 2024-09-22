@@ -714,7 +714,7 @@ local function Scholomance_Gandling_FindTrappedEntity(agents, tracked, wp)
 	
 	local result = {d = 5000.0, tracked = {}};
 	Scholomance_Gandling_FindTrappedEntity_SearchList(agents,  wp, result);
-	-- Scholomance_Gandling_FindTrappedEntity_SearchList(tracked, wp, result, true);
+	Scholomance_Gandling_FindTrappedEntity_SearchList(tracked, wp, result, true);
 	-- remove tracked
 	for i = 1,#result.tracked do
 		table.remove(tracked, result.tracked[i]);
