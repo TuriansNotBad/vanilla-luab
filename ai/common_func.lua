@@ -62,6 +62,24 @@ function AI_Replenish(agent, goal, hpThresh, mpThresh, form)
 
 end
 
+function AI_ShootRanged(ai, agent, target)
+	local itemId = ai:EquipSlotItemId(EquipSlot.Ranged);
+	if (itemId <= 0) then return; end
+	
+	local item = Item_GetItemFromId(itemId);
+	assert(item, "AI_ShootRanged: equipped ranged item doesn't exist");
+	
+	local subclass = item:GetSubclass();
+	if (subclass == ItemSubclass.WeaponBow) then
+		return agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false)
+	elseif (subclass == ItemSubclass.WeaponCrossbow) then
+		return agent:CastSpell(target, SPELL_GEN_SHOOT_CROSSBOW, false)
+	elseif (subclass == ItemSubclass.WeaponGun) then
+		return agent:CastSpell(target, SPELL_GEN_SHOOT_GUN, false)
+	end
+	
+end
+
 function AI_GetDefaultChaseSeparation(target)
 	local cr = target:GetCombatReach();
 	local r  = target:GetBoundingRadius();
@@ -89,6 +107,48 @@ function AI_DistanceIfNeeded(ai, agent, goal, party, dist2close, atkTarget, fDis
 		end
 	end
 	return false;
+end
+
+function AI_UseGrenade(agent, goal, target, spellid, cd)
+	if (not spellid or agent:IsMoving() or target:IsMoving()) then return false; end
+	if (goal:IsFinishTimer(ST_GRENADE) and agent:CastSpell(target, spellid, true) == CAST_OK) then
+		goal:SetTimer(ST_GRENADE, cd);
+		return true;
+	end
+	return false;
+end
+
+function AI_IsolateAgent(agent, hive, agents)
+	
+	local guid = agent:GetGuid();
+	for i = 1,#agents do
+		local ai = agents[i];
+		local cmd = ai:CmdType();
+		if (cmd == CMD_HEAL or cmd == CMD_BUFF or cmd == CMD_DISPEL or cmd == CMD_FOLLOW or cmd == CMD_CC) then
+			if (guid == ai:CmdArgs()) then
+				Command_Complete(ai, "Clear commands with target " .. tostring(guid));
+			end
+		end
+	end
+	
+	local ai = agent:GetAI();
+	if (not ai) then return; end
+	
+	local ccTarget = ai:GetCCTarget();
+	if (ccTarget) then
+		if (hive:IsCC(ccTarget)) then
+			hive:RemoveCC(ccTarget:GetGuid());
+		end
+	end
+	
+end
+
+function AI_FindAttackerWithEntry(attackers, entry)
+	for i = 1, #attackers do
+		if (attackers[i]:GetEntry() == entry) then
+			return attackers[i];
+		end
+	end
 end
 
 function Unit_AECheck(agent, r, minCount, checkCC, attackers)
@@ -257,16 +317,24 @@ function GetEncounter(map, party, partyData)
 	end
 	
 	for i,encounter in ipairs(data) do
-		if (encounter.test and encounter.test(party, partyData)) then
-			return encounter;
-		end
-	end
-	
-	for i,attacker in ipairs(partyData.attackers) do
-		for i,encounter in ipairs(data) do
-			if (encounter.name == attacker:GetName()) then
+		if (encounter.test) then
+		
+			if (encounter.test(party, partyData)) then
 				return encounter;
 			end
+			
+		else
+		
+			for i,attacker in ipairs(partyData.attackers) do
+				if (encounter.entry) then
+					if (encounter.entry == attacker:GetEntry()) then
+						return encounter;
+					end
+				elseif (encounter.name == attacker:GetName()) then
+					return encounter;
+				end
+			end
+			
 		end
 	end
 	

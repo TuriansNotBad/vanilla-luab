@@ -76,6 +76,8 @@ function WarriorLevelTank_Activate(ai, goal)
 	
 	-- learn proficiencies
 	agent:LearnSpell(Proficiency.Bow);
+	agent:LearnSpell(Proficiency.Crossbow);
+	agent:LearnSpell(Proficiency.Plate);
 	
 	local gsi = GearSelectionInfo(
 		0.1, 1.5, -- armor, damage
@@ -92,21 +94,15 @@ function WarriorLevelTank_Activate(ai, goal)
 	local race = agent:GetRace();
 	if (race == RACE_ORC) then
 		info.WeaponType = {"Axe"};
-		-- if (ai:GetSpec() == "LvlTankSwapOnly") then
-			-- info.WeaponType = {"Axe2H"};
-			-- info.OffhandType = nil;
-		-- end
 	elseif (race == RACE_HUMAN) then
 		info.WeaponType = {"Sword"};
-		if (ai:GetSpec() == "LvlTankSwapOnly") then
-			info.WeaponType = {"Sword2H"};
-			info.OffhandType = nil;
-		end
 	end
-	AI_SpecGenerateGear(ai, info, gsi, nil, true)
 	
 	local classTbl = t_agentSpecs[ agent:GetClass() ];
 	local specTbl = classTbl[ ai:GetSpec() ];
+	
+	AI_SpecEquipLoadoutOrRandom(ai, info, gsi, nil, true, Gear_GetLoadoutForLevel60(specTbl.Loadout));
+	AI_SpecSetAmmo(ai, ITEMID_ROUGH_ARROW);
 	
 	ai:SetRole(ROLE_TANK);
 	
@@ -139,6 +135,7 @@ function WarriorLevelTank_Activate(ai, goal)
 	data.rend			= ai:GetSpellMaxRankForMe(SPELL_WAR_REND);
 	data.execute		= ai:GetSpellMaxRankForMe(SPELL_WAR_EXECUTE);
 	data.overpower 		= ai:GetSpellMaxRankForMe(SPELL_WAR_OVERPOWER);
+	data.cleave         = ai:GetSpellMaxRankForMe(SPELL_WAR_CLEAVE);
 	
 	-- talents
 	data._hasShieldSlam = Builds.Select(agent, "1.6.1", 148, agent.HasTalent, 0);
@@ -157,7 +154,6 @@ function WarriorLevelTank_Activate(ai, goal)
 	ai:SetStdThreat(threat);
 	Print("Tank std threat, x2", ai:GetStdThreat(), ai:GetStdThreat() * 2);
 	
-	ai:SetAmmo(ITEMID_ROUGH_ARROW);
 	data.PullRotation = WarriorPullRotation;
 	
 	-- Command params
@@ -168,6 +164,7 @@ function WarriorLevelTank_Activate(ai, goal)
 		(CMD_ENGAGE, nil, WarriorLevelTank_CmdEngageUpdate, nil, true)
 		(CMD_PULL,   nil, nil, nil, true)
 		(CMD_TANK,   WarriorLevelTank_CmdTankOnBegin, WarriorLevelTank_CmdTankUpdate, WarriorLevelTank_CmdTankOnEnd, true)
+		(CMD_SCRIPT, nil, nil, nil, true)
 	;
 	
 end
@@ -194,7 +191,7 @@ end
 function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyData)
 	-- do combat!
 	-- party has no attackers
-	local targets = partyData.attackers;
+	local targets = Data_GetAttackers(data, partyData);
 	if (not targets[1]) then
 		agent:AttackStop();
 		agent:ClearMotion();
@@ -267,6 +264,7 @@ end
 
 function WarriorLevelTank_CmdTankOnEnd(ai)
 	ai:GetPlayer():AttackStop();
+	ai:GetPlayer():ClearMotion();
 	ai:UnsetAbsAngle();
 end
 
@@ -389,13 +387,13 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 				return true;
 			end
 			
-		elseif (goal:IsFinishTimer(1)) then
+		elseif (goal:IsFinishTimer(ST_GRENADE)) then
 			
 			-- throw dynamite
 			if ((Unit_AECheck(target, 5.0, 2, false, partyData.attackers) or data.forceBurstThreat)
 			and agent:CastSpell(target, data.grenade, false) == CAST_OK) then
 				print("Dynamite", agent:GetName(), target:GetName());
-				goal:SetTimer(1, 60);
+				goal:SetTimer(ST_GRENADE, 60);
 				return true;
 			end
 			
@@ -449,6 +447,10 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 		if (Unit_AECCCheck(agent, party, 10, partyData.attackers)) then
 			agent:CastSpell(agent, 11350, true);
 		end
+	end
+	
+	if (agent:HasAura(11350) and not Unit_AECCCheck(agent, party, 8, partyData.attackers)) then
+		agent:CancelAura(11350);
 	end
 	
 	-- crystal spire
@@ -640,7 +642,7 @@ function WarriorTankDpsRotation(ai, agent, goal, data, partyData, target)
 	
 	local level = agent:GetLevel();
 	
-	ai:SetForm(FORM_BATTLESTANCE);
+	ai:SetForm(data.attackmode == "aoe" and FORM_BERSERKERSTANCE or FORM_BATTLESTANCE);
 	
 	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return false;
@@ -675,6 +677,30 @@ function WarriorTankDpsRotation(ai, agent, goal, data, partyData, target)
 	-- bloodrage
 	if (level >= 10 and hp > 20 and rage < 40 and false == agent:HasAura(SPELL_WAR_BLOODRAGE)) then
 		agent:CastSpell(agent, SPELL_WAR_BLOODRAGE, false);
+	end
+	
+	if (data.attackmode == "aoe" and level >= 36) then
+		
+		local targets = Data_GetAttackers(data, partyData);
+		-- throw dynamite
+		if (goal:IsFinishTimer(ST_GRENADE) and Unit_AECheck(target, 5.0, 3, false, targets) and agent:CastSpell(target, data.grenade, false) == CAST_OK) then
+			Print("Dynamite", agent:GetName(), target:GetName());
+			goal:SetTimer(ST_GRENADE, 60);
+			return true;
+		end
+		
+		if (Unit_AECheck(agent, 7, 3, false, targets)) then
+			if (agent:CastSpell(target, SPELL_WAR_WHIRLWIND, false) == CAST_OK) then
+				return;
+			end
+			if (not agent:IsSpellReady(SPELL_WAR_WHIRLWIND)) then
+				if (agent:CastSpell(target, data.cleave, false) == CAST_OK) then
+					return;
+				end
+			end
+			return;
+		end
+		
 	end
 	
 	-- Execute
@@ -712,9 +738,9 @@ function WarriorPullRotation(ai, agent, target)
 	
 	-- los/dist checks
 	if (CAST_OK ~= agent:IsInPositionToCast(target, SPELL_GEN_SHOOT_BOW, 5.0)) then
-		return;
+		return false;
 	end
-	agent:CastSpell(target, SPELL_GEN_SHOOT_BOW, false);
+	return AI_ShootRanged(ai, agent, target) == CAST_OK;
 
 end
 

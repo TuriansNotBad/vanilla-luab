@@ -23,6 +23,7 @@ local SN_Y    = 1; -- Make distance to Y coordinate
 local SN_Z    = 2; -- Make distance to Z coordinate
 local SN_FAR  = 8; -- Flag to use far pull (usually caused by ranged enemies)
 local SN_FLAG = 9; -- Flag to only attempt distancing once
+local ST_AWAIT= 0; -- Timer after successful shot we wait this long
 
 --[[******************************************************
 	Goal start
@@ -63,6 +64,7 @@ function Pull_Update(ai, goal)
 	local guid 	= goal:GetParam(0);	-- initial enemy guid
 	local target = GetUnitByGuid(agent, guid);
 	local party = ai:GetPartyIntelligence();
+	local data = ai:GetData();
 	local partyData = party:GetData();
 	
 	if (nil == target) then
@@ -83,7 +85,22 @@ function Pull_Update(ai, goal)
 	
 	-- is current victim pulled yet
 	if (target:GetVictim() == nil) then
-		ai:GetData().PullRotation(ai, agent, target);
+		
+		if (data.PullRotation(ai, agent, target)) then
+			if (agent:GetMotionType() == MOTION_CHASE) then
+				agent:ClearMotion();
+			end
+			if (goal:IsFinishTimer(ST_AWAIT)) then
+				goal:SetTimer(ST_AWAIT, 3.2);
+			end
+		end
+			
+		if (goal:IsFinishTimer(ST_AWAIT)) then
+			if (agent:GetMotionType() ~= MOTION_CHASE) then
+				agent:MoveChase(target, 2.0, 0.7, 1.0, 0.0, math.pi, false, true, false);
+			end
+		end
+		
 		return GOAL_RESULT_Continue;
 	end
 	

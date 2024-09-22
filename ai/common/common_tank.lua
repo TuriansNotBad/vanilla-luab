@@ -143,7 +143,7 @@ function Tank_ShouldTankTarget(ai, target, threatNotTank, threatTank, aoeTarget)
 	end
 	
 	if (bCurCriticalThreat) then
-		Print("Rejecting target cos mine is critical diff =", curThreatDiff, curThreatTank, curThreatNotTank, ai:GetStdThreat() * 2, target:GetName());
+		-- Print("Rejecting target cos mine is critical diff =", curThreatDiff, curThreatTank, curThreatNotTank, ai:GetStdThreat() * 2, target:GetName());
 		return false;
 	end
 	
@@ -241,7 +241,7 @@ function Tank_Chase(ai, agent, target, data, partyData)
 		-- facing
 		if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
 			
-			local tanko = encounter and encounter.tanko;
+			local tanko = Data_GetTankOrientation(aidata, partyData);
 			if (data.tankrot == nil) then
 				data.tankrot = tanko or ai:GetAngleForTanking(target, reverse, reverse);
 			end

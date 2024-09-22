@@ -475,7 +475,7 @@ function Gnomeregan.Mekgineer:SelectAgent(data)
 	
 end
 
-function Gnomeregan.Mekgineer.AgentScript(ai, agent, goal, data, partyData)
+function Gnomeregan.Mekgineer.AgentScript(ai, agent, goal, party, data, partyData)
 	
 	-- push button for active face
 	

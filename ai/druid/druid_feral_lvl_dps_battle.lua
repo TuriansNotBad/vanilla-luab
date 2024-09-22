@@ -246,7 +246,7 @@ end
 
 function FeralLvlDpsActions(ai, agent, goal, party, data, partyData, target)
 	-- Potions
-	if (DruidPotions(agent, goal, data, partyData.encounter and partyData.encounter.defensepot)) then
+	if (DruidPotions(agent, goal, data, Data_GetDefensePotion(data, partyData.encounter))) then
 		return;
 	end
 	
@@ -299,9 +299,14 @@ local function DruidApplyItemBuffs(ai, agent, goal, data, level)
 	
 	-- crowd pummeler, could check if equipped
 	if (level >= 29 and false == agent:HasAura(SPELL_GEN_PUMMELER)) then
-		if (agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true)) then
-			goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, agent:GetGuid(), SPELL_GEN_PUMMELER, FORM_NONE, 5.0);
-			return true;
+		-- Patch 1.10: All shapeshift forms can now use equipped items.
+		if (CVER < Builds["1.10.2"]) then
+			if (agent:HasEnoughPowerFor(data.forms[FORM_BEAR], true)) then
+				goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, agent:GetGuid(), SPELL_GEN_PUMMELER, FORM_NONE, 5.0);
+				return true;
+			end
+		else
+			agent:CastSpell(agent, SPELL_GEN_PUMMELER, false);
 		end
 	end
 	

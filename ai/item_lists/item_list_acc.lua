@@ -199,7 +199,6 @@ ItemAccList["Finger"] = {
 	17982, -- 60, 65, -1, A=0, Ragnaros Core, (), RandomProperty, FireRes=18,
 	17110, -- 60, 65, -1, A=0, Seal of the Archmagus, (Inte=10; Stam=10; Spir=10; ), Increased Mana Regen, ArcaneRes=5, FireRes=5, FrostRes=5, NatureRes=5, ShadowRes=5,
 	12017, -- 60, 65, -1, A=0, Prismatic Band, (), RandomProperty,
-	17000, -- 0, 62, -1, A=0, Band of the Wraith, (), ArcaneRes=10, ShadowRes=10,
 };
 ---------------------------------------------------------
 -- Neck

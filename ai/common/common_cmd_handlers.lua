@@ -66,18 +66,22 @@ local function Cmd_EngageOnBegin(ai, agent, goal, party, data, partyData)
 	agent:InterruptSpell(CURRENT_GENERIC_SPELL);
 	agent:ClearMotion();
 end
- 
+
+local function Cmd_EngageOnEnd(ai)
+	ai:GetPlayer():ClearMotion();
+end
+
  -- todo: allow killing totems when moving
-local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
+local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData, fnThreatActionsOverride)
 	
 	-- do combat!
 	-- party has no attackers
 	local targets = data.targets or partyData.attackers;
 	if (not targets[1]) then
 		agent:AttackStop();
-		agent:ClearMotion();
-		goal:ClearSubGoal();
-		Command_Complete(ai, "No attackers found");
+		-- agent:ClearMotion();
+		-- goal:ClearSubGoal();
+		-- Command_Complete(ai, "No attackers found");
 		return;
 	end
 	
@@ -122,6 +126,15 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	end
 	
 	if (agent:IsNonMeleeSpellCasted()) then
+		if (data.channeledAoe and data.channeledAoePos) then
+			local channeledSpell = agent:GetCurrentSpellId(CURRENT_CHANNELED_SPELL);
+			if (channeledSpell > 0 and data.channeledAoe[channeledSpell]) then
+				if (target:GetDistance(data.channeledAoePos[1], data.channeledAoePos[2], data.channeledAoePos[3]) > data.channeledAoe[channeledSpell]) then
+					agent:InterruptSpell(CURRENT_CHANNELED_SPELL);
+					Print("Cmd_EngageUpdate: interrupt channeled aoe", channeledSpell);
+				end
+			end
+		end
 		return;
 	end
 	
@@ -130,7 +143,11 @@ local function Cmd_EngageUpdate(ai, agent, goal, party, data, partyData)
 	
 	-- attacks
 	if (bAllowThreatActions) then
-		params.fnThreatActions(ai, agent, goal, party, data, partyData, target);
+		if (fnThreatActionsOverride) then
+			fnThreatActionsOverride(ai, agent, goal, party, data, partyData, target);
+		else
+			params.fnThreatActions(ai, agent, goal, party, data, partyData, target);
+		end
 	else
 		agent:AttackStop();
 		if (params.fnNonThreatActions) then
@@ -261,9 +278,23 @@ end
 --                  CMD_SCRIPT
 --------------------------------------------------
 
+local function Cmd_ScriptOnBegin(ai, agent, goal, party, data, partyData)
+	if (data.script and data.script.fnbegin) then
+		data.script.fnbegin(ai, agent, goal, party, data, partyData, data.script);
+	end
+end
+
+local function Cmd_ScriptOnEnd(ai)
+	local data = ai:GetData();
+	if (data.script and data.script.fnend) then
+		data.script.fnend(ai, data.script);
+	end
+	data.script = nil;
+end
+
 local function Cmd_ScriptUpdate(ai, agent, goal, party, data, partyData)
 	if (data.script) then
-		data.script.fn(ai, agent, goal, data, partyData);
+		data.script.fn(ai, agent, goal, party, data, partyData, data.script);
 	else
 		error(agent:GetName() .. " CMD_SCRIPT no data.script assigned");
 	end
@@ -288,10 +319,10 @@ end
 --------------------------------------------------
 function Cmd_InitDefaultHandlers()
 	Command_SetDefaultHandlers(CMD_FOLLOW, Cmd_FollowOnBegin, Cmd_FollowUpdate, Cmd_FollowOnEnd);
-	Command_SetDefaultHandlers(CMD_ENGAGE, Cmd_EngageOnBegin, Cmd_EngageUpdate, nil);
+	Command_SetDefaultHandlers(CMD_ENGAGE, Cmd_EngageOnBegin, Cmd_EngageUpdate, Cmd_EngageOnEnd);
 	Command_SetDefaultHandlers(CMD_DISPEL, Cmd_DispelOnBegin, Cmd_DispelUpdate, Cmd_DispelOnEnd);
 	Command_SetDefaultHandlers(CMD_BUFF  , Cmd_BuffOnBegin,   Cmd_BuffUpdate,   Cmd_BuffOnEnd);
 	Command_SetDefaultHandlers(CMD_CC    , Cmd_CCOnBegin,     Cmd_CCUpdate,     Cmd_CCOnEnd);
-	Command_SetDefaultHandlers(CMD_SCRIPT, nil,               Cmd_ScriptUpdate, nil);
+	Command_SetDefaultHandlers(CMD_SCRIPT, Cmd_ScriptOnBegin, Cmd_ScriptUpdate, Cmd_ScriptOnEnd);
 	Command_SetDefaultHandlers(CMD_PULL  , Cmd_PullOnBegin,   Cmd_PullUpdate,   nil);
 end

@@ -86,6 +86,7 @@ t_agentSpecs[CLASS_MAGE] = {};
 t_agentSpecs[CLASS_MAGE].LvlDps = {
 	BattleGoalID = GOAL_MageLevelDps_Battle,
 	TalentInfo = "t_LevelMageDpsSpec",
+	Loadout = "MageFrostDps",
 };
 
 --[[*****************************************************
@@ -97,6 +98,7 @@ t_agentSpecs[CLASS_PRIEST] = {};
 t_agentSpecs[CLASS_PRIEST].LvlHeal = {
 	BattleGoalID = GOAL_PriestLevelHeal_Battle,
 	TalentInfo = "t_LevelPriestHealerSpec",
+	Loadout = "PriestHeal",
 };
 
 --[[*****************************************************
@@ -119,6 +121,7 @@ t_agentSpecs[CLASS_ROGUE] = {};
 t_agentSpecs[CLASS_ROGUE].LvlDps = {
 	BattleGoalID = GOAL_RogueLevelDps_Battle,
 	TalentInfo = "t_LevelRogueDpsSpec",
+	Loadout = "RogueDps",
 };
 
 --[[*****************************************************
@@ -144,9 +147,11 @@ t_agentSpecs[CLASS_WARRIOR] = {
 t_agentSpecs[CLASS_WARRIOR].LvlTank = {
 	BattleGoalID = GOAL_WarriorLevelTank_Battle,
 	TalentInfo = "t_LevelWarriorTankSpec",
+	Loadout = "WarriorTank",
 };
 t_agentSpecs[CLASS_WARRIOR].LvlTankSwapOnly = {
 	BattleGoalID = GOAL_WarriorLevelTank_Battle,
 	TalentInfo = "t_LevelWarriorTankSpec",
 	TankSwapOnly = true,
+	Loadout = "WarriorTank",
 };

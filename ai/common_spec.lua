@@ -1,5 +1,5 @@
 --[[*******************************************************************************************
-	Common functions to apply agent gear and talent specs easily.
+	Common functions to apply agent gear and talent specs.
 	Notes:
 		<blank>
 *********************************************************************************************]]
@@ -100,19 +100,22 @@ end
 --[[*****************************************************
 	Checks if item uses any of the slots in exceptSlot
 *******************************************************]]
-local function AI_SpecGenerateGearSlotCheck(item, class, exceptSlot)
-	if (exceptSlot == nil) then
-		return true;
-	end
+local function AI_SpecGenerateGearSlotCheck(ai, item, class, exceptSlot, mustBeEmpty)
+	exceptSlot = exceptSlot or {};
 	local slots = {item:GetSlots(class, exceptSlot.dw or false)};
+	local anySlotEmpty = false;
 	for i = 1, #slots do
 		if (slots[i] ~= EquipSlot.Null) then
 			if (exceptSlot[slots[i]]) then
 				return false;
 			end
+			if (ai:EquipSlotEmpty(slots[i])) then
+				print("equip slot was empty", slots[i]);
+				anySlotEmpty = true;
+			end
 		end
 	end
-	return true;
+	return anySlotEmpty;
 end
 
 --[[*****************************************************
@@ -120,9 +123,7 @@ end
 	Refer to GearSelectionInfo description for info
 	on gsi in ai_define_spec.lua.
 *******************************************************]]
-function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint)
-	
-	do
+function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint, onlyEmptySlots)
 	
 	local oprint,oPrint,ofmtprint,owrite=print,Print,fmtprint,io.write;
 	if (disablePrint == true) then
@@ -171,10 +172,12 @@ function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint)
 	AI_SpecGenerateGearSubTbl(ai, ItemAccList.Cloak,  nil, level, itemList, gsi);
 	AI_SpecGenerateGearSubTbl(ai, ItemAccList.Finger, nil, level, itemList, gsi, 2);
 	AI_SpecGenerateGearSubTbl(ai, ItemAccList.Neck,   nil, level, itemList, gsi);
-		
+	
 	-- prevent combat interfering
 	agent:SetGameMaster(true);
-	ai:EquipDestroyAll();
+	if (not onlyEmptySlots) then
+		ai:EquipDestroyAll();
+	end
 	for i = 1, #itemList do
 	
 		local itemID = itemList[i][1];
@@ -184,7 +187,8 @@ function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint)
 		end
 		-- item:GetUtility(ai, gsi);
 		
-		if (AI_SpecGenerateGearSlotCheck(item, class, exceptSlot)) then
+		if (AI_SpecGenerateGearSlotCheck(ai, item, class, exceptSlot, true)) then
+			print(itemID, "being equipped");
 			ai:EquipItem(itemID, 0, itemList[i][3]);
 		end
 		
@@ -196,8 +200,6 @@ function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint)
 	
 	if (disablePrint == true) then
 		print,Print,fmtprint,io.write=oprint,oPrint,ofmtprint,owrite;
-	end
-	
 	end
 	
 end
@@ -265,6 +267,71 @@ function AI_SpecApplyTalents(ai, level, alltalents, bNoCost, dontLearn)
 
 		end
 		
+	end
+	
+end
+
+--[[*****************************************************
+	Applies specified gear loadout
+*******************************************************]]
+function AI_SpecApplyLoadout(ai, loadout)
+	
+	local agent = ai:GetPlayer();
+	local level = agent:GetLevel();
+	agent:SetGameMaster(true);
+	ai:EquipDestroyAll();
+	
+	if (not loadout) then
+		agent:SetGameMaster(false);
+		return;
+	end
+	
+	for i,itemInfo in ipairs(loadout) do
+		
+		if (type(itemInfo) == "number") then itemInfo = {itemInfo}; end
+		if (type(itemInfo) == "function") then itemInfo = itemInfo(ai:GetPlayer()); end
+		local item = Item_GetItemFromId(itemInfo[1]);
+		assert(item, "AI_SpecApplyLoadout: item " .. tostring(itemInfo[1]) .. "doesn't exist");
+		
+		local itemLvl = itemInfo.lvl or item:GetContextualLevel();
+		if (itemLvl <= level) then
+			ai:EquipItem(itemInfo[1], itemInfo.e or 0, itemInfo.rp or 0);
+		end
+		
+	end
+	agent:SetGameMaster(false);
+	agent:SetHealthPct(100.0);
+	agent:SetPowerPct(POWER_MANA, 100.0);
+	ai:UpdateVisibilityForMaster();
+	
+end
+
+--[[*****************************************************
+	Applies specified gear loadout or random items
+	if too low level
+*******************************************************]]
+function AI_SpecEquipLoadoutOrRandom(ai, info, gsi, exceptSlot, disablePrint, loadout)
+	AI_SpecApplyLoadout(ai, loadout);
+	AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint, true);
+end
+
+--[[*****************************************************
+	If gun equipped sets ammo to value of gun
+	Otherwise sets ammo to value of bow
+*******************************************************]]
+function AI_SpecSetAmmo(ai, bow, gun)
+	
+	local itemId = ai:EquipSlotItemId(EquipSlot.Ranged);
+	if (itemId <= 0) then return; end
+	
+	local item = Item_GetItemFromId(itemId);
+	assert(item, "AI_SpecSetAmmo: equipped ranged item doesn't exist");
+	
+	local subclass = item:GetSubclass();
+	if (subclass == ItemSubclass.WeaponBow or subclass == ItemSubclass.WeaponCrossbow) then
+		ai:SetAmmo(bow);
+	elseif (subclass == ItemSubclass.WeaponGun) then
+		ai:SetAmmo(gun);
 	end
 	
 end

@@ -9,6 +9,9 @@ __Mgr_Disable_Agent_Save = true;
 
 t_dungeons = {};
 
+-- Global SetTimer indicdes
+ST_GRENADE = 19;
+
 -- Goal execution result
 GOAL_RESULT_Continue = 0;
 GOAL_RESULT_Success = 1;
@@ -63,6 +66,7 @@ CLASS_DRUID         = 11;
 
 -- Stand state
 STAND_STATE_STAND = 0;
+STAND_STATE_DEAD  = 7;
 
 -- Motion types
 MOTION_IDLE                = 0;                    -- IdleMovementGenerator.h
@@ -120,8 +124,12 @@ TOTEM_WATER  = 2;
 TOTEM_AIR    = 3;
 
 -- Generic Spell IDs
-SPELL_GEN_SHOOT_BOW   = 2480;
-SPELL_GEN_PUMMELER    = 13494;
+SPELL_GEN_SHOOT_BOW      = 2480;
+SPELL_GEN_SHOOT_GUN      = 7918;
+SPELL_GEN_SHOOT_CROSSBOW = 7919;
+SPELL_GEN_PUMMELER       = 13494;
+SPELL_ORC_BLOOD_FURY     = 20572;
+SPELL_TROLL_BERSERKING   = 20554;
 
 -- Spell Aura
 AURA_MOD_CONFUSE              = 5;
@@ -130,8 +138,12 @@ AURA_MOD_FEAR                 = 7;
 AURA_MOD_TAUNT                = 11;
 AURA_MOD_STUN                 = 12;
 AURA_MOD_DAMAGE_DONE          = 13;
+AURA_MOD_STEALTH              = 16;
+AURA_PERIODIC_TRIGGER_SPELL   = 23;
 AURA_MOD_ROOT                 = 26;
 AURA_MOD_SHAPESHIFT           = 36;
+AURA_TRANSFORM                = 56;
+AURA_SCHOOL_ABSORB            = 69;
 AURA_MOD_HEALING_DONE         = 135;
 AURA_MOD_HEALING_DONE_PERCENT = 136;
 
@@ -139,6 +151,13 @@ AURA_MOD_HEALING_DONE_PERCENT = 136;
 MECHANIC_CHARM =  1;
 MECHANIC_FEAR  =  5;
 MECHANIC_SLEEP = 10;
+
+-- Spell Dispel
+DISPEL_NONE         = 0;
+DISPEL_MAGIC        = 1;
+DISPEL_CURSE        = 2;
+DISPEL_DISEASE      = 3;
+DISPEL_POISON       = 4;
 
 -- Spell Cast Result
 CAST_OK = 255;
@@ -153,6 +172,10 @@ CURRENT_GENERIC_SPELL           = 1;
 CURRENT_AUTOREPEAT_SPELL        = 2;
 CURRENT_CHANNELED_SPELL         = 3;
 
+-- Shapes
+SHAPE_CIRCLE  = 0;
+SHAPE_POLYGON = 1;
+
 -- Spell School Mask
 SpellSchoolMask = {
 	Nature = 8,
@@ -165,6 +188,7 @@ SpellSchoolMask = {
 EquipSlot = {
 	MainHand     = 15,
 	OffHand      = 16,
+	Ranged       = 17,
 	Null         = 255,
 };
 
@@ -276,14 +300,17 @@ ITEMID_ROUGH_ARROW = 2512;
 Proficiency = {
 	Axe2H     = 197,
 	Bow       = 264,
+	Crossbow  = 5011,
 	Dagger    = 1180,
 	Fist      = 15590,
+	Gun       = 266,
 	Mace      = 198,
 	Mace2H    = 199,
 	Staff     = 227,
 	Sword     = 201,
 	Sword2H   = 202,
 	DualWield = 674,
+	Plate     = 750,
 };
 
 -- reputation

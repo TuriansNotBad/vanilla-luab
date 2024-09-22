@@ -28,6 +28,8 @@ function RogueLevelDps_Activate(ai, goal)
 	
 	-- learn proficiencies
 	agent:LearnSpell(Proficiency.Bow);
+	agent:LearnSpell(Proficiency.Gun);
+	agent:LearnSpell(Proficiency.Sword);
 	if (level >= 10) then
 		agent:LearnSpell(Proficiency.DualWield);
 	end
@@ -44,10 +46,12 @@ function RogueLevelDps_Activate(ai, goal)
 		OffhandType = {"Dagger"},
 		RangedType = {"Bow"},
 	};
-	AI_SpecGenerateGear(ai, info, gsi, nil, true);
 	
 	local classTbl = t_agentSpecs[ agent:GetClass() ];
 	local specTbl = classTbl[ ai:GetSpec() ];
+	
+	AI_SpecEquipLoadoutOrRandom(ai, info, gsi, nil, true, Gear_GetLoadoutForLevel60(specTbl.Loadout));
+	
 	local talentInfo = _ENV[ specTbl.TalentInfo ];
 	AI_SpecApplyTalents(ai, level, talentInfo.talents );
 	-- print();
@@ -63,16 +67,23 @@ function RogueLevelDps_Activate(ai, goal)
 	data.sndice      = ai:GetSpellMaxRankForMe(SPELL_ROG_SLICE_AND_DICE);
 	data.exposearmor = ai:GetSpellMaxRankForMe(SPELL_ROG_EXPOSE_ARMOR);
 	
+	-- openers
+	data.ambush      = ai:GetSpellMaxRankForMe(SPELL_ROG_AMBUSH);
+	
 	-- util
 	data.kick        = ai:GetSpellMaxRankForMe(SPELL_ROG_KICK);
+	data.vanish      = ai:GetSpellMaxRankForMe(SPRLL_ROG_VANISH);
 	
-	data._hasColdBlood = false;
-	data._hasBladeFlurry = false;
+	data._hasColdBlood   = agent:HasTalent(280, 0);
+	data._hasBladeFlurry = agent:HasTalent(223, 0);
+	data._hasAdrenaline  = agent:HasTalent(205, 0);
 	
 	-- consumes
+	data.grenade = Consumable_GetExplosive(level);
 	data.food    = Consumable_GetFood(level);
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
+	data.flask   = Consumable_GetFlask(SPELL_GEN_ELIXIR_OF_THE_MONGOOSE, level);
 	
 	Movement_Init(data);
 	
@@ -88,6 +99,7 @@ function RogueLevelDps_Activate(ai, goal)
 	Command_MakeTable(ai)
 		(CMD_FOLLOW, nil, nil, nil, true)
 		(CMD_ENGAGE, nil, nil, nil, true)
+		(CMD_SCRIPT, nil, nil, nil, true)
 	;
 	-- agent:SetGameMaster(false);
 	-- agent:SetGameMaster(true);
@@ -128,7 +140,7 @@ function RogueLevelDps_Update(ai, goal)
 end
 
 function RogueThreatActions(ai, agent, goal, party, data, partyData, target)
-	RoguePotions(agent, goal, data);
+	RoguePotions(agent, goal, data, Data_GetDefensePotion(data, partyData.encounter));
 	RogueDpsRotation(ai, agent, goal, data, partyData, target);
 end
 
@@ -159,6 +171,7 @@ function RogueDpsRotation(ai, agent, goal, data, partyData, target)
 		return false;
 	end
 	
+	local targets = Data_GetAttackers(data, partyData);
 	local level = agent:GetLevel();
 	local cp = agent:GetComboPoints();
 	local party = ai:GetPartyIntelligence();
@@ -174,6 +187,20 @@ function RogueDpsRotation(ai, agent, goal, data, partyData, target)
 			return true;
 		end
 		return false;
+	end
+	
+	-- use ambush if can
+	if (level >= 18 and agent:HasAuraType(AURA_MOD_STEALTH)) then
+		if (agent:CastSpell(target, data.ambush, true) == CAST_OK) then
+			print("Ambush", agent:GetName(), target:GetName());
+			return true;
+		end
+	end
+	
+	if (data.attackmode == "aoe") then
+		if (Unit_AECheck(agent, 4.0, 3, false, targets)) then
+			AI_UseGrenade(agent, goal, target, data.grenade, 60);
+		end
 	end
 	
 	-- check interruptable
@@ -193,9 +220,48 @@ function RogueDpsRotation(ai, agent, goal, data, partyData, target)
 		return true;
 	end
 	
-	if (cp > 2 and data._hasBladeFlurry and false == agent:HasAura(SPELL_ROG_BLADE_FLURRY) and 15000 < agent:GetAuraTimeLeft(data.sndice)) then
-		if (Unit_AECheck(agent, 5.0, 2, false, partyData.attackers) and agent:CastSpell(target, SPELL_ROG_BLADE_FLURRY, false) == CAST_OK) then
-			print("Blade Flurry", agent:GetName());
+	local _,tankThreat = target:GetHighestThreat();
+	local myThreat = target:GetThreat(agent);
+	local threatDiff = tankThreat - myThreat;
+	local canIgnoreThreat = not encounter and true or encounter.noboss;
+	if (threatDiff >= 1500 or canIgnoreThreat) then
+	
+		if (15000 < agent:GetAuraTimeLeft(data.sndice)) then
+		
+			if (data._hasBladeFlurry and false == agent:HasAura(SPELL_ROG_BLADE_FLURRY)) then
+				local bShouldBF = encounter ~= nil or Unit_AECheck(agent, 5.0, 2, false, partyData.attackers);
+				if (bShouldBF and agent:CastSpell(agent, SPELL_ROG_BLADE_FLURRY, false) == CAST_OK) then
+					print("Blade Flurry", agent:GetName());
+					-- return true;
+				end
+			end
+			
+			if (Dps_DoRacialDmgCd(agent)) then
+				-- return true;
+			end
+			
+			if (data._hasAdrenaline and false == agent:HasAura(SPELL_ROG_ADRENALINE_RUSH)) then
+				if (agent:CastSpell(agent, SPELL_ROG_ADRENALINE_RUSH, false) == CAST_OK) then
+					print("Adrenaline Rush", agent:GetName());
+					-- return true;
+				end
+			end
+			
+		end
+		
+	end
+	
+	-- vanish
+	if (level >= 22 and threatDiff < 1000 and myThreat > 3000) then
+		if (agent:CastSpell(agent, data.vanish, false) == CAST_OK) then
+			print("Vanish", agent:GetName(), threatDiff, myThreat);
+			return true;
+		end
+	end
+	
+	if (cp > 0 and level >= 10 and 1000 >= agent:GetAuraTimeLeft(data.sndice)) then
+		if (agent:CastSpell(target, data.sndice, false) == CAST_OK) then
+			print("Slice and Dice", agent:GetName(), target:GetName());
 			return true;
 		end
 	end
@@ -204,13 +270,8 @@ function RogueDpsRotation(ai, agent, goal, data, partyData, target)
 	if (cp == 5) then
 		if (false == agent:HasAura(SPELL_ROG_COLD_BLOOD)) then
 		
-			if (data._hasColdBlood and agent:CastSpell(target, SPELL_ROG_COLD_BLOOD, false) == CAST_OK) then
+			if (data._hasColdBlood and Dps_IsRacialDmgCdActive(agent, true) and agent:CastSpell(agent, SPELL_ROG_COLD_BLOOD, false) == CAST_OK) then
 				print("Cold Blood", agent:GetName());
-				return true;
-			end
-			
-			if (level >= 10 and 1000 >= agent:GetAuraTimeLeft(data.sndice) and agent:CastSpell(target, data.sndice, false) == CAST_OK) then
-				print("Slice and Dice", agent:GetName(), target:GetName());
 				return true;
 			end
 			

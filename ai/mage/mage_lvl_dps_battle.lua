@@ -12,6 +12,15 @@ REGISTER_GOAL(GOAL_MageLevelDps_Battle, "MageLevelDps");
 
 local ST_POT = 0;
 
+local function MageLevelDps_SelfDefense(ai, agent, goal, party, data, partyData)
+	if (agent:GetLevel() >= 20) then
+		if (not agent:HasAura(data.manashield) and agent:CastSpell(agent, data.manashield, false) == CAST_OK) then
+			print(agent:GetName(), "Mana Shield");
+			return true;
+		end
+	end
+end
+
 --[[*****************************************************
 	Goal activation.
 *******************************************************]]
@@ -39,10 +48,11 @@ function MageLevelDps_Activate(ai, goal)
 		-- OffhandType = {"Holdable"},
 		RangedType = {"Wand"},
 	};
-	AI_SpecGenerateGear(ai, info, gsi, nil, true)
 	
 	local classTbl = t_agentSpecs[ agent:GetClass() ];
 	local specTbl = classTbl[ ai:GetSpec() ];
+	
+	AI_SpecEquipLoadoutOrRandom(ai, info, gsi, nil, true, Gear_GetLoadoutForLevel60(specTbl.Loadout));
 	
 	ai:SetRole(ROLE_RDPS);
 	
@@ -68,6 +78,7 @@ function MageLevelDps_Activate(ai, goal)
 	data.frostA     = ai:GetSpellMaxRankForMe(SPELL_MAG_FROST_ARMOR);
 	data.iceA       = ai:GetSpellMaxRankForMe(SPELL_MAG_ICE_ARMOR);
 	data.mageA      = ai:GetSpellMaxRankForMe(SPELL_MAG_MAGE_ARMOR);
+	data.manashield = ai:GetSpellMaxRankForMe(SPELL_MAG_MANA_SHIELD);
 
 	data.brilliance = Builds.Select(ai, "1.4.2", SPELL_MAG_ARCANE_BRILLIANCE, ai.GetSpellMaxRankForMe);
 	data.intellect  = ai:GetSpellMaxRankForMe(SPELL_MAG_ARCANE_INTELLECT);
@@ -79,11 +90,13 @@ function MageLevelDps_Activate(ai, goal)
 	data.manapot = Consumable_GetManaPotion(level);
 	data.flask   = Consumable_GetFlask(SPELL_GEN_FLASK_OF_SUPREME_POWER, level);
 	
+	Data_AgentRegisterChanneledAoe(data, data.blizzard, 10);
+	Data_SetSelfDefenseFn(data, MageLevelDps_SelfDefense);
+	
 	-- dispels
 	if (level >= 18) then
 		data.dispels = {Curse = SPELL_MAG_REMOVE_LESSER_CURSE};
 	end
-
 	
 	if (level < 30) then
 		data.armor = data.frostA;
@@ -236,11 +249,15 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	MageSelfBuff(agent, data);
 	
 	-- Potions
-	MagePotions(agent, goal, data, encounter.defensepot);
+	MagePotions(agent, goal, data, Data_GetDefensePotion(data, encounter));
 	
 	-- los/dist checks
 	if (CAST_OK ~= agent:IsInPositionToCast(target, data.frostbolt, 2.5)) then
 		-- print("pos fail", agent:IsInPositionToCast(target, data.frostbolt, 2.5));
+		return false;
+	end
+	
+	if (data.attackmode == "none") then
 		return false;
 	end
 	
@@ -256,6 +273,17 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 			end
 		end
 		return false;
+	elseif (data.attackmode == "aoe") then
+		local level = agent:GetLevel();
+		
+		local targets = Data_GetAttackers(data, partyData);
+		if (level >= 20) then
+			if (Unit_AECheck(agent, 7, 3, false, targets)) then
+				if (not target:IsMoving() and agent:CastSpell(target, data.blizzard, false) == CAST_OK) then
+					return true;
+				end
+			end
+		end
 	end
 	
 	-- evocation
@@ -287,9 +315,8 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 		
 		if (Unit_AECheck(target, 8.0, 4, not partyData.aoe, partyData.attackers)) then
 			local d,t = agent:GetSpellDamageAndThreat(agent,  data.blizzard, false, true);
-			local maxThreat = GetAEThreat(ai, agent, partyData.attackers);
-			if (d * 6 < maxThreat) then
-				if (agent:CastSpell(target, data.blizzard, false) == CAST_OK) then
+			if (Data_GetIgnoreThreat(data, partyData) or d * 6 < GetAEThreat(ai, agent, partyData.attackers)) then
+				if (Dps_DoChanneledAoe(agent, target, data.blizzard, data)) then
 					return true;
 				end
 			end
@@ -298,7 +325,7 @@ function MageDpsRotation(ai, agent, goal, party, data, partyData, target)
 	end
 	
 	-- spammable
-	if (level >= 4) then
+	if (level >= 4 and data.attackmode ~= "fire") then
 		if (agent:CastSpell(target, data.frostbolt, false) == CAST_OK) then
 			-- print("Frostbolt", agent:GetName(), target:GetName());
 			return true;

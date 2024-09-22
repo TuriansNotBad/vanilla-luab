@@ -167,7 +167,7 @@ function WarlockDpsRotation(ai, agent, goal, party, data, partyData, target)
 	local party = ai:GetPartyIntelligence();
 	
 	-- Potions
-	WarlockPotions(agent, goal, data, encounter.defensepot);
+	WarlockPotions(agent, goal, data, Data_GetDefensePotion(data, encounter));
 	
 	-- los/dist checks
 	if (CAST_OK ~= agent:IsInPositionToCast(target, data.shadowbolt, 2.5)) then

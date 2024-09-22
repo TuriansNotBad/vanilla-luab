@@ -210,9 +210,12 @@ local function HasTank(data)
 	return false;
 end
 
-local function GetFirstActiveTank(data)
+local function GetFirstActiveTank(data, bAllowPull)
 	for i,ai in ipairs(data.tanks) do
 		if (ai:CmdType() == CMD_TANK) then
+			return ai, ai:GetPlayer();
+		end
+		if (bAllowPull and ai:CmdType() == CMD_PULL) then
 			return ai, ai:GetPlayer();
 		end
 	end
@@ -326,14 +329,32 @@ function Hive_Update(hive)
 			-- local x,y,z = data.owner:GetPosition();
 			-- fmtprint("x = %.3f, y = %.3f, z = %.3f", x, y, z);
 			-- fmtprint("%.3f, %.3f, %.3f", x, y, z);
+			-- Debug_PrintTable(GetObjectsNear(data.owner, x,y,z,5,true))
 			-- Print(data.owner:GetCurrentSpellId(3));
 			if (not data.attackers[1]) then
 				-- odd bug with owner victim being stuck on ally due to gnomeregan irradiated status
-				if (ownerVictim and ownerVictim:CanAttack(data.owner)) then
+				if (ownerVictim and ownerVictim:GetReactionTo(data.owner) < REP_FRIENDLY) then
 					data.attackers[1] = ownerVictim;
 				end
 			end
 		end
+		for i,attacker in ipairs(data.attackers) do
+			-- attacker:Kill();
+			-- attacker:SetHealthPct(100.0);
+		end
+	end
+	
+	-- check for new engagement
+	if (#data.attackers == 0) then
+		if (not data.newEngagementStart) then
+			data.newEngagementStart = true;
+			data.originalEnemyPos   = nil;
+			data.hasEnemies         = nil;
+		end
+	elseif (not data.hasEnemies) then
+		data.newEngagementStart = nil;
+		data.originalEnemyPos   = {data.attackers[1]:GetPosition()};
+		data.hasEnemies         = true;
 	end
 	
 	-- fill tracked
@@ -357,9 +378,7 @@ function Hive_Update(hive)
 			
 			local function on_encounter_changed(old, new, hive, data)
 				
-				if (old and old.script and old.script.OnEnd) then
-					old.script:OnEnd(hive, data);
-				end
+				EncounterScript_OnEnd(old, hive, data);
 				
 				data.encounter = new;
 				Print("~~~~~~~~~~ ENCOUNTER CHANGED to", new and new.name, "from", old and old.name);
@@ -401,10 +420,7 @@ function Hive_Update(hive)
 					end
 					table.sort(data.attackers, sortprio);
 				end
-				if (encounter.script) then
-					local script = encounter.script;
-					script:Update(hive, data);
-				end
+				EncounterScript_Update(encounter, hive, data);
 			end
 		end
 	end
@@ -415,9 +431,13 @@ function Hive_Update(hive)
 		if (agent:IsInCombat()) then
 			data.anyAgentInCombat = true;
 		end
-		-- agent:SetHealthPct(100.0);
-		-- agent:SetPowerPct(POWER_MANA, 100.0);
-		-- agent:SetPowerPct(POWER_RAGE, 100.0);
+		if (not data.hasEnemies) then
+			-- if (agent:GetHealthPct() < 30) then
+				agent:SetHealthPct(100.0);
+			-- end
+			agent:SetPowerPct(POWER_MANA, 100.0);
+			-- agent:SetPowerPct(POWER_RAGE, 100.0);
+		end
 		local role = ai:GetRole();
 		if (role == ROLE_TANK) then
 			table.insert(data.tanks, ai);
@@ -433,7 +453,9 @@ function Hive_Update(hive)
 	end
 	-- Print"";
 	
-	if (#data.attackers == 0) then
+	EncounterScript_UpdatePostAgentProcess(data.encounter, hive, data);
+	
+	if (#data.attackers == 0 and not data.forceCombatUpdate) then
 		Hive_OOCUpdate(hive, data);
 	else
 		Hive_CombatUpdate(hive, data);
@@ -473,11 +495,11 @@ end
 
 local function ShouldIssueDispel(hive, data, target, friendly, nonCombat)
 	
-	local dungeon = data.dungeon;
-	if (nonCombat or not dungeon or not dungeon.dispelFilter) then
+	local dispelFilter = Data_GetDispelFilter(nil, data);
+	if (nonCombat or not dispelFilter) then
 		return nil;
 	end
-	return dungeon.dispelFilter(target, hive, data, agents, friendly);
+	return dispelFilter(target, hive, data, agents, friendly);
 	
 end
 
@@ -592,10 +614,6 @@ function Hive_OOCUpdate(hive, data)
 		
 		if (ai:GetRole() ~= ROLE_SCRIPT) then
 			local agent = ai:GetPlayer();
-			agent:SetHealthPct(100.0);
-			agent:SetPowerPct(POWER_MANA, 100.0);
-			-- agent:SetPowerPct(POWER_RAGE, 100.0);
-			
 			if (agent:GetLevel() ~= data.owner:GetLevel()) then
 				ai:SetDesiredLevel(data.owner:GetLevel());
 			end
@@ -630,7 +648,7 @@ function Hive_CombatUpdate(hive, data)
 	-- but if we are close to pulling aggro we should attack anything safe
 	-- or halt, agents handle that in library funcs on their own
 	
-	if (data.reverse == nil and data.owner ~= nil and hive:HasCLineFor(data.owner)) then
+	if (data.reverse == nil and #data.attackers > 0 and data.owner ~= nil and hive:HasCLineFor(data.owner)) then
 		data.reverse = hive:ShouldReverseCLine(data.owner, data.attackers[1]);
 		print "-----------------------------------------------------------------------";
 		Print("Hive reverse", data.reverse);
@@ -671,7 +689,8 @@ function Hive_CombatUpdate(hive, data)
 				else
 					local ai = agent:GetAI();
 					local bRoleTarget = (isForcedCc) or (pendingCC:GetRole() ~= ROLE_TANK and pendingCC:GetRole() ~= ROLE_HEALER and pendingCC:CanAttack(agent));
-					if (nil == ai:GetCCTarget() and bRoleTarget) then
+					local bHealerCcCheck = ai:GetRole() ~= ROLE_HEALER or Data_GetAllowHealerCc(ai:GetData(), data);
+					if (ai:GetRole() ~= ROLE_SCRIPT and nil == ai:GetCCTarget() and bRoleTarget and bHealerCcCheck) then
 						local pendingGuid = pendingCC:GetGuid();
 						ai:SetCCTarget(pendingGuid);
 						hive:AddCC(guid, pendingGuid);
@@ -734,7 +753,7 @@ function Hive_CombatUpdate(hive, data)
 	for j = 1, #tankTargets do
 		if (Tank_AnyTankPulling(data.tanks)) then break; end
 		local target = tankTargets[j][3];
-		if (nil ~= target and (false == hive:IsCC(target) or attackCc)) then
+		if (nil ~= target and ((false == hive:IsCC(target) and not Unit_IsCrowdControlled(target)) or attackCc)) then
 			-- find closest tank that matches
 			table.sort(data.tanks, function(a,b) return a:GetPlayer():GetDistance(target) < b:GetPlayer():GetDistance(target); end);
 			for i = 1, #data.tanks do
@@ -784,11 +803,12 @@ function Hive_CombatUpdate(hive, data)
 		else
 			
 			if (false == attackCc and false == Unit_IsCrowdControlled(target) and ai:CmdType() ~= CMD_CC) then
-				if (false == AI_IsIncapacitated(agent) and ccVsAoeCheck) then
-					-- hive:CmdCC(ai, target:GetGuid());
-					Command_IssueCc(ai, hive, target);
-				else
+				local targetsTarget = target:GetVictim();
+				-- only cc if its an immediate danger
+				if (AI_IsIncapacitated(agent) or not ccVsAoeCheck) then
 					hive:RemoveCC(target:GetGuid());
+				elseif (targetsTarget and target:IsInLOS(targetsTarget) and target:GetDistance(targetsTarget) < 45.0) then
+					Command_IssueCc(ai, hive, target);
 				end
 			elseif (attackCc) then
 				hive:RemoveCC(target:GetGuid());

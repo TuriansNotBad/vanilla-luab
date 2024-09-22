@@ -12,7 +12,8 @@ REGISTER_GOAL(GOAL_PriestLevelHeal_Battle, "PriestLevelHeal");
 
 -- local function print()end Print=print; fmtprint=print;
 
-local ST_POT = 0;
+local ST_POT  = 0;
+local ST_BOMB = 1;
 
 local function CmdHealReset(ai, agent, goal, interrupt, complete)
 	if (interrupt) then
@@ -51,6 +52,36 @@ local function PriestPotions(agent, goal, data, defensePot)
 	
 end
 
+local function PriestHealerCombat(ai, agent, goal, party, data, partyData, target)
+	
+	if (agent:IsNonMeleeSpellCasted() or agent:IsInPositionToCast(target, data.smite, 2.0) ~= CAST_OK) then
+		return false;
+	end
+	
+	local level = agent:GetLevel();
+	
+	local targets = Data_GetAttackers(data, partyData);
+	if (level >= 4 and data.attackmode == "aoe") then
+		for i = 1,#targets do
+			local target = targets[i];
+			if (not target:HasAura(data.pain)) then
+				if (agent:CastSpell(target, data.pain, false) == CAST_OK) then
+					return true;
+				end
+			end
+		end
+	end
+
+	if (targets.ignoreThreat) then
+		if (level >= 10 and agent:CastSpell(target, data.mindblast, false) == CAST_OK) then
+			return true;
+		end
+	end
+	
+	return agent:CastSpell(target, data.smite, false) == CAST_OK;
+	
+end
+
 --[[*****************************************************
 	Goal activation.
 *******************************************************]]
@@ -80,11 +111,11 @@ function PriestLevelHeal_Activate(ai, goal)
 		OffhandType = {"Holdable"},
 		RangedType = {"Wand"},
 	};
-	AI_SpecGenerateGear(ai, info, gsi, nil, true)
 	
 	local classTbl = t_agentSpecs[ agent:GetClass() ];
 	local specTbl = classTbl[ ai:GetSpec() ];
 	
+	AI_SpecEquipLoadoutOrRandom(ai, info, gsi, nil, true, Gear_GetLoadoutForLevel60(specTbl.Loadout));
 	ai:SetRole(ROLE_HEALER);
 	
 	local talentInfo = _ENV[ specTbl.TalentInfo ];
@@ -95,6 +126,8 @@ function PriestLevelHeal_Activate(ai, goal)
 	-- print();
 	
 	local data  = ai:GetData();
+	data.grenade = Consumable_GetExplosive(level);
+	
 	data.gheal    = ai:GetSpellMaxRankForMe(SPELL_PRI_GREATER_HEAL);
 	data.renew    = ai:GetSpellMaxRankForMe(SPELL_PRI_RENEW);
 	data.fheal    = ai:GetSpellMaxRankForMe(SPELL_PRI_FLASH_HEAL);
@@ -106,8 +139,18 @@ function PriestLevelHeal_Activate(ai, goal)
 	data.dispel   = ai:GetSpellMaxRankForMe(SPELL_PRI_DISPEL_MAGIC);
 	data.pwf      = ai:GetSpellMaxRankForMe(SPELL_PRI_POWER_WORD_FORTITUDE);
 	data.aepwf    = ai:GetSpellMaxRankForMe(SPELL_PRI_PRAYER_OF_FORTITUDE);
+	data.innfire  = ai:GetSpellMaxRankForMe(SPELL_PRI_INNER_FIRE);
+	
+	data.shackle  = ai:GetSpellMaxRankForMe(SPELL_PRI_SHACKLE_UNDEAD);
+	
+	data.smite    = ai:GetSpellMaxRankForMe(SPELL_PRI_SMITE);
+	data.mindblast= ai:GetSpellMaxRankForMe(SPELL_PRI_MIND_BLAST);
+	data.pain     = ai:GetSpellMaxRankForMe(SPELL_PRI_SHADOW_WORD_PAIN);
+	data.manaburn = ai:GetSpellMaxRankForMe(SPELL_PRI_MANA_BURN);
 	
 	data.fortitude = level >= 48 and data.aepwf or data.pwf;
+	
+	data.combatFn = PriestHealerCombat;
 	
 	data.heals = {};
 	-- weak heals
@@ -143,6 +186,13 @@ function PriestLevelHeal_Activate(ai, goal)
 	local party = ai:GetPartyIntelligence();
 	if (party) then
 		local partyData = party:GetData();
+		
+		-- Shackle Undead, has to be permitted by encounter
+		if (level >= 20) then
+			data.ccspell = data.shackle;
+			partyData:RegisterCC(agent, data.shackle);
+		end
+	
 		local type = BUFF_SINGLE;
 		if (data.fortitude == data.aepwf) then
 			type = BUFF_PARTY;
@@ -188,7 +238,9 @@ function PriestLevelHeal_Activate(ai, goal)
 		(CMD_ENGAGE, nil, nil, nil, true)
 		(CMD_BUFF,   nil, nil, nil, true)
 		(CMD_DISPEL, nil, nil, nil, true)
+		(CMD_CC,     nil, nil, nil, true)
 		(CMD_HEAL,   PriestLevelHeal_CmdHealOnBeginOrEnd, PriestLevelHeal_CmdHealUpdate, PriestLevelHeal_CmdHealOnBeginOrEnd, false)
+		(CMD_SCRIPT, nil, nil, nil, true)
 	;
 	
 end
@@ -197,6 +249,12 @@ end
 	Goal update.
 *******************************************************]]
 function PriestLevelHeal_Update(ai, goal)
+	
+	local agent = ai:GetPlayer();
+	local data  = ai:GetData();
+	if (agent:GetLevel() >= 12 and not agent:HasAura(data.innfire)) then
+		agent:CastSpell(agent, data.innfire, false);
+	end
 	
 	-- handle commands
 	Command_DefaultUpdate(ai, goal);
@@ -268,13 +326,17 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 		-- end
 	end
 	
-	PriestPotions(agent, goal, data, encounter and encounter.defensepot);
+	PriestPotions(agent, goal, data, Data_GetDefensePotion(data, encounter));
 	
 	local maxThreat;
-	if (target:IsTanking() and hp < 40) then
+	if (partyData.attackers.ignoreThreat) then
 		maxThreat = 5000.0;
 	else
-		maxThreat = GetAEThreat(ai, agent, partyData, partyData.attackers);
+		if (target:IsTanking() and hp < 40) then
+			maxThreat = 5000.0;
+		else
+			maxThreat = GetAEThreat(ai, agent, partyData, partyData.attackers);
+		end
 	end
 	local spell,effect,effthreat = PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData);
 	
@@ -287,6 +349,7 @@ function PriestLevelHeal_CmdHealUpdate(ai, agent, goal, party, data, partyData)
 	-- los/dist checks
 	if (CAST_OK ~= agent:IsInPositionToCast(target, spell, 2.0)--[[and not rchrpos]]) then
 		Movement_RequestMoveInPosToCast(data, guid, spell, 2.0);
+		return GOAL_RESULT_Continue;
 	end
 	
 	if (agent:CastSpell(target, spell, false) == CAST_OK) then
@@ -308,7 +371,7 @@ end
 function PriestLevelHeal_BestHealSpell(ai, agent, goal, data, target, hp, hpdiff, maxThreat, partyData)
 	
 	local heals = data.heals;
-	local maxheal = (partyData.encounter and partyData.encounter.healmax) or #partyData.attackers == 0;
+	local maxheal = Data_GetHealModeMax(data, partyData) or #partyData.attackers == 0;
 	local targetIsTank = target:IsTanking() or (target:GetRole() == ROLE_TANK and target:GetAttackersNum() > 0);
 	
 	-- avoid div by zero

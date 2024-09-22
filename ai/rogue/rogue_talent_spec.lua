@@ -24,15 +24,17 @@ t_LevelRogueDpsSpec = {
 		{Builds["1.12.1"], {
 			{"Opportunity", 5, 261},
 			
-			{"Malice", 5, 270},                       
-			{"Improved Slice and Dice", 3, 277}, {"Ruthlessness", 2, 273},
-			{"Lethality", 5, 269}, {"Relentless Strikes", 1, 281}, {"Ruthlessness", 3, 273}, {"Improved Eviscerate", 3, 276},
-			{"Cold Blood", 1, 280}, {"Improved Poisons", 4, 268},			
-			{"Seal Fate", 5, 283},
+			{"Malice", 5, 270},
+			{"Improved Slice and Dice", 3, 277}, {"Murder", 2, 274},
+			{"Lethality", 4, 269}, {"Relentless Strikes", 1, 281},
 			
 			{"Improved Sinister Strike", 2, 201}, {"Lightning Reflexes", 3, 186},
 			{"Improved Backstab", 3, 202}, {"Precision", 5, 181}, {"Lightning Reflexes", 5, 186},
-			{"Dual Wield Specialization", 1, 221},
+			{"Dual Wield Specialization", 5, 221}, {"Dagger Specialization", 5, 182},
+			{"Blade Flurry", 1, 223},
+			{"Weapon Expertise", 2, 1703},
+			{"Improved Sprint", 2, 222},
+			{"Adrenaline Rush", 1, 205},
 		},},
 	},
 };

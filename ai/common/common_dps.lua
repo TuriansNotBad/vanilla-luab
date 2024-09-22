@@ -27,7 +27,7 @@ function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 		local target = targets[i];
 		local tankThreat = Tank_GetTankThreat(party:GetData(), target);
 		local diff  = tankThreat - target:GetThreat(agent);
-		if (diff > minDiff or false == threatCheck) and (nil == party or false == party:IsCC(target)) then
+		if ((diff > minDiff or false == threatCheck) and (nil == party or (false == party:IsCC(target) and not Unit_IsCrowdControlled(target)))) then
 			return target;
 		end
 	end
@@ -45,7 +45,7 @@ function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threat
 		local target = targets[i];
 		local tankThreat = Tank_GetTankThreat(party:GetData(), target);
 		local diff  = tankThreat - target:GetThreat(agent);
-		if (diff > ai:GetStdThreat() or false == threatCheck) and (nil == party or false == party:IsCC(target)) then
+		if ((diff > ai:GetStdThreat() or false == threatCheck) and (nil == party or (false == party:IsCC(target) and not Unit_IsCrowdControlled(target)))) then
 			
 			-- check interruptable
 			local interruptCheck;
@@ -114,6 +114,7 @@ function Dps_RangedChase(ai, agent, target, bAttack)
 		if (ai:GetChaseDist() ~= defD) then
 			Print("Dps_RangedChase:", agent:GetName(), target:GetName(), "chase dist too close. Have LoS.", ai:GetChaseDist(), defD);
 			ai:SetChaseValues(defD, defMinT, defMaxT);
+			agent:StopMoving();
 		end
 	end
 	
@@ -136,4 +137,70 @@ function Dps_MeleeChase(ai, agent, target, bAttack, keepDist)
 		agent:MoveChase(target, r, r/2, r/2, math.rad(math.random(160, 200)), math.pi/4.0, false, true, false);
 		return;
 	end
+end
+
+function Dps_IsInSyncWithRacialDmgCd(agent)
+	if (agent:GetRace() == RACE_TROLL) then
+		return agent:IsSpellReady(SPELL_TROLL_BERSERKING);
+		
+	elseif (agent:GetRace() == RACE_ORC) then
+		return agent:IsSpellReady(SPELL_ORC_BLOOD_FURY);
+	end
+	return true;
+end
+
+function Dps_IsRacialDmgCdActive(agent, default)
+	if (agent:GetRace() == RACE_TROLL) then
+		return agent:HasAura(SPELL_TROLL_BERSERKING);
+		
+	elseif (agent:GetRace() == RACE_ORC) then
+		return agent:HasAura(SPELL_ORC_BLOOD_FURY);
+	end
+	return default;
+end
+
+function Dps_DoRacialDmgCd(agent, berserkerHpThresh)
+	
+	if (agent:GetRace() == RACE_TROLL) then
+		
+		if (not berserkerHpThresh or agent:GetHealthPct() <= berserkerHpThresh) then
+			if (agent:CastSpell(agent, SPELL_TROLL_BERSERKING, false) == CAST_OK) then
+				Print(agent:GetName(), "Racial - Berserkering");
+				return true;
+			end
+		end
+		
+	elseif (agent:GetRace() == RACE_ORC) then
+		
+		if (agent:CastSpell(agent, SPELL_ORC_BLOOD_FURY, false) == CAST_OK) then
+			Print(agent:GetName(), "Racial - Blood Fury");
+			return true;
+		end
+		
+	end
+	return false;
+	
+end
+
+function Dps_DoChanneledAoe(agent, target, spell, data)
+	if (agent:CastSpell(target, spell, false) == CAST_OK) then
+		data.channeledAoePos = {target:GetPosition()};
+		return true;
+	end
+	return false;
+end
+
+function Dps_GetAEThreat(ai, agent, targets, buffer)
+	local minDiff = 99999999;
+	if (#targets < 1) then return minDiff; end
+	for idx,target in ipairs(targets) do
+		if (not Unit_IsCrowdControlled(target)) then
+			local _,tankThreat = target:GetHighestThreat();
+			local diff = (tankThreat - buffer) - target:GetThreat(agent);
+			if (diff < minDiff) then
+				minDiff = diff;
+			end
+		end
+	end
+	return math.max(0, minDiff);
 end

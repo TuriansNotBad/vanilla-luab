@@ -52,9 +52,10 @@ function Command_Complete(ai, reason)
 			CommandHandlers.OnEnd(ai);
 		end
 		ai:CmdComplete();
-		ai:GetTopGoal():ClearSubGoal();
-		Movement_ClearRequests(ai:GetData());
 	end
+	ai:GetPlayer():ClearMotion();
+	ai:GetTopGoal():ClearSubGoal();
+	Movement_ClearRequests(ai:GetData());
 end
 
 function Command_ClearAll(ai, reason)
@@ -66,9 +67,10 @@ function Command_ClearAll(ai, reason)
 			CommandHandlers.OnEnd(ai);
 		end
 		ai:CmdFail();
-		ai:GetTopGoal():ClearSubGoal();
-		Movement_ClearRequests(ai:GetData());
 	end
+	ai:GetPlayer():ClearMotion();
+	ai:GetTopGoal():ClearSubGoal();
+	Movement_ClearRequests(ai:GetData());
 end
 
 local function _UpdateCcTarget(ai, party)
@@ -124,7 +126,15 @@ function Command_DefaultUpdate(ai, goal)
 		ai:SetHealTarget(nil);
 		_UpdateCcTarget(ai, party);
 		Command_ClearAll(ai, "Agent incapacitated");
+		agent:ClearMotion();
+		agent:StopMoving();
 		return false;
+	end
+	
+	if (Data_GetShouldSelfDefense(data, partyData)) then
+		if (agent:GetAttackersNum() > 0 and Data_GetAgentSelfDefenseFn(data)) then
+			Data_GetAgentSelfDefenseFn(data)(ai, agent, goal, party, data, partyData);
+		end
 	end
 	
 	if (data.UpdateShapeshift) then
@@ -182,8 +192,11 @@ function Command_IssueHeal(ai, party, targetGuid, nHeals)
 	Print("CommandMgr: CMD_HEAL to", ai:GetPlayer():GetName(), "target =", targetGuid, "nHeals =", nHeals);
 end
 
-function Command_IssueScript(ai, party)
+function Command_IssueScript(ai, party, script)
 	Command_ClearAll(ai, "New command");
+	if (script) then
+		ai:GetData().script = script;
+	end
 	party:CmdScript(ai);
 	Print("CommandMgr: CMD_SCRIPT to", ai:GetPlayer():GetName());
 end

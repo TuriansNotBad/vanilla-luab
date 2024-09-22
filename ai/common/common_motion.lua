@@ -4,7 +4,9 @@ function Movement_Init(data)
 end
 
 function Movement_ClearRequests(data)
-	data.move.rq = {};
+	if (data.move) then
+		data.move.rq = {};
+	end
 end
 
 local function Movement_HandleHoldArea(ai, agent, goal, target, area, role)
@@ -113,7 +115,7 @@ local function Movement_HandleDefaultChase(ai, agent, goal, party, data, target,
 		end
 		
 	else
-		Dps_MeleeChase(ai, agent, target, bAllowThreatActions);
+		Dps_MeleeChase(ai, agent, target, bAllowThreatActions and not agent:HasAuraType(AURA_MOD_STEALTH));
 	end
 	
 	return true;

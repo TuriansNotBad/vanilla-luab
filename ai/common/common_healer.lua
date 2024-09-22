@@ -65,7 +65,7 @@ function Healer_ShouldHealTarget(ai, target, bTopAll)
 	local data 		= ai:GetData();
 	local cmd       = ai:CmdType();
 	
-	if (AI_IsIncapacitated(agent) or cmd == CMD_DISPEL or agent:GetStandState() ~= STAND_STATE_STAND) then
+	if (AI_IsIncapacitated(agent) or cmd == CMD_DISPEL or agent:GetStandState() ~= STAND_STATE_STAND or cmd == CMD_CC) then
 		return SHOULD_HEAL_UNABLE_TO_CAST;
 	end
 	
