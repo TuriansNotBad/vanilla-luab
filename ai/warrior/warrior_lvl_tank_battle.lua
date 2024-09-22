@@ -338,7 +338,7 @@ local function WarriorTankDoDebuffs(ai, agent, goal, data, partyData, level, tar
 	end
 	
 	-- Demoralizing Shout
-	if (level >= 14 and false == target:HasAura(data.dshout) and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
+	if (level >= 14 and (false == target:HasAura(data.dshout) or data.attackmode == "demo") and agent:CastSpell(target, data.dshout, false) == CAST_OK) then
 		-- print("Demoralizing Shout", agent:GetName(), target:GetName());
 		return true;
 	end

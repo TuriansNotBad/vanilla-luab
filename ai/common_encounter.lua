@@ -12,7 +12,7 @@ function Encounter_PreprocessAgents(key, data, fnForEach)
 			aidata[key] = ai:GetRole();
 		end
 		if (fnForEach) then
-			fnForEach(ai, agent, aidata, data);
+			fnForEach(ai, ai:GetPlayer(), aidata, data);
 		end
 	end
 end

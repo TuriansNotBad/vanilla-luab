@@ -465,40 +465,94 @@ Scholomance.Kormok = {
 };
 
 local NPC_KORMOK = 16118;
+local NPC_BONE_MAGE = 16120;
 
 function Scholomance.Kormok:OnBegin(hive, data)
-	Encounter_PreprocessAgents(self.key, data);
+	local function init_agent(ai, agent, aidata, data)
+		agent:CastSpell(agent, 17548, true); -- shadow protection
+		agent:CastSpell(agent, 17543, true); -- fire protection
+		agent:CastSpell(agent, 15279, true); -- crystal spire... does nothing
+	end
+	Encounter_PreprocessAgents(self.key, data, init_agent);
+	data.ScholoKormakC = 0;
 end
 
 function Scholomance.Kormok:OnEnd(hive, data)
 	local function restore_agent(ai, agent, aidata, data)
 		aidata.targets = nil;
+		aidata.attackmode = nil;
 	end
 	Encounter_RestoreAgents(self.key, data, restore_agent);
+	data.ScholoKormakC = nil;
+	data.ScholoKormakCanBoneMage = nil;
 end
 
 function Scholomance.Kormok:Update(hive, data)
 	
+	local bHasBoneMage = false;
 	local adds = {ignoreThreat = true};
 	for i = #data.attackers,1,-1 do
 		
 		local target = data.attackers[i];
-		if (target:GetEntry() ~= NPC_KORMOK) then
+		if (target:GetEntry() ~= NPC_KORMOK and target:GetEntry() ~= NPC_BONE_MAGE) then
 			table.remove(data.attackers, i);
 			table.insert(adds, target);
+		elseif (target:GetEntry() == NPC_BONE_MAGE) then
+			bHasBoneMage = true;
 		end
 		
 	end
 	
-	local n    = 0;
-	local nMax = 2;
+	if (not bHasBoneMage) then
+		data.ScholoKormakCanBoneMage = true;
+	end
+	
+	local bCanUseBomb = data.ScholoKormakC < 2 and data.ScholoKormakCanBoneMage;
+	local bCanUseGrenade = data.ScholoKormakC < 1 and data.ScholoKormakCanBoneMage;
+	data.attackers.ignoreThreat = true;
 	for i,ai in ipairs(data.agents) do
-		if (ai:GetRole() == ROLE_MDPS or ai:GetRole() == ROLE_RDPS) then
-			ai:GetData().targets = adds;
-			n = n + 1;
-			if (n >= nMax) then break; end
+	
+		local aidata = ai:GetData();
+		local agent = ai:GetPlayer();
+		aidata.targets = nil;
+		aidata.attackmode = nil;
+		
+		-- oil of immolation
+		if (not agent:HasAura(11350)) then
+			agent:CastSpell(agent, 11350, true);
+		end
+		
+		if (bHasBoneMage) then
+			if (bCanUseGrenade) then
+				data.ScholoKormakC = 1;
+				data.ScholoKormakCanBoneMage = false;
+				agent:CastSpell(data.attackers[1], 12419, true); -- solid dynamite
+				Print("Scholomance.Kormok:", agent:GetName(), "grenade");
+			elseif (bCanUseBomb) then
+				data.ScholoKormakC = 2;
+				data.ScholoKormakCanBoneMage = false;
+				agent:CastSpell(agent, SPELL_GEN_GOBLIN_SAPPER_CHARGE, true);
+				Print("Scholomance.Kormok:", agent:GetName(), "sapper charge");
+			end
+		end
+		
+		if (#adds > 12) then
+		
+			if (ai:GetRole() == ROLE_RDPS) then
+				if (agent:GetClass() == CLASS_MAGE) then
+					aidata.targets = {data.attackers[1], data.attackers[1], data.attackers[1], ignoreThreat = true};
+				else
+					aidata.targets = adds;
+				end
+				aidata.attackmode = "aoe";
+			end
+			if (ai:GetRole() == ROLE_TANK) then
+				aidata.attackmode = "demo";
+			end
+			
 		end
 	end
+	
 	
 end
 
@@ -826,7 +880,15 @@ Scholomance.encounters = {
 		healmax      = true,
 		dispelFilter = function()return false;end,
 	},
-	{name = "Kormok", script = Scholomance.Kormok},
+	{
+		name       = "Kormok",
+		script     = Scholomance.Kormok,
+		healmax    = true,
+		defensepot = 17543,
+		tankPot    = 17543,
+		tpos       = {-16.701, 141.816, 83.901},
+		rchrpos    = {x = -16.701, y = 141.816, z = 83.901, melee="ignore"}
+	},
 	{name = "Instructor Malicia"},
 	{
 		name = "Doctor Theolen Krastinov",
