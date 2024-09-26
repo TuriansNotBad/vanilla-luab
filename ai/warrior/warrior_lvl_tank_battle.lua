@@ -285,6 +285,16 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 		return;
 	end
 	
+	-- waiting on LoS pull
+	if (Tank_IsWaitingOnLosPull(goal, partyData)) then
+		if (not agent:CanReachWithMelee(target)) then
+			target = Dps_GetFirstTargetInMeleeRange(agent, party, partyData.attackers);
+		end
+		if (not target) then
+			return;
+		end
+	end
+	
 	-- changing target
 	if (not AI_IsAttackingTarget(agent, target)) then
 		if (agent:GetMotionType() == MOTION_CHASE) then

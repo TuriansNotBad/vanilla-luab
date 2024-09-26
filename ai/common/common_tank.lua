@@ -210,13 +210,35 @@ function Tank_BringTargetToPos(ai, agent, target, x, y, z)
 	
 end
 
-function Tank_CombatMovement(ai, agent, target, data, partyData)
+function Tank_IsWaitingOnLosPull(goal, partyData)
+	return partyData.bAnyRangedOutOfLos and not goal:IsFinishTimer(ST_TANKLOS);
+end
+
+function Tank_CombatMovement(ai, agent, goal, target, data, partyData)
 	if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
-		Tank_Chase(ai, agent, target, data, partyData);
+		Tank_Chase(ai, agent, goal, target, data, partyData);
 	end
 end
 
-function Tank_Chase(ai, agent, target, data, partyData)
+local function Tank_LosBreakMovement(ai, agent, target, data)
+	
+	if (agent:GetMotionType() == MOTION_CHASE) then
+		agent:ClearMotion();
+	end
+	
+	if (not agent:HasInArc(target, 0.52) and not agent:IsMoving()) then
+		agent:MoveFacing(agent:GetAngle(target));
+	end
+	
+end
+
+function Tank_Chase(ai, agent, goal, target, data, partyData)
+	
+	-- waiting on los pull
+	if (Tank_IsWaitingOnLosPull(goal, partyData)) then
+		Tank_LosBreakMovement(ai, agent, target, data);
+		return;
+	end
 	
 	local reverse = partyData.reverse;
 	
@@ -225,6 +247,7 @@ function Tank_Chase(ai, agent, target, data, partyData)
 		if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
 			if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
 				local r = AI_GetDefaultChaseSeparation(target);
+				agent:ClearMotion();
 				agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true, false);
 				data.tankrot = nil;
 			end
@@ -235,6 +258,7 @@ function Tank_Chase(ai, agent, target, data, partyData)
 		-- motion
 		if (agent:GetMotionType() ~= MOTION_CHASE and agent:GetMotionType() ~= MOTION_CHARGE) then
 			local r = AI_GetDefaultChaseSeparation(target);
+			agent:ClearMotion();
 			agent:MoveChase(target, r, r/2, r/2, 0.0, math.pi, false, true, false);
 		end
 		

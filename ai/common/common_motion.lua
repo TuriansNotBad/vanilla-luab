@@ -91,7 +91,7 @@ local function Movement_HandleDefaultChase(ai, agent, goal, party, data, target,
 	
 	-- tanks have their own chase movement
 	if (CMD_TANK == ai:CmdType()) then
-		Tank_CombatMovement(ai, agent, target, data, party:GetData());
+		Tank_CombatMovement(ai, agent, goal, target, data, party:GetData());
 		return true;
 	end
 	

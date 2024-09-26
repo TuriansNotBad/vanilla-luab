@@ -4,6 +4,18 @@
 		<blank>
 *********************************************************************************************]]
 
+local t_ignoreThreatEntryList = {
+	[10411] = true, -- Eye of Naxxramas
+};
+
+function Dps_GetFirstTargetInMeleeRange(agent, party, targets)
+	for i = 1, #targets do
+		if (not party:IsCC(targets[i]) and agent:CanReachWithMelee(targets[i])) then
+			return targets[i];
+		end
+	end
+end
+
 function Dps_GetNearestTarget(agent, targets)
 	if (#targets == 0) then
 		return;
@@ -20,14 +32,20 @@ function Dps_GetNearestTarget(agent, targets)
 	return nearest;
 end
 
+local function Dps_CheckThreat(agent, target, partyData, bCheck, minDiff)
+	if (not bCheck or t_ignoreThreatEntryList[target:GetEntry()]) then return true; end
+	return Tank_GetTankThreat(partyData, target) - target:GetThreat(agent) > minDiff;
+end
+
 function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 	
+	if (not party) then return targets[1]; end
+	
+	local partyData = party:GetData();
 	local minDiff = ai:GetStdThreat();
 	for i = 1, #targets do
 		local target = targets[i];
-		local tankThreat = Tank_GetTankThreat(party:GetData(), target);
-		local diff  = tankThreat - target:GetThreat(agent);
-		if ((diff > minDiff or false == threatCheck) and (nil == party or (false == party:IsCC(target) and not Unit_IsCrowdControlled(target)))) then
+		if (Dps_CheckThreat(agent, target, partyData, bCheck, minDiff) and false == party:IsCC(target) and not Unit_IsCrowdControlled(target)) then
 			return target;
 		end
 	end
@@ -35,7 +53,7 @@ function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 end
 
 function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threatCheck, maxInterruptDist)
-	local partyData = party:GetData();
+	local partyData = party and party:GetData() or {};
 	local encounter = partyData.encounter;
 	local interruptFilter = encounter and encounter.interruptFilter;
 	local hpTarget;
@@ -43,9 +61,9 @@ function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threat
 	
 	for i = 1, #targets do
 		local target = targets[i];
-		local tankThreat = Tank_GetTankThreat(party:GetData(), target);
-		local diff  = tankThreat - target:GetThreat(agent);
-		if ((diff > ai:GetStdThreat() or false == threatCheck) and (nil == party or (false == party:IsCC(target) and not Unit_IsCrowdControlled(target)))) then
+		
+		if (Dps_CheckThreat(agent, target, partyData, bCheck, minDiff)
+		and (nil == party or (false == party:IsCC(target) and not Unit_IsCrowdControlled(target)))) then
 			
 			-- check interruptable
 			local interruptCheck;

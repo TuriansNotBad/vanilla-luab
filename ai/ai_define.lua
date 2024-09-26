@@ -9,8 +9,9 @@ __Mgr_Disable_Agent_Save = true;
 
 t_dungeons = {};
 
--- Global SetTimer indicdes
-ST_GRENADE = 19;
+-- Global SetTimer indices
+ST_TANKLOS = 19;
+ST_GRENADE = 18;
 
 -- Goal execution result
 GOAL_RESULT_Continue = 0;

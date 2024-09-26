@@ -104,7 +104,7 @@ end
 	Goal termination
 ********************************************************]]
 function FollowCLineRev_Terminate(ai, goal)
-	-- print("CLineRev terminated");
+	print("CLineRev terminated", ai:GetPlayer():GetName());
 	ai:GetPlayer():ClearMotion();
 end
 

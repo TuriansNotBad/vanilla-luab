@@ -152,6 +152,14 @@ function Encounter_PointInArea(x,y,z,area)
 	return pointInArea(x,y,z,area.shape,true);
 end
 
+function Encounter_GetAreaForTargetPos(x,y,z,areaTbl)
+	for i = 1,#areaTbl do
+		if (Encounter_PointInArea(x,y,z,areaTbl[i])) then
+			return areaTbl[i];
+		end
+	end
+end
+
 function Encounter_GetLosPositionsForTargetPos(x,y,z, areaTbl)
 	for i = 1,#areaTbl do
 		if (Encounter_PointInArea(x,y,z,areaTbl[i])) then
@@ -170,6 +178,7 @@ function EncounterScript_OnEnd(encounter, hive, data)
 	
 	data.encounterDoneLosBreakOnce = nil;
 	data.forceCombatUpdate         = nil;
+	data.bAnyRangedOutOfLos        = nil;
 	Print("Encounter ended", encounter.name);
 	
 	if (encounter.script and encounter.script.OnEnd) then
@@ -184,6 +193,7 @@ function EncounterScript_Update(encounter, hive, data)
 		if (#data.attackers == 0) then
 			data.encounterDoneLosBreakOnce = nil;
 			data.forceCombatUpdate         = nil;
+			data.bAnyRangedOutOfLos        = nil;
 		else
 			EncounterScript_LosBreakUpdate(hive, data, data.dungeon.AreaTbl, data.dungeon.RangedTbl);
 		end
@@ -223,7 +233,16 @@ function EncounterScript_LosBreakRemoveRangedAttackers(rangedTbl, attackers)
 end
 
 function EncounterScript_LosBreakUpdateAgents(hive, data, areaTbl, bHasRangedEnemies, bAnyRangedOutOfLos)
-	if (not data.originalEnemyPos or not bHasRangedEnemies) then return; end
+	data.bAnyRangedOutOfLos = bAnyRangedOutOfLos;
+	if (not data.originalEnemyPos) then return; end
+	
+	-- local area;
+	if (not bHasRangedEnemies) then
+		-- area = Encounter_GetAreaForTargetPos(data.originalEnemyPos[1], data.originalEnemyPos[2], data.originalEnemyPos[3], areaTbl);
+		-- if (not area or not area.all) then
+			return;
+		-- end
+	end
 	
 	-- alter tank pulling behaviour
 	local bOkToLosBreak = not data.encounterDoneLosBreakOnce;
@@ -231,6 +250,7 @@ function EncounterScript_LosBreakUpdateAgents(hive, data, areaTbl, bHasRangedEne
 	
 	local losPos;
 	if (bOkToLosBreak) then
+		-- losPos = area.los or Encounter_GetLosPositionsForTargetPos(data.originalEnemyPos[1], data.originalEnemyPos[2], data.originalEnemyPos[3], areaTbl);
 		losPos = Encounter_GetLosPositionsForTargetPos(data.originalEnemyPos[1], data.originalEnemyPos[2], data.originalEnemyPos[3], areaTbl);
 	end
 	
@@ -260,6 +280,11 @@ function EncounterScript_LosBreakUpdateAgents(hive, data, areaTbl, bHasRangedEne
 				data.encounterDoneLosBreakOnce = true;
 				bOkToLosBreak = false;
 				return;
+			end
+			
+			-- set the timer, used by tank to avoid moving for precise LoS pulls
+			if (bAnyRangedOutOfLos and ai:CmdType() == CMD_PULL) then
+				ai:GetTopGoal():SetTimer(ST_TANKLOS, 10.0);
 			end
 			
 		elseif ((bAnyRangedOutOfLos or bTankPulling) and bOkToLosBreak) then

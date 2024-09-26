@@ -90,7 +90,7 @@ end
 	Goal termination
 ********************************************************]]
 function GotoCLinePos_Terminate(ai, goal)
-	print("CLineRev terminated");
+	print("GotoCLinePos terminated", ai:GetPlayer():GetName());
 	ai:GetPlayer():ClearMotion();
 end
 
