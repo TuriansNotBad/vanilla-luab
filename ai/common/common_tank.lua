@@ -240,8 +240,6 @@ function Tank_Chase(ai, agent, goal, target, data, partyData)
 		return;
 	end
 	
-	local reverse = partyData.reverse;
-	
 	if (false == agent:CanReachWithMelee(target)) then
 	
 		if (false == target:IsMoving() or target:GetVictim() ~= agent or Unit_IsCrowdControlled(target)) then
@@ -265,8 +263,10 @@ function Tank_Chase(ai, agent, goal, target, data, partyData)
 		-- facing
 		if (agent:GetMotionType() == MOTION_CHASE and ai:IsCLineAvailable()) then
 			
-			local tanko = Data_GetTankOrientation(aidata, partyData);
 			if (data.tankrot == nil) then
+				local tanko = Data_GetTankOrientation(aidata, partyData);
+				local reverse = partyData.reverse;
+	
 				data.tankrot = tanko or ai:GetAngleForTanking(target, reverse, reverse);
 			end
 			
@@ -284,11 +284,17 @@ function Tank_Chase(ai, agent, goal, target, data, partyData)
 						ai:SetAbsAngle(data.tankrot);
 						print("set angle", adiff);
 					end
-				elseif (ai:IsUsingAbsAngle()) then
-					print("unset angle");
-					ai:UnsetAbsAngle();
+					ai:SetChaseSimple(false);
+				else
+					if (ai:IsUsingAbsAngle()) then
+						print("unset angle");
+						ai:UnsetAbsAngle();
+					end
+					ai:SetChaseSimple(true);
 				end
-				
+			
+			else
+				ai:SetChaseSimple(true);
 			end
 			
 		end

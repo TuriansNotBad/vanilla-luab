@@ -6,7 +6,7 @@
 		Used to assign top goal on initialization.
 		All decision making should be handled by PartyIntelligence.
 *********************************************************************************************]]
-REGISTER_LOGIC_FUNC(LOGIC_ID_Party, "Party_Logic", "Party_Init");
+REGISTER_LOGIC_FUNC(LOGIC_ID_Party, "Party_Logic", "Party_Init", "Party_Reset");
 
 --[[*******************************************************
 	Init.
@@ -39,5 +39,15 @@ function Party_Logic(ai)
 	if (not ai:HasTopGoal(data.battleGoalID)) then
 		ai:AddTopGoal(data.battleGoalID, -1);
 	end
+end
+
+--[[*******************************************************
+	Reset.
+*********************************************************]]
+function Party_Reset(ai)
+	Print("Logic reset for", ai:GetPlayer():GetName());
+	local party = ai:GetPartyIntelligence();
+	if (not party) then return; end
+	party:GetData():ResetAgentFull(ai, party);
 end
 

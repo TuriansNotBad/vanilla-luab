@@ -312,6 +312,7 @@ Proficiency = {
 	Sword2H   = 202,
 	DualWield = 674,
 	Plate     = 750,
+	Mail      = 8737,
 };
 
 -- reputation

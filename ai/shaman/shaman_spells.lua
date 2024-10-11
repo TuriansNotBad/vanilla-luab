@@ -7,6 +7,10 @@ SPELL_SHA_EARTH_SHOCK             = 10414;
 -- weapon enhance
 SPELL_SHA_FLAMETONGUE_WEAPON      = 16342;
 
+-- heals
+SPELL_SHA_HEALING_WAVE            = Builds.Spell("1.9.4", 10396, 25357);
+SPELL_SHA_CHAIN_HEAL              = 10623;
+
 -- totems
 SPELL_SHA_TREMOR_TOTEM            = 8143;
 SPELL_SHA_STRENGTH_OF_EARTH_TOTEM = Builds.Spell("1.9.4", 10442, 25361);

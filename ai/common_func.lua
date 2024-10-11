@@ -97,7 +97,7 @@ function AI_DistanceIfNeeded(ai, agent, goal, party, dist2close, atkTarget, fDis
 		if (enemy) then
 			local seekDist = fDist or (atkTarget and 18 - enemy:GetDistance(atkTarget) or 15);
 			if (seekDist - 3 > 2) then
-				local x,y,z = party:GetCLinePInLosAtD(agent, enemy, atkTarget or enemy, seekDist - 3, seekDist, 1, not data.reverse);
+				local x,y,z = party:GetCLinePInLosAtD(agent, enemy, atkTarget or enemy, seekDist - 3, seekDist, 1, not data.reverse, data.clineIdx);
 				if (x) then
 					goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, x, y, z);
 					print(agent:GetName(), "distancing", x, y, z);
@@ -265,13 +265,13 @@ function AI_CancelAgentBuffs(ai)
 	-- mage
 	AI_CancelAuraSpellChain(ai, SPELL_MAG_ARCANE_INTELLECT);
 	Builds.Select(ai, "1.4.2", SPELL_MAG_ARCANE_BRILLIANCE, AI_CancelAuraSpellChain);
-	AI_CancelAuraSpellChain(ai, SPELL_PRI_PRAYER_OF_FORTITUDE);
 	AI_CancelAuraSpellChain(ai, SPELL_MAG_FROST_ARMOR);
 	AI_CancelAuraSpellChain(ai, SPELL_MAG_ICE_ARMOR);
 	AI_CancelAuraSpellChain(ai, SPELL_MAG_MAGE_ARMOR);
 	-- priest
 	AI_CancelAuraSpellChain(ai, SPELL_PRI_POWER_WORD_FORTITUDE);
 	AI_CancelAuraSpellChain(ai, SPELL_PRI_PRAYER_OF_FORTITUDE);
+	AI_CancelAuraSpellChain(ai, SPELL_PRI_INNER_FIRE);
 end
 
 function AI_HasMotionAura(agent)
@@ -299,6 +299,10 @@ function AI_TargetInHoldingArea(target, area)
 		return target:GetDistance(area.pos.x, area.pos.y, area.pos.z) < area.r;
 	end
 	error("AI_TargetInHoldingArea: area type NYI, type = " .. area.tp);
+end
+
+function AI_IsAllianceRace(race)
+	return race == RACE_HUMAN or race == RACE_DWARF or race == RACE_NIGHTELF or race == RACE_GNOME;
 end
 
 function GetDungeon(map)

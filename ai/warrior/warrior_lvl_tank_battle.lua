@@ -287,6 +287,11 @@ function WarriorLevelTank_CmdTankUpdate(ai, agent, goal, party, data, partyData)
 	
 	-- waiting on LoS pull
 	if (Tank_IsWaitingOnLosPull(goal, partyData)) then
+		-- end wait if target is on ally
+		if (target:GetVictim() ~= agent) then
+			goal:SetTimer(ST_TANKLOS, -1);
+			return;
+		end
 		if (not agent:CanReachWithMelee(target)) then
 			target = Dps_GetFirstTargetInMeleeRange(agent, party, partyData.attackers);
 		end
@@ -386,7 +391,7 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	
 	if (data.grenade and party and agent:GetDistance(target) < 10.0 and false == target:IsMoving() and false == agent:IsMoving()) then
 		
-		if (level >= 10 and goal:IsFinishTimer(0) and hp > 50) then
+		if (level >= 20 and goal:IsFinishTimer(0) and hp > 50) then
 			
 			-- sapper charge
 			if ((Unit_AECheck(agent, 5.0, 3, false, partyData.attackers) or data.forceBurstThreat)
@@ -530,10 +535,14 @@ function WarriorTankRotation(ai, agent, goal, data, partyData, target)
 	
 	-- Sunder
 	local shouldSunder = level >= 10 and (target:GetAuraStacks(data.sunder) < 5 or target:GetAuraTimeLeft(data.sunder) < 3000);
-	if (shouldSunder and agent:CastSpell(target, data.sunder, false) == CAST_OK) then
-		-- print("Sunder Armor", agent:GetName(), target:GetName());
+	if (true) then
+		goal:AddSubGoal(GOAL_COMMON_CastInForm, 10.0, target:GetGuid(), data.sunder, FORM_DEFENSIVESTANCE, 0.0);
 		return true;
 	end
+	-- if (shouldSunder and agent:CastSpell(target, data.sunder, false) == CAST_OK) then
+		-- -- print("Sunder Armor", agent:GetName(), target:GetName());
+		-- return true;
+	-- end
 	
 	-- Shield Slam
 	if (data._hasShieldSlam and agent:CastSpell(target, data.sslam, false) == CAST_OK) then

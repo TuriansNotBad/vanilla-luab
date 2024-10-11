@@ -137,6 +137,26 @@ function Encounter_MakeAreaTbl(losInfo)
 	return self;
 end
 
+function Encounter_SetAreaLosPos(name, areaTbl, losTbl, losName)
+	for i,area in ipairs(areaTbl) do
+		if (area.name == name) then
+			for j,los in ipairs(losTbl) do
+				if (los.name == losName) then
+					Print("Encounter_SetAreaLosPos: changed los pos for area", name, "to", losName);
+					area.los = los;
+					return;
+				end
+			end
+		end
+	end
+	error("Encounter_SetAreaLosPos: fail, area or pos not found: " .. name .. " " .. losName);
+end
+
+function Encounter_NewTriggerCircle(name, x,y,z,r,zr, fn,fnLeave)
+	assert(name and x and y and z and r and fn, "Encounter_NewTriggerCircle: not all arguments specified");
+	return {name = name, x=x,y=y,z=z,r=r,zr=zr, OnEnter=fn,OnLeave=fnLeave};
+end
+
 function Encounter_NewRangedList()
 	return {
 		IsRanged = function(self, unit)
@@ -194,6 +214,16 @@ function EncounterScript_Update(encounter, hive, data)
 			data.encounterDoneLosBreakOnce = nil;
 			data.forceCombatUpdate         = nil;
 			data.bAnyRangedOutOfLos        = nil;
+			-- local printed = false;
+			-- for i,v in ipairs(data.dungeon.AreaTbl) do
+				-- local x,y,z = data.owner:GetPosition();
+				-- if (Encounter_PointInArea(x,y,z,v)) then
+					-- Print(v.name);
+					-- printed =true;
+					-- break;
+				-- end
+			-- end
+			-- if not printed then Print("none"); end
 		else
 			EncounterScript_LosBreakUpdate(hive, data, data.dungeon.AreaTbl, data.dungeon.RangedTbl);
 		end

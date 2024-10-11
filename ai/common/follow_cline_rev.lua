@@ -50,7 +50,7 @@ function FollowCLineRev_Activate(ai, goal)
 	end
 	
 	-- get previous segment on the line
-	local cx,cy,cz,cd,cs,cl = party:GetNearestCLineP(agent);
+	local cx,cy,cz,cd,cs,cl = party:GetNearestCLineP(agent,goal:GetParam(1),goal:GetParam(2),goal:GetParam(3));
 	GetNewPoint(agent, goal, party, cl, cs, goal:GetParam(0));
 	Print(agent:GetName(), "begin follow cline", cl, "s", cs, cx, cy, cz);
 	

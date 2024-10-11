@@ -7,6 +7,7 @@ local t_agentInfo = {
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
+	-- {"Kanda",LOGIC_ID_Party,"LvlHeal"}, -- shaman
 	-- {"Man",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
 	-- {"Zakom",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Ahc",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
@@ -37,14 +38,14 @@ local function GetBuffAgentsTbl(data, target, key)
 	end
 	for i = #data, 1, -1 do
 		local agent = GetPlayerByGuid(data[i]);
-		if (nil == agent) then
+		if (nil == agent or nil == agent:GetAI()) then
 			table.remove(data, i);
 		elseif (agent:IsAlive() and (data.spellid == nil or (agent:HasEnoughPowerFor(data.spellid, true) and agent:IsSpellReady(data.spellid)))) then
 			table.insert(t, agent);
 		end
 	end
 	if (#data == 0) then
-		data.buffs[key] = nil;
+		-- data.buffs[key] = nil;
 		return t;
 	end
 	-- it would be ideal to have a mixed sort between mana and distance
@@ -180,9 +181,10 @@ end
 local function RegisterBuff(data, agent, key, str, spellid, type, time, filter, combat)
 	local data = data.buffs;
 	data[key] = data[key] or {str = -1, spellid = 0, type = BUFF_SINGLE, time = 0};
-	if (table.ifind(data[key], agent:GetGuid()) ~= 0 or str < data[key].str) then
-		return;
-	end
+	-- if i'm reregistering delete old entry
+	local myOldIdx = table_ifind(data[key], agent:GetGuid());
+	if (myOldIdx > 0) then table.remove(data[key], myOldIdx); end
+	if (str < data[key].str) then return; end
 	if (str > data[key].str) then
 		data[key] = {str = str, spellid = spellid, type = type, time = time, filter = filter, combat = combat};
 	end
@@ -192,7 +194,7 @@ end
 local function RegisterDispel(data, agent, key)
 	local data = data.dispel;
 	data[key] = data[key] or {};
-	if (table.ifind(data[key], agent:GetGuid()) ~= 0) then
+	if (table_ifind(data[key], agent:GetGuid()) ~= 0) then
 		return;
 	end
 	table.insert(data[key], agent:GetGuid());
@@ -225,6 +227,54 @@ local function RegisterCC(data, agent, spellid, isfear)
 	table.insert(data.ccAgents, {agent:GetGuid(), spellid, isfear = isfear or false});
 end
 
+local function ResetAgentFull(data, ai, hive)
+	local agent = ai:GetPlayer();
+	local guid = agent:GetGuid();
+	
+	Print("Hive: ResetAgentFull begin. Agent", guid);
+	-- remove my cc registration
+	for i = #data.ccAgents,1,-1 do
+		local ccentry = data.ccAgents[i];
+		if (guid == ccentry[1]) then
+			Print("Hive: ResetAgentFull - unregistered cc", GetSpellName(ccentry[2]));
+			table.remove(data.ccAgents, i);
+		end
+	end
+	-- unassign any cc assigned to me
+	local cc = hive:GetCC();
+	for i = 1, #data.cc do
+		local ai = data.cc[i].agent;
+		local agent = ai:GetPlayer();
+		local target = data.cc[i].target;
+		if (agent:GetGuid() == guid) then
+			Print("Hive: ResetAgentFull - unassigned cc target", target:GetGuid(), target:GetName());
+			hive:RemoveCC(target:GetGuid());
+		end
+	end
+	local function unregister_table(data, guid, tablekey)
+		data = data[tablekey];
+		for k,v in next,data do
+			for i = #v,1,-1 do
+				if (v[i] == guid) then
+					Print("Hive: ResetAgentFull - unregister tbl", tablekey, k);
+					table.remove(v, i);
+				end
+			end
+			if (#v == 0) then
+				data[k] = nil;
+				Print("Hive: ResetAgentFull - table is empty, removed", tablekey, k);
+			end
+		end
+	end
+	-- Unregister buffs
+	unregister_table(data, guid, "buffs");
+	-- Unregister dispels
+	unregister_table(data, guid, "dispel");
+	-- Remove me from the board
+	AI_UnpostAllBuffsForCaster(guid);
+	Print("Hive: ResetAgentFull end. Agent", guid);
+end
+
 function Hive_Init(hive)
 	Cmd_InitDefaultHandlers();
 	hive:LoadInfoFromLuaTbl(t_agentInfo);
@@ -235,6 +285,7 @@ function Hive_Init(hive)
 	data.RegisterBuff = RegisterBuff;
 	data.RegisterCC = RegisterCC;
 	data.RegisterDispel = RegisterDispel;
+	data.ResetAgentFull = ResetAgentFull;
 	data.HasTank = HasTank;
 	data.GetFirstActiveTank = GetFirstActiveTank;
 	data.dungeon = nil;
@@ -262,7 +313,7 @@ local function FillTrackedAttackers(attackers, tracked)
 	for i,unit in ipairs(tracked) do
 		local t = unit:GetAttackers();
 		for j,attacker in ipairs(t) do
-			if (table.ifind(attackers, attacker) == 0) then
+			if (table_ifind(attackers, attacker) == 0) then
 				table.insert(attackers, attacker);
 			end
 		end
@@ -287,6 +338,7 @@ local function Hive_UpdateMapInfo(hive, data)
 		end
 		
 		data._currentMapId = mapId;
+		hive:InitTriggersForMap(mapId);
 		
 	end
 	
@@ -312,6 +364,7 @@ function Hive_Update(hive)
 	data._needTremor = nil;
 	data._needPoisonCleansing = nil;
 	data._holdPos = nil;
+	data.threatGrpMax = nil;
 	
 	local ownerGuid = hive:GetOwnerGuid()
 	local ownerVictim;
@@ -437,6 +490,8 @@ function Hive_Update(hive)
 			-- end
 			agent:SetPowerPct(POWER_MANA, 100.0);
 			-- agent:SetPowerPct(POWER_RAGE, 100.0);
+		else
+			-- agent:SetHealthPct(40.0);
 		end
 		local role = ai:GetRole();
 		if (role == ROLE_TANK) then
@@ -506,6 +561,11 @@ end
 -- todo: threat check
 local function IssueDispelCommands(hive, data, agents, friendly, nonCombat)
 	
+	if (data.bAnyRangedOutOfLos or (data.threatGrpMax and data.threatGrpMax < 20)) then
+		Print("Dispel is blocked", data.bAnyRangedOutOfLos, data.threatGrpMax);
+		return;
+	end
+	
 	local function DoIssue(ai, agent, key)
 		-- print("Key", key, agent:GetName(), agent:HasLostControl());
 		if (AI_HasBuffAssigned(agent:GetGuid(), "Dispel", BUFF_SINGLE)) then
@@ -566,9 +626,9 @@ end
 
 function Hive_OOCUpdate(hive, data)
 	
-	-- data.encounter = nil;
-	data.reverse = nil;
-	data.aoe = false;
+	data.reverse  = nil;
+	data.clineIdx = nil;
+	data.aoe      = false;
 	local agents = data.agents;
 	
 	if (#data.healers > 0) then
@@ -620,7 +680,8 @@ function Hive_OOCUpdate(hive, data)
 			
 			local dist = agent:GetDistance(data.owner);
 			local notBusy = ai:CmdType() == CMD_FOLLOW or ai:CmdType() == CMD_NONE;
-			if (dist > 50 and (notBusy or agent:GetMapId() ~= data.owner:GetMapId() or dist > 200)) then
+			local diffMap = agent:GetMapId() ~= data.owner:GetMapId();
+			if (diffMap or (dist > 50 and (notBusy or dist > 200))) then
 				ai:GoName(data.owner:GetName());
 			else
 				
@@ -644,14 +705,16 @@ end
 
 function Hive_CombatUpdate(hive, data)
 	
-	-- should always attack lowest health target by default
-	-- but if we are close to pulling aggro we should attack anything safe
-	-- or halt, agents handle that in library funcs on their own
-	
-	if (data.reverse == nil and #data.attackers > 0 and data.owner ~= nil and hive:HasCLineFor(data.owner)) then
-		data.reverse = hive:ShouldReverseCLine(data.owner, data.attackers[1]);
-		print "-----------------------------------------------------------------------";
-		Print("Hive reverse", data.reverse);
+	if (data.reverse == nil and #data.attackers > 0) then
+		-- local tankAI,tank = data:GetFirstActiveTank(true);
+		local player = data.owner;--tank or data.owner;
+		if (player and hive:HasCLineFor(player)) then
+			local x,y,z,d,s,l = hive:GetNearestCLineP(data.attackers[1]);
+			data.clineIdx = l;
+			data.reverse = hive:ShouldReverseCLine(player, data.attackers[1], true);
+			print "-----------------------------------------------------------------------";
+			Print("Hive reverse", data.reverse, data.clineIdx, player:GetName());
+		end
 	end
 	
 	local encounter = data.encounter;
@@ -661,7 +724,7 @@ function Hive_CombatUpdate(hive, data)
 	-- check that we don't overassign
 	local num_cc_now = 0;
 	for i = #data.attackers, 1, -1 do
-		if (hive:IsCC(data.attackers[i])) then
+		if (hive:IsCC(data.attackers[i]) or Unit_IsCrowdControlled(data.attackers[i])) then
 			num_cc_now = num_cc_now + 1;
 		end
 	end
@@ -783,6 +846,7 @@ function Hive_CombatUpdate(hive, data)
 	
 	if (Tank_AnyTankPulling(data.tanks)) then
 		return;
+	else
 	end
 	
 	-- cc
@@ -857,6 +921,8 @@ function Hive_CombatUpdate(hive, data)
 			end
 		end
 	end
+	
+	if (not data.threatGrpMax) then data.threatGrpMax = Dps_GetMaxAllowedThreat(data.attackers); end
 	
 	IssueDispelCommands(hive, data, data.agents, true, false);
 	IssueDispelCommands(hive, data, data.tracked, true, false);

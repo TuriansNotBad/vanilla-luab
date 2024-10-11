@@ -318,11 +318,12 @@ end
 -- Set default handlers
 --------------------------------------------------
 function Cmd_InitDefaultHandlers()
-	Command_SetDefaultHandlers(CMD_FOLLOW, Cmd_FollowOnBegin, Cmd_FollowUpdate, Cmd_FollowOnEnd);
-	Command_SetDefaultHandlers(CMD_ENGAGE, Cmd_EngageOnBegin, Cmd_EngageUpdate, Cmd_EngageOnEnd);
-	Command_SetDefaultHandlers(CMD_DISPEL, Cmd_DispelOnBegin, Cmd_DispelUpdate, Cmd_DispelOnEnd);
-	Command_SetDefaultHandlers(CMD_BUFF  , Cmd_BuffOnBegin,   Cmd_BuffUpdate,   Cmd_BuffOnEnd);
-	Command_SetDefaultHandlers(CMD_CC    , Cmd_CCOnBegin,     Cmd_CCUpdate,     Cmd_CCOnEnd);
-	Command_SetDefaultHandlers(CMD_SCRIPT, Cmd_ScriptOnBegin, Cmd_ScriptUpdate, Cmd_ScriptOnEnd);
-	Command_SetDefaultHandlers(CMD_PULL  , Cmd_PullOnBegin,   Cmd_PullUpdate,   nil);
+	Command_SetDefaultHandlers(CMD_FOLLOW, Cmd_FollowOnBegin,    Cmd_FollowUpdate, Cmd_FollowOnEnd);
+	Command_SetDefaultHandlers(CMD_ENGAGE, Cmd_EngageOnBegin,    Cmd_EngageUpdate, Cmd_EngageOnEnd);
+	Command_SetDefaultHandlers(CMD_DISPEL, Cmd_DispelOnBegin,    Cmd_DispelUpdate, Cmd_DispelOnEnd);
+	Command_SetDefaultHandlers(CMD_BUFF  , Cmd_BuffOnBegin,      Cmd_BuffUpdate,   Cmd_BuffOnEnd);
+	Command_SetDefaultHandlers(CMD_CC    , Cmd_CCOnBegin,        Cmd_CCUpdate,     Cmd_CCOnEnd);
+	Command_SetDefaultHandlers(CMD_SCRIPT, Cmd_ScriptOnBegin,    Cmd_ScriptUpdate, Cmd_ScriptOnEnd);
+	Command_SetDefaultHandlers(CMD_PULL  , Cmd_PullOnBegin,      Cmd_PullUpdate,   nil);
+	Command_SetDefaultHandlers(CMD_HEAL  , Cmd_HealOnBeginOrEnd, Cmd_HealUpdate,   Cmd_HealOnBeginOrEnd);
 end

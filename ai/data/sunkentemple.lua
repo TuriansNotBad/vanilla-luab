@@ -845,7 +845,7 @@ function SunkenTemple.Hakkar:Update(hive, data)
 	end
 	
 	do
-		-- local flames = table.merge(
+		-- local flames = table_merge(
 			-- GetObjectsWithEntryAround(owner, self.FlameId1, 50, true),
 			-- GetObjectsWithEntryAround(owner, self.FlameId2, 50, true),
 			-- GetObjectsWithEntryAround(owner, self.FlameId3, 50, true),
@@ -874,7 +874,7 @@ function SunkenTemple.Hakkar:Update(hive, data)
 			local goal = ai:GetTopGoal();
 			if (goal:GetSubGoalNum() == 0) then
 				
-				local flames = table.merge(
+				local flames = table_merge(
 					GetObjectsWithEntryAround(owner, self.FlameId1, 30, true),
 					GetObjectsWithEntryAround(owner, self.FlameId2, 30, true),
 					GetObjectsWithEntryAround(owner, self.FlameId3, 30, true),
@@ -917,7 +917,7 @@ function SunkenTemple.Hakkar:Update(hive, data)
 				if (agent:GetGuid() == candidate:GetLootRecipient()) then
 					local loot = candidate:GetLootList();
 					-- Debug_PrintTable(loot);
-					if (table.ifind(loot, self.HakkariBlood) > 0) then
+					if (table_ifind(loot, self.HakkariBlood) > 0) then
 						bloodkeeper = candidate;
 						looterAI, looter = ai, agent;
 						break;

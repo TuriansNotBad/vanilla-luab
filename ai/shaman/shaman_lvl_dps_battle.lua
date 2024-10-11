@@ -62,13 +62,15 @@ function ShamanLevelDps_Activate(ai, goal)
 	
 	-- totems
 	data.ttremor = ai:GetSpellMaxRankForMe(SPELL_SHA_TREMOR_TOTEM);
-	data.tstr    = ai:GetSpellMaxRankForMe(SPELL_SHA_STRENGTH_OF_EARTH_TOTEM);
+	data.tstr    = ai:GetSpellMaxRankForMe(10442);--ai:GetSpellMaxRankForMe(SPELL_SHA_STRENGTH_OF_EARTH_TOTEM);
 	data.twind   = ai:GetSpellMaxRankForMe(SPELL_SHA_WINDFURY_TOTEM);
 	
 	-- consumes
 	data.food    = Consumable_GetFood(level);
 	data.water   = Consumable_GetWater(level);
 	data.manapot = Consumable_GetManaPotion(level);
+	
+	Movement_Init(data);
 	
 	local _,threat = agent:GetSpellDamageAndThreat(agent, ai:GetSpellMaxRankForMe(SPELL_WAR_SUNDER_ARMOR), false, true);
 	ai:SetStdThreat(2.0*threat);

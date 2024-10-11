@@ -21,6 +21,9 @@ REGISTER_GOAL(GOAL_COMMON_Pull, "Pull");
 local SN_X    = 0; -- Make distance to X coordinate
 local SN_Y    = 1; -- Make distance to Y coordinate
 local SN_Z    = 2; -- Make distance to Z coordinate
+local SN_MX   = 3; -- Position agent started goal from
+local SN_MY   = 4; -- Position agent started goal from
+local SN_MZ   = 5; -- Position agent started goal from
 local SN_FAR  = 8; -- Flag to use far pull (usually caused by ranged enemies)
 local SN_FLAG = 9; -- Flag to only attempt distancing once
 local ST_AWAIT= 0; -- Timer after successful shot we wait this long
@@ -43,11 +46,21 @@ function Pull_Activate(ai, goal)
 	goal:SetNumber(SN_X, x);
 	goal:SetNumber(SN_Y, y);
 	goal:SetNumber(SN_Z, z);
+	local mx,my,mz = agent:GetPosition();
+	goal:SetNumber(SN_MX, mx);
+	goal:SetNumber(SN_MY, my);
+	goal:SetNumber(SN_MZ, mz);
 	-- reset motion master if needed and go
 	agent:ClearMotion();
 	agent:Attack(target);
 	agent:MoveChase(target, 2.0, 0.7, 1.0, 0.0, math.pi, false, true, false);
 	-- print("Begin pull");
+	
+	if (ai:IsCLineAvailable()) then
+		local party = ai:GetPartyIntelligence();
+		goal:GetData().bReverse = not party:ShouldReverseCLine(agent, target, false);
+		Print("GOAL_COMMON_Pull: using reverse -", goal:GetData().bReverse);
+	end
 	
 	if (nil == ai:GetData().PullRotation) then
 		error("No pull rotation defined for agent " .. agent.GetName(agent));
@@ -63,9 +76,7 @@ function Pull_Update(ai, goal)
 	local agent = ai:GetPlayer();
 	local guid 	= goal:GetParam(0);	-- initial enemy guid
 	local target = GetUnitByGuid(agent, guid);
-	local party = ai:GetPartyIntelligence();
 	local data = ai:GetData();
-	local partyData = party:GetData();
 	
 	if (nil == target) then
 		goal:ClearSubGoal();
@@ -118,6 +129,8 @@ function Pull_Update(ai, goal)
 		agent:CastSpell(agent, 24364, true);
 	end
 	
+	local partyData = ai:GetPartyIntelligence():GetData();
+	
 	-- ranged detection...
 	if (goal:GetNumber(SN_FAR) == 0) then
 		for i,attacker in ipairs(partyData.attackers) do
@@ -135,7 +148,7 @@ function Pull_Update(ai, goal)
 		end
 		if (agent:GetDistance(x,y,z) < pullDist and target:GetVictim() == agent) then
 			if (0 == goal:GetNumber(SN_FLAG)) then
-				goal:AddSubGoal(GOAL_COMMON_FollowCLineRev, 15, not partyData.reverse);
+				goal:AddSubGoal(GOAL_COMMON_FollowCLineRev, 15, goal:GetData().bReverse, goal:GetNumber(SN_MX), goal:GetNumber(SN_MY), goal:GetNumber(SN_MZ));
 				goal:SetNumber(SN_FLAG, 1);
 			end
 		else

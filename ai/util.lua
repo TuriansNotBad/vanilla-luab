@@ -3,7 +3,7 @@
 	Searches for value v in array portion of table t.
 	If found returns its index, otherwise returns 0.
 ****************************************************************************]]
-function table.ifind(t, v)
+function table_ifind(t, v)
 	for i = 1,#t do
 		if (t[i] == v) then
 			return i
@@ -15,7 +15,7 @@ end
 --[[**************************************************************************
 	Performs a shallow copy of all array elements of tables into table t.
 ****************************************************************************]]
-function table.merge(t, ...)
+function table_merge(t, ...)
 	for i = 1, select("#", ...) do
 		local rhs = select(i, ...);
 		for j = 1, #rhs do
@@ -28,12 +28,35 @@ end
 --[[**************************************************************************
 	Returns a shallow copy of table t.
 ****************************************************************************]]
-function table.clone(t)
+function table_clone(t)
 	local result = {};
 	for k,v in next,t do
 		result[k] = v;
 	end
 	return result;
+end
+
+--[[**************************************************************************
+	Returns a deep copy of simple table t.
+	t should not contain tables used as keys. t should not be recursive.
+	Does not handle metatables.
+****************************************************************************]]
+function table_deepclone(t)
+	if (type(t) ~= "table") then return t; end
+	local result = {};
+	for k,v in next,t do
+		result[k] = table_deepclone(v);
+	end
+	return result;
+end
+
+--[[**************************************************************************
+	Returns number of keys in a table.
+****************************************************************************]]
+function table_numkeys(t)
+	local c=0;
+	for k,v in next,t do c=c+1; end
+	return c;
 end
 
 --[[**************************************************************************

@@ -46,6 +46,25 @@ function board.get(key, id)
 	error("board.get: post doesn't exist key = " .. tostring(key) .. " id = " .. tostring(id));
 end
 
+function board.remallwithv1(v1)
+	for key,v in next,data do
+		for id,post in next,v do
+			if (post[1] == v1) then
+				v[id] = nil;
+				Print("board.remallwithv1: removed", key, id, v1);
+			end
+		end
+		if (table_numkeys(v) == 0) then
+			Print("board.remallwithv1: removed empty table", key);
+			data[key] = nil;
+		end
+	end
+end
+
+function AI_UnpostAllBuffsForCaster(guid)
+	board.remallwithv1(guid);
+end
+
 function AI_PostBuff(casterGuid, recieverGuid, key, value)
 	if (board.up(key, recieverGuid:GetId())) then
 		Print("AI_PostBuff: (c,r)", casterGuid, recieverGuid, "key =", key, "value =", value, "already assigned to", data[key][recieverGuid:GetId()][1])

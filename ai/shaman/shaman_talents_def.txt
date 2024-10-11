@@ -1,0 +1,30 @@
+
+talents = {
+	["Elemental"] = {
+		{"Convection", 0, 564}, {"Concussion", 0, 563},
+		{"Earth's Grasp", 0, 572}, {"Elemental Warding", 0, 1640}, {"Call of Flame", 0, 561},
+		{"Elemental Focus", 0, 574}, {"Reverberation", 0, 575}, {"Call of Thunder", 0, 562},
+		{"Improved Fire Totems", 0, 567}, {"Eye of the Storm", 0, 1642}, {"Elemental Devastation", 0, 1645},
+		{"Storm Reach", 0, 1641}, {"Elemental Fury", 0, 565},
+		{"Lightning Mastery", 0, 721},
+		{"Elemental Mastery", 0, 573},
+	},
+	["Restoration"] = {
+		{"Improved Healing Wave", 0, 586}, {"Tidal Focus", 0, 593},
+		{"Improved Reincarnation", 0, 589}, {"Ancestral Healing", 0, 581}, {"Totemic Focus", 0, 595},
+		{"Nature's Guidance", 0, 583}, {"Healing Focus", 0, 587}, {"Totemic Mastery", 0, 582}, {"Healing Grace", 0, 1646},
+		{"Restorative Totems", 0, 588}, {"Tidal Mastery", 0, 594},
+		{"Healing Way", 0, 1648}, {"Nature's Swiftness", 0, 591},
+		{"Purification", 0, 592},
+		{"Mana Tide Totem", 0, 590},
+	},
+	["Enhancement"] = {
+		{"Ancestral Knowledge", 0, 614}, {"Shield Specialization", 0, 612},
+		{"Guardian Totems", 0, 609}, {"Thundering Strikes", 0, 613}, {"Improved Ghost Wolf", 0, 605}, {"Improved Lightning Shield", 0, 607},
+		{"Enhancing Totems", 0, 610}, {"Two-Handed Axes and Maces", 0, 617}, {"Anticipation", 0, 601},
+		{"Flurry", 0, 602}, {"Toughness", 0, 615},
+		{"Improved Weapon Totems", 0, 1647}, {"Elemental Weapons", 0, 611}, {"Parry", 0, 616},
+		{"Weapon Mastery", 0, 1643},
+		{"Stormstrike", 0, 901},
+	},
+}

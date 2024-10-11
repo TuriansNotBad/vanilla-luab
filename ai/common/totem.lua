@@ -59,6 +59,10 @@ function Totem_Update(ai, goal)
 		return GOAL_RESULT_Success;
 	end
 	
+	if (agent:GetDistance(target) <= goal:GetParam(3) + 1.0 and agent:GetMotionType() == MOTION_FOLLOW) then
+		agent:ClearMotion();
+	end
+	
 	if (0 == goal:GetNumber(SN_CAST) and false == agent:IsMoving() and false == target:IsMoving()) then
 		if (CAST_OK == agent:CastSpell(agent, spell, true)) then
 			goal:SetNumber(SN_CAST, 1);

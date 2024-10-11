@@ -19,6 +19,7 @@ Enchants =
 	["Greater Agility"]    = 1887,
 	["Greater Resistance"] = 1888, -- +5 all resistances
 	["Greater Stats"]      = 1891, -- +4 all stats
+	["Major Mana"]         = 1893, -- +100 mana
 	["Major Intellect"]    = 1904, -- +9 Int
 	["Fire Resistance"]    = 2463,
 	["Crusader"]           = 1900,
@@ -35,14 +36,32 @@ local function WarriorTank_GetMainHandWpn(player)
 end
 
 local function PriestHeal_GetRing(player)
-	return player:GetRace() == RACE_HUMAN and {12543,lvl=50} or {12545,lvl=48};
+	return AI_IsAllianceRace(player:GetRace()) and {12543,lvl=50} or {12545,lvl=48};
 end
 
 local t_gearLoadout60 = 
 {
 	
+	ShamanHeal = {
+		14558,                                              -- Lady Maye's Pendant, 59
+		{16058, lvl=52},                                    -- Fordring's Seal, 52
+		PriestHeal_GetRing,                                 -- Songstone of Ironforge for alliance, Eye of Orgrimmar for horde
+		12930,                                              -- Briarwood Reed, 55
+		11819,                                              -- Second Wind, 54
+		11923,                                              -- The Hammer of Grace, 52
+		11928,                                              -- Thaurissan's Royal Scepter, 55
+		{13102, e=Enchants["LA of Voracity SPI"]},          -- Cassandra's Grace, 42
+		15061,                                              -- Living Shoulders, 49
+		{13386, rp=2033, e=Enchants["Greater Resistance"]}, -- Archivist Cape, 56
+		{13346, e=Enchants["Major Mana"]},                  -- Robes of the Exalted, 58
+		{16840, e=Enchants["Greater Intellect"]},           -- Earthfury Bracers, 60
+		12554,                                              -- Hands of the Exalted Herald, 54
+		16838,                                              -- Earthfury Belt, 60
+		{11841, e=Enchants["LA of Voracity SPI"]},          -- Senior Designer's Pantaloons, 50
+		{11822, e=Enchants["Spirit"]},                      -- Omnicast Boots, 54
+	},
+	
 	PriestHeal = {
-		13141,                                              -- Tooth of Gnarr, 58
 		14558,                                              -- Lady Maye's Pendant, 59
 		{16058, lvl=52},                                    -- Fordring's Seal, 52
 		PriestHeal_GetRing,                                 -- Songstone of Ironforge for alliance, Eye of Orgrimmar for horde

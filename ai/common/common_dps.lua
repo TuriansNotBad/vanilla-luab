@@ -45,7 +45,7 @@ function Dps_GetLowestHpTarget(ai, agent, party, targets, threatCheck)
 	local minDiff = ai:GetStdThreat();
 	for i = 1, #targets do
 		local target = targets[i];
-		if (Dps_CheckThreat(agent, target, partyData, bCheck, minDiff) and false == party:IsCC(target) and not Unit_IsCrowdControlled(target)) then
+		if (Dps_CheckThreat(agent, target, partyData, threatCheck, minDiff) and false == party:IsCC(target) and not Unit_IsCrowdControlled(target)) then
 			return target;
 		end
 	end
@@ -62,7 +62,7 @@ function Dps_GetFirstInterruptOrLowestHpTarget(ai, agent, party, targets, threat
 	for i = 1, #targets do
 		local target = targets[i];
 		
-		if (Dps_CheckThreat(agent, target, partyData, bCheck, minDiff)
+		if (Dps_CheckThreat(agent, target, partyData, threatCheck, minDiff)
 		and (nil == party or (false == party:IsCC(target) and not Unit_IsCrowdControlled(target)))) then
 			
 			-- check interruptable
@@ -206,6 +206,19 @@ function Dps_DoChanneledAoe(agent, target, spell, data)
 		return true;
 	end
 	return false;
+end
+
+function Dps_GetMaxAllowedThreat(targets)
+	local minThreat = 99999999;
+	for idx,target in ipairs(targets) do
+		if (not Unit_IsCrowdControlled(target)) then
+			local _,tankThreat = target:GetHighestThreat();
+			if (tankThreat < minThreat) then
+				minThreat = tankThreat;
+			end
+		end
+	end
+	return minThreat;
 end
 
 function Dps_GetAEThreat(ai, agent, targets, buffer)

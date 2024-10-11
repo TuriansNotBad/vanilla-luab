@@ -111,6 +111,11 @@ t_agentSpecs[CLASS_SHAMAN].LvlDps = {
 	BattleGoalID = GOAL_ShamanLevelDps_Battle,
 	TalentInfo = "t_LevelShamanDpsSpec",
 };
+t_agentSpecs[CLASS_SHAMAN].LvlHeal = {
+	BattleGoalID = GOAL_ShamanLevelHeal_Battle,
+	TalentInfo = "t_LevelShamanHealSpec",
+	Loadout = "ShamanHeal",
+};
 
 --[[*****************************************************
 	ROGUE
