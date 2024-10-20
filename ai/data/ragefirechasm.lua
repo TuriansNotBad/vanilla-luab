@@ -119,10 +119,6 @@ t_dungeons[389] = {
 
 local RagefireChasm = t_dungeons[389];
 
-RagefireChasm.Global = {
-	key = "RagefireChasm.Global.OldRole",
-};
-
 local _losTbl = Encounter_MakeLOSTbl()
 	.new 'TroggSidePa1' {-184.213, -74.630, -59.5850} {-208.987, -70.205, -62.2890}
 	.new 'TroggSidePa2' {-152.496, -47.992, -58.4061} {-144.501, -63.272, -59.2180}

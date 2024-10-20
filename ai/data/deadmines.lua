@@ -1,3 +1,6 @@
+
+import 'ai/common_encounter.lua'
+
 t_dungeons[36] = {
 	-- Line 1
 	{
@@ -114,12 +117,60 @@ t_dungeons[36] = {
 	},
 };
 
-t_dungeons[36].encounters = {
+local Deadmines = t_dungeons[36];
+
+local _losTbl = Encounter_MakeLOSTbl()
+	-- Caves
+	.new 'OpeningRoomC' {-18.4205, -383.992, 62.1955} {-8.90474, -374.840, 61.5301}
+	.new 'SecondRoomC_' {-87.8975, -381.370, 59.1348} {-71.5840, -379.585, 54.4856}
+	.new 'PrebossCave_' {-128.787, -393.565, 59.0852} {-115.726, -394.360, 56.6411}
+	.new 'PostBossCRHS' {-191.476, -483.862, 54.0488} {-188.611, -468.184, 54.1125}
+	.new 'MechanicBoss' {-251.531, -481.627, 49.4471} {-237.138, -483.096, 49.1320}
+	.new 'FoundryRoom_' {-190.821, -601.113, 35.7502} {-179.864, -587.877, 42.5492}
+	-- Docks
+	.new 'PortEntrance' {-98.8583, -677.626, 7.42216} {-103.519, -654.130, 7.42245}
+	.new 'FirstFloorBt' {-123.771, -794.530, 16.8960} {-101.443, -792.455, 17.0484}
+	.new 'SecndFloorBt' {-104.340, -793.528, 28.1267} {-80.4388, -782.016, 26.5325}
+	.new 'Greenskin___' {-49.1191, -791.077, 38.7539} {-74.5607, -790.036, 39.0189}
+.endtbl();
+
+local _areaTbl = Encounter_MakeAreaTbl(_losTbl)
+	-- Caves
+	.new ('OpeningRoomC', SHAPE_POLYGON) {-73.9446, -428.245} {-70.2316, -358.670} {-10.0404, -353.354} {-13.0921, -398.678} ('OpeningRoomC', 53.00, 100)
+	.new ('SecondRoomC_', SHAPE_POLYGON) {-82.4100, -369.000} {-137.097, -369.000} {-137.097, -455.000} {-82.4200, -455.000} ('SecondRoomC_', 53.00, 100)
+	.new ('PrebossCave_', SHAPE_POLYGON) {-188.039, -416.542} {-143.717, -426.965} {-135.048, -396.889} {-173.248, -382.392} ('PrebossCave_', 53.00, 100)
+	.new ('PostBossCRHS', SHAPE_POLYGON) {-198.621, -489.932} {-251.358, -450.466} {-251.789, -502.347} {-193.880, -540.333} ('PostBossCRHS', 54.04, 100)
+	.new ('MechanicBoss', SHAPE_POLYGON) {-260.901, -472.995} {-254.855, -534.344} {-329.749, -537.770} {-314.639, -474.441} ('MechanicBoss', 49.14, 100)
+	.new ('FoundryRoom_', SHAPE_POLYGON) {-167.824, -516.641} {-241.216, -550.845} {-238.709, -618.695} {-174.075, -617.724} ('FoundryRoom_', 19.30, 3)
+	-- Docks
+	.new ('PortEntrance', SHAPE_POLYGON) {-89.2530, -734.702} {-5.37874, -762.941} {26.87210, -706.747} {-80.4528, -709.448} ('PortEntrance', 7.422, 15)
+	.new ('FirstFloorBt', SHAPE_POLYGON) {-69.9956, -762.040} {-120.421, -793.199} {-103.797, -804.116} {-64.4100, -792.811} ('FirstFloorBt', 26.70, 4)
+	.new ('SecndFloorBt', SHAPE_POLYGON) {-39.4872, -811.047} {-13.9543, -779.885} {-88.7290, -779.874} {-82.7612, -801.644} ('SecndFloorBt', 38.50, 2)
+	.new ('Greenskin___', SHAPE_POLYGON)
+		{-53.7663, -802.945} {-54.6823, -837.398} {-111.748, -846.163}
+		{-106.866, -812.355} {-89.1969, -805.287} {-66.7444, -801.137}
+		('Greenskin___', 40.60, 4)
+.endtbl();
+
+local NPC_RANGED_LIST = Encounter_NewRangedList();
+function NPC_RANGED_LIST.IsRanged() return true; end
+
+Deadmines.encounters = {
 	{name = "Rhahk'Zor"},
 	{name = "Sneed's Shredder", fear = true},
 	{name = "Gilnid"},
 	{name = "Mr. Smite"},
-	{name = "Captain Greenskin"},
-	{name = "Edwin VanCleef"},
-	{name = "Cookie"},
+	-- {name = "Captain Greenskin"},
+	{name = "Edwin VanCleef", tpos = {-64.3071, -817.962, 41.1451}},
+	-- {name = "Cookie"},
+	{
+		name               = "Global",
+		test               = function() return true; end,
+		UseLosBreakForPull = true,
+		noboss             = true,
+	},
 };
+
+Deadmines.encounters.LosTbl    = _losTbl;
+Deadmines.encounters.AreaTbl   = _areaTbl;
+Deadmines.encounters.RangedTbl = NPC_RANGED_LIST;
