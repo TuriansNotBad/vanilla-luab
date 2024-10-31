@@ -225,8 +225,7 @@ function RogueDpsRotation(ai, agent, goal, data, partyData, target)
 	local threatDiff = tankThreat - myThreat;
 	local canIgnoreThreat = not encounter and true or encounter.noboss;
 	if (threatDiff >= 1500 or canIgnoreThreat) then
-	
-		if (15000 < agent:GetAuraTimeLeft(data.sndice)) then
+		if (11000 < agent:GetAuraTimeLeft(data.sndice)) then
 		
 			if (data._hasBladeFlurry and false == agent:HasAura(SPELL_ROG_BLADE_FLURRY)) then
 				local bShouldBF = encounter ~= nil or Unit_AECheck(agent, 5.0, 2, false, partyData.attackers);

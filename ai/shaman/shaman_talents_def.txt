@@ -28,3 +28,33 @@ talents = {
 		{"Stormstrike", 0, 901},
 	},
 }
+
+talents4222 = {
+	["Elemental"] = {
+		{"Improved Lightning Bolt", 0, 568}, {"Concussion", 0, 563},
+		{"Improved Stoneclaw Totem", 0, 572}, {"Call of Flame", 0, 561}, {"Convection", 0, 564}, {"Improved Searing Totem", 0, 571},
+		{"Elemental Focus", 0, 574}, {"Call of Thunder", 0, 562}, {"Reverberation", 0, 575},
+		{"Improved Fire Nova Totem", 0, 567},
+		{"Elemental Fury", 0, 565}, {"Improved Magma Totem", 0, 569},
+		{"Lightning Mastery", 0, 721}, {"Improved Chain Lightning", 0, 566},
+		{"Elemental Mastery", 0, 573},
+	},
+	["Restoration"] = {
+		{"Improved Healing Wave", 0, 586}, {"Tidal Focus", 0, 593},
+		{"Improved Reincarnation", 0, 589}, {"Ancestral Healing", 0, 581}, {"Totemic Focus", 0, 595},
+		{"Eventide", 0, 583}, {"Combat Endurance", 0, 582}, {"Improved Lesser Healing Wave", 0, 587},
+		{"Improved Healing Stream Totem", 0, 585}, {"Tidal Mastery", 0, 594},
+		{"Improved Mana Spring Totem", 0, 588}, {"Nature's Swiftness", 0, 591},
+		{"Purification", 0, 592},
+		{"Mana Tide Totem", 0, 590},
+	},
+	["Enhancement"] = {
+		{"Ancestral Knowledge", 0, 614}, {"Shield Specialization", 0, 612},
+		{"Improved Stoneskin Totem", 0, 609}, {"Thundering Strikes", 0, 613}, {"Improved Ghost Wolf", 0, 605}, {"Improved Lightning Shield", 0, 607},
+		{"Improved Strength of Earth Totem", 0, 610}, {"Two-Handed Axes and Maces", 0, 617}, {"Anticipation", 0, 601},
+		{"Flurry", 0, 602}, {"Improved Rockbiter Weapon", 0, 608},
+		{"Improved Flametongue Weapon", 0, 603}, {"Parry", 0, 616}, {"Improved Frostbrand Weapon", 0, 604}, {"Improved Windfury Weapon", 0, 611},
+		{"Toughness", 0, 615}, {"Improved Grounding Totem", 0, 703},
+		{"Stormstrike", 0, 901}, {"Improved Grace of Air Totem", 0, 606},
+	},
+}

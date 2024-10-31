@@ -1,3 +1,6 @@
+-- face pull wherever possible
+-- todo: Mutanus and Verdan would benefit from rchrpos/tpos
+
 t_dungeons[43] = {
 	-- Line 1
 	{
@@ -157,18 +160,106 @@ t_dungeons[43] = {
 		{-246.514, -161.529, -63.2088, -1000, 2}, -- 6
 		{-263.798, -179.075, -61.0398, -1000, 2}, -- 7
 	},
+	-- Line 10
+	{
+		{-146.957, 128.707, -76.5094, -1000, 2}, -- 1
+		{-113.026, 145.129, -81.0216, -1000, 2}, -- 2
+		{-103.418, 230.946, -90.732, -1000, 2}, -- 3
+		{-85.633, 226.403, -93.1301, -1000, 2}, -- 4
+		{-64.4188, 207.364, -93.3693, -1000, 2}, -- 5
+		{-39.325, 208.459, -96.4432, -1000, 2}, -- 6
+	},
+	-- Line 11
+	{
+		{-116.888, -90.9056, -72.3387, -1000, 2}, -- 7
+		{-99.7155, -63.6075, -67.7016, -1000, 2}, -- 8
+		{-54.739, -50.8602, -63.5143, -1000, 2}, -- 9
+		{-23.9873, -79.6825, -67.9792, -1000, 2}, -- 10
+		{-53.6092, -121.825, -70.1289, -1000, 2}, -- 11
+		{-107.92, -139.217, -67.4467, -1000, 2}, -- 12
+		{-108.887, -158.923, -67.4694, -1000, 2}, -- 13
+		{-134.968, -162.856, -67.2109, -1000, 2}, -- 14
+	},
+	-- Line 12
+	{
+		{-32.9344, -120.539, -71.9445, -1000, 2}, -- 1
+		{27.8249, -159.73, -81.128, -1000, 2}, -- 2
+		{23.4534, -177.585, -83.3887, -1000, 2}, -- 3
+		{10.8592, -195.117, -82.8168, -1000, 2}, -- 4
+		{-12.7743, -189.586, -78.1684, -1000, 2}, -- 5
+	},
 };
 
-t_dungeons[43].trackedunit = {
+local WailingCaverns = t_dungeons[43];
+
+WailingCaverns.trackedunit = {
 	{e = 3678, c = 18675}, -- disciple of naralex
 };
 
-t_dungeons[43].encounters = {
+local _losTbl = Encounter_MakeLOSTbl()
+	-- Gully
+	.new 'GullyLHSPull' {-39.9750, 228.907, -94.4383} {-41.9783, 211.889, -96.2533}
+	.new 'GullyMidPull' {-64.2007, 207.012, -93.4169} {-78.1886, 216.448, -94.2676}
+	.new 'GullyRHSPull' {-51.1109, 203.632, -95.7985} {-64.1013, 207.136, -93.4086}
+	.new 'GullyFarMidR' {20.611, 174.182, -86.4906} {-4.30582, 137.582, -89.4311}
+	.new 'GullyFarMidL' {38.2517, 233.073, -86.3123} {29.5688, 260.907, -87.5573}
+	.new 'GullyFarLHSL' {-28.7733, 319.143, -89.1877} {-42.5544, 319.731, -90.0092}
+	.new 'GullyFarLHSR' {27.5663, 213.239, -85.6666} {12.0107, 197.993, -84.4485}
+	-- Pit of Fangs
+	.new 'PofZigZagHil' {28.106, 436.101, -83.5074} {32.3592, 456.907, -86.0233}
+	.new 'PofBigPull__' {30.623, 491.005, -62.9583} {42.2666, 475.067, -65.8934}
+.endtbl();
+
+local _areaTbl = Encounter_MakeAreaTbl(_losTbl)
+	-- Gully
+	.new ('GullyLHSPull', SHAPE_POLYGON) {-30.0701, 245.761} {-43.3259, 305.629} {-87.3256, 284.127} {-65.8363, 238.833} ('GullyLHSPull', -90.00, 6.0)
+	.new ('GullyMidPull', SHAPE_POLYGON) {-26.708, 147.48} {-23.7712, 244.058} {-51.8611, 240.84} {-52.6316, 162.449} ('GullyMidPull', -90.00, 7.0)
+	.new ('GullyRHSPull', SHAPE_POLYGON) {-23.1415, 157.096} {-67.8773, 81.1885} {-106.607, 106.449} {-65.2849, 165.782} ('GullyRHSPull', -90.00, 7.0)
+	.new ('GullyFarMid_', SHAPE_POLYGON) {74.9, 256.4} {74.9, 133.8} {1.13, 133.8} {1.13, 256.4} ('GullyFarMidR', -82.00, 12.0)
+	.new ('GullyFarLeft', SHAPE_POLYGON) {-25.3866, 338.118} {-0.580242, 253.455} {54.8366, 266.278} {8.50661, 338.14} ('GullyFarLHSL', -82.00, 12.0)
+	-- Pit of Fangs
+	.new ('PofZigZagHil', SHAPE_POLYGON) {-50.5531, 395.181} {52.9274, 422.305} {17.8387, 484.091} {-33.515, 440.354} ('PofZigZagHil', -82.00, 100.0)
+	.new ('PofBigPull__', SHAPE_POLYGON) {-9.83604, 519.452} {22.018, 489.634} {50.1891, 496.386} {29.1308, 536.267} ('PofBigPull__', -61.00, 50.0)
+.endtbl();
+
+local NPC_RANGED_LIST = Encounter_NewRangedList();
+function NPC_RANGED_LIST.IsRanged() return true; end
+
+local function TriggerCircle_GullyBridgeLhs(unit, hive, data)
+	Print("TriggerCircle_GullyBridgeLhs");
+	Encounter_SetAreaLosPos("GullyFarLeft", data.dungeon.AreaTbl, data.dungeon.LosTbl, "GullyFarLHSL");
+	Encounter_SetAreaLosPos("GullyFarMid_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "GullyFarMidL");
+end
+
+local function TriggerCircle_GullyBridgeRhs(unit, hive, data)
+	Print("TriggerCircle_GullyBridgeRhs");
+	Encounter_SetAreaLosPos("GullyFarLeft", data.dungeon.AreaTbl, data.dungeon.LosTbl, "GullyFarLHSR");
+	Encounter_SetAreaLosPos("GullyFarMid_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "GullyFarMidR");
+end
+
+WailingCaverns.triggers = {
+	-- Gully
+	Encounter_NewTriggerCircle("GullyBridgeLhs", -34.4823,232.442,-94.1785,12,100, TriggerCircle_GullyBridgeLhs),
+	Encounter_NewTriggerCircle("GullyBridgeRhs", -44.6570,150.233,-94.1153,12,100, TriggerCircle_GullyBridgeRhs),
+};
+
+WailingCaverns.encounters = {
 	{name = "Kresh"},
-	{name = "Lady Anacondra"},
+	-- {name = "Lady Anacondra"},
 	{name = "Lord Cobrahn"},
 	{name = "Lord Pythas"},
 	{name = "Skum"},
 	{name = "Lord Serpentis"},
 	{name = "Verdan the Everliving"},
+	{
+		name               = "Global",
+		test               = function() return true; end,
+		UseLosBreakForPull = true,
+		noboss             = true,
+		sleep              = true,
+	},
 };
+
+WailingCaverns.encounters.LosTbl    = _losTbl;
+WailingCaverns.encounters.AreaTbl   = _areaTbl;
+WailingCaverns.encounters.RangedTbl = NPC_RANGED_LIST;

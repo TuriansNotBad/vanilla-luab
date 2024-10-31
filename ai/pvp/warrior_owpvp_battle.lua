@@ -85,10 +85,15 @@ end
 	Goal update
 ********************************************************]]
 function WarriorPvpOW_Update(ai, goal)
-	
+
 	local t = ai:GetData();
 	
 	local agent = ai:GetPlayer();
+	
+	if (AI_IsIncapacitated(agent)) then
+		return GOAL_RESULT_Continue;
+	end
+	
 	local attackers = agent:GetAttackers();
 	local _allowCheat = true;
 	

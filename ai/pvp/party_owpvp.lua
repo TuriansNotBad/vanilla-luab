@@ -16,6 +16,7 @@ local ZIDDunMorogh = 1;
 local ZIDElwynnForest = 12;
 local ZIDWestfall = 40;
 local ZIDTirisfalGlades = 85;
+local ZIDSilverpineForest = 130;
 
 function OpenWorldPVP_Init(party)
 	local data = party:GetData();
@@ -84,6 +85,20 @@ local spawns = {
 	},
 	
 	[MIDLordaeron] = {
+		[ZIDElwynnForest] = {
+			WAR_MLG_Ridgepoint	 = {lvl = 1, r=30, name = set.one, l=LOGIC_ID_InvaderPvp, x=-9701.47,y=-1380.96,z=53.71, zone = ZIDElwynnForest, map = MIDLordaeron},
+			WAR_MLG_MaclureFrm	 = {lvl = 1, r=30, name = set.two, l=LOGIC_ID_InvaderPvp, x=-9981.49,y=165.702,z=32.93, zone = ZIDElwynnForest, map = MIDLordaeron},
+		},
+		[ZIDTirisfalGlades] = {
+			WAR_MLG_TheBridge	 = {lvl = 1, r=30, name = set.one, l=LOGIC_ID_InvaderPvp, x=2241.19,y=697.267,z=35.66, zone = ZIDTirisfalGlades, map = MIDLordaeron},
+			WAR_MLG_ToSilverpine = {lvl = 1, r=30, name = set.two, l=LOGIC_ID_InvaderPvp, x=1623.37,y=501.874,z=43.00, zone = ZIDTirisfalGlades, map = MIDLordaeron},
+		},
+		[ZIDSilverpineForest] = {
+			WAR_MLG_EntIsland	 = {lvl = 1, r=30, name = set.one,   l=LOGIC_ID_InvaderPvp, x=1351.66,y=703.863,z=34.30, zone = ZIDSilverpineForest, map = MIDLordaeron},
+			WAR_MLG_MaidOrchard	 = {lvl = 1, r=30, name = set.two,   l=LOGIC_ID_InvaderPvp, x=1456.78,y=1086.09,z=62.34, zone = ZIDSilverpineForest, map = MIDLordaeron},
+			WAR_MLG_ToHillsbrad	 = {lvl = 1, r=30, name = set.three, l=LOGIC_ID_InvaderPvp, x=-390.98,y=1116.35,z=85.02, zone = ZIDSilverpineForest, map = MIDLordaeron},
+			WAR_MLG_ToShadowfang = {lvl = 1, r=30, name = set.four,  l=LOGIC_ID_InvaderPvp, x=-210.35,y=1464.89,z=64.66, zone = ZIDSilverpineForest, map = MIDLordaeron},
+		},
 	},
 };
 
@@ -198,6 +213,7 @@ function OpenWorldPVP_Update(party)
 			-- check timer
 			if (os.time() >= aidata._pvpCoreDespawnTimer) then
 				agent:ResurrectPlayer(1, false);
+				print(agent:GetName(), ai:GetSpec(), "has died and is being despawned");
 				party:RemoveAgent(agent:GetGuid());
 				return;
 			end
