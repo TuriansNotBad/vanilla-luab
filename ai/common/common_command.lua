@@ -218,3 +218,9 @@ function Command_IssueTank(ai, party, target, threatTarget)
 	party:CmdTank(ai, target:GetGuid(), threatTarget);
 	Print("CommandMgr: CMD_TANK to", ai:GetPlayer():GetName(), "for target", target:GetName(), "threat target =", threatTarget);
 end
+
+function Command_IssueTrade(ai, party, target, bag, slot)
+	Command_ClearAll(ai, "New command");
+	party:CmdTrade(ai, target:GetGuid(), bag, slot);
+	Print("CommandMgr: CMD_TRADE to", ai:GetPlayer():GetName(), "for target", target:GetName(), "bag, slot", bag, slot);
+end

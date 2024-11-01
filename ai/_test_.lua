@@ -681,9 +681,11 @@ function Hive_OOCUpdate(hive, data)
 			ai:SetDesiredLevel(data.owner:GetLevel());
 		end
 		
+		local cmd = ai:CmdType();
+		
 		-- teleport to owner if far enough away
 		local dist = agent:GetDistance(data.owner);
-		local notBusy = ai:CmdType() == CMD_FOLLOW or ai:CmdType() == CMD_NONE;
+		local notBusy = cmd == CMD_FOLLOW or cmd == CMD_NONE;
 		local diffMap = agent:GetMapId() ~= data.owner:GetMapId();
 		if (diffMap or (dist > 50 and (notBusy or dist > 200))) then
 			ai:GoName(data.owner:GetName());
@@ -691,7 +693,7 @@ function Hive_OOCUpdate(hive, data)
 		end
 		
 		-- do not interrupt these with follow
-		if (ai:CmdType() == CMD_HEAL or ai:CmdType() == CMD_BUFF or ai:CmdType() == CMD_DISPEL) then
+		if (cmd == CMD_HEAL or cmd == CMD_BUFF or cmd == CMD_DISPEL or cmd == CMD_TRADE) then
 			goto continue;
 		end
 		
@@ -700,12 +702,32 @@ function Hive_OOCUpdate(hive, data)
 		if (whisper) then
 			if (whisper == "inventory") then
 				ai:ChatSendInvToMaster(true);
+				
+			elseif (string_startswith(whisper, "give")) then
+				-- got a request for item trade
+				local bag,slot;
+				-- get bag and slot from whisper
+				for n in whisper:gmatch("%d+") do
+					if (not bag) then bag = tonumber(n);
+					elseif (not slot) then slot = tonumber(n);
+					else ai:ChatSendWhisper(ai:GetMasterGuid(), "Invalid string format for give command"); end
+				end
+				if (not (bag and slot)) then ai:ChatSendWhisper(ai:GetMasterGuid(), "Invalid string format for give command");
+				else
+					-- check i have an item in that slot that can be traded
+					if (ai:EquipHasItemInSlot(bag, slot, true)) then
+						Command_IssueTrade(ai, hive, data.owner, bag, slot)
+					else
+						ai:ChatSendWhisper(ai:GetMasterGuid(), "I do not have a tradeable item in that slot");
+					end
+				end
 			end
+			
 			goto continue;
 		end
 		
 		-- follow owner
-		if (not AI_IsIncapacitated(agent) and ai:CmdType() ~= CMD_FOLLOW) then
+		if (not AI_IsIncapacitated(agent) and cmd ~= CMD_FOLLOW) then
 			local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori, data.tanks);
 			Command_IssueFollow(ai, hive, ai:GetMasterGuid(), D, A);
 		end

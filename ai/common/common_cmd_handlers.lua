@@ -315,6 +315,32 @@ local function Cmd_PullUpdate(ai, agent, goal, party, data, partyData)
 end
 
 --------------------------------------------------
+--                  CMD_TRADE
+--------------------------------------------------
+
+local function Cmd_TradeOnBegin(ai, agent, goal, party, data, partyData)
+	local guid,bag,slot = ai:CmdArgs();
+	local target = GetPlayerByGuid(guid);
+	if (not target) then
+		Command_Complete(ai, "CMD_TRADE failed, target not found - " .. tostring(guid));
+		return;
+	end
+	
+	if (not ai:EquipHasItemInSlot(bag, slot, true)) then
+		Command_Complete(ai, "CMD_TRADE failed, item not found - " .. bag .. " " .. slot);
+		return;
+	end
+	
+	goal:AddSubGoal(GOAL_COMMON_Trade, 30, guid, bag, slot);
+end
+
+local function Cmd_TradeUpdate(ai, agent, goal, party, data, partyData)
+	if (goal:GetSubGoalNum() == 0) then
+		Command_Complete(ai, "CMD_TRADE finished");
+	end
+end
+
+--------------------------------------------------
 -- Set default handlers
 --------------------------------------------------
 function Cmd_InitDefaultHandlers()
@@ -326,4 +352,5 @@ function Cmd_InitDefaultHandlers()
 	Command_SetDefaultHandlers(CMD_SCRIPT, Cmd_ScriptOnBegin,    Cmd_ScriptUpdate, Cmd_ScriptOnEnd);
 	Command_SetDefaultHandlers(CMD_PULL  , Cmd_PullOnBegin,      Cmd_PullUpdate,   nil);
 	Command_SetDefaultHandlers(CMD_HEAL  , Cmd_HealOnBeginOrEnd, Cmd_HealUpdate,   Cmd_HealOnBeginOrEnd);
+	Command_SetDefaultHandlers(CMD_TRADE , Cmd_TradeOnBegin,     Cmd_TradeUpdate,  nil);
 end

@@ -31,6 +31,7 @@ CMD_CC     = 7;
 CMD_BUFF   = 8;
 CMD_DISPEL = 9;
 CMD_SCRIPT = 10;
+CMD_TRADE  = 11;
 
 -- Teams
 TEAM_HORDE    = 67;
@@ -338,6 +339,7 @@ CMD2STR = {
 	[CMD_BUFF  ] = "CMD_BUFF",
 	[CMD_DISPEL] = "CMD_DISPEL",
 	[CMD_SCRIPT] = "CMD_SCRIPT",
+	[CMD_TRADE ] = "CMD_TRADE",
 }
 
 -- Client build numbers

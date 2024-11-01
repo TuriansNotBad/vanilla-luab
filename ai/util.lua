@@ -60,6 +60,13 @@ function table_numkeys(t)
 end
 
 --[[**************************************************************************
+	Returns true if string str starts with characters in string start.
+****************************************************************************]]
+function string_startswith(str, start)
+   return str:sub(1, #start) == start;
+end
+
+--[[**************************************************************************
 	Returns square of 2D distance between points (x,y) and (a,b).
 ****************************************************************************]]
 function dist2sqr(x,y,a,b)

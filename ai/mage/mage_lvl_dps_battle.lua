@@ -137,6 +137,7 @@ function MageLevelDps_Activate(ai, goal)
 		(CMD_DISPEL, nil, nil, nil, true)
 		(CMD_SCRIPT, nil, nil, nil, true)
 		(CMD_CC,     nil, nil, nil, true)
+		(CMD_TRADE,  nil, nil, nil, true)
 	;
 	-- agent:SetGameMaster(false);
 	-- agent:SetGameMaster(true);

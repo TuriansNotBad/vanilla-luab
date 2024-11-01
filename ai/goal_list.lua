@@ -24,6 +24,7 @@ GOAL_COMMON_UseObj          = 12;
 GOAL_COMMON_UseItemObj      = 13;
 GOAL_COMMON_TotemXYZ        = 14;
 GOAL_COMMON_Jump            = 15;
+GOAL_COMMON_Trade           = 16;
 
 --===============================================================
 -- Goals used by encounter scripts

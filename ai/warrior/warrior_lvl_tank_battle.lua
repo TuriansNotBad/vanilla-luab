@@ -165,6 +165,7 @@ function WarriorLevelTank_Activate(ai, goal)
 		(CMD_PULL,   nil, nil, nil, true)
 		(CMD_TANK,   WarriorLevelTank_CmdTankOnBegin, WarriorLevelTank_CmdTankUpdate, WarriorLevelTank_CmdTankOnEnd, true)
 		(CMD_SCRIPT, nil, nil, nil, true)
+		(CMD_TRADE,  nil, nil, nil, true)
 	;
 	
 end

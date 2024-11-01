@@ -131,6 +131,7 @@ function ShamanLevelHeal_Activate(ai, goal)
 		(CMD_ENGAGE, nil, nil, nil, true)
 		(CMD_HEAL,   nil, nil, nil, true)
 		(CMD_SCRIPT, nil, nil, nil, true)
+		(CMD_TRADE,  nil, nil, nil, true)
 	;
 	
 end
