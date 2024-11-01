@@ -672,33 +672,45 @@ function Hive_OOCUpdate(hive, data)
 	for i = 1, #agents do
 		local ai = agents[i];
 		
-		if (ai:GetRole() ~= ROLE_SCRIPT) then
-			local agent = ai:GetPlayer();
-			if (agent:GetLevel() ~= data.owner:GetLevel()) then
-				ai:SetDesiredLevel(data.owner:GetLevel());
-			end
-			
-			local dist = agent:GetDistance(data.owner);
-			local notBusy = ai:CmdType() == CMD_FOLLOW or ai:CmdType() == CMD_NONE;
-			local diffMap = agent:GetMapId() ~= data.owner:GetMapId();
-			if (diffMap or (dist > 50 and (notBusy or dist > 200))) then
-				ai:GoName(data.owner:GetName());
-			else
-				
-				if (not AI_IsIncapacitated(agent)
-				and ai:CmdType() ~= CMD_FOLLOW
-				and ai:CmdType() ~= CMD_HEAL
-				and ai:CmdType() ~= CMD_BUFF
-				and ai:CmdType() ~= CMD_DISPEL) then
-					local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori, data.tanks);
-					-- Print("CmdFollow issued to", agent:GetName(), ai:CmdType());
-					Command_IssueFollow(ai, hive, ai:GetMasterGuid(), D, A);
-					-- hive:CmdFollow(ai, ai:GetMasterGuid(), D, A);
-				end
-			
-			end
+		-- ignore scripted agents
+		if (ai:GetRole() == ROLE_SCRIPT) then goto continue; end
+		
+		-- update level
+		local agent = ai:GetPlayer();
+		if (agent:GetLevel() ~= data.owner:GetLevel()) then
+			ai:SetDesiredLevel(data.owner:GetLevel());
 		end
 		
+		-- teleport to owner if far enough away
+		local dist = agent:GetDistance(data.owner);
+		local notBusy = ai:CmdType() == CMD_FOLLOW or ai:CmdType() == CMD_NONE;
+		local diffMap = agent:GetMapId() ~= data.owner:GetMapId();
+		if (diffMap or (dist > 50 and (notBusy or dist > 200))) then
+			ai:GoName(data.owner:GetName());
+			goto continue;
+		end
+		
+		-- do not interrupt these with follow
+		if (ai:CmdType() == CMD_HEAL or ai:CmdType() == CMD_BUFF or ai:CmdType() == CMD_DISPEL) then
+			goto continue;
+		end
+		
+		-- process chat
+		local whisper = ai:ChatPopNextWhisper();
+		if (whisper) then
+			if (whisper == "inventory") then
+				ai:ChatSendInvToMaster(false);
+			end
+			goto continue;
+		end
+		
+		-- follow owner
+		if (not AI_IsIncapacitated(agent) and ai:CmdType() ~= CMD_FOLLOW) then
+			local D, A = Hive_FormationRectGetAngle(agent, i, fwd, leaderX, leaderY, ori, data.tanks);
+			Command_IssueFollow(ai, hive, ai:GetMasterGuid(), D, A);
+		end
+		
+		::continue::
 	end
 	
 end
