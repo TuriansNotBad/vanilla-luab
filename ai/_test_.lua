@@ -699,7 +699,7 @@ function Hive_OOCUpdate(hive, data)
 		local whisper = ai:ChatPopNextWhisper();
 		if (whisper) then
 			if (whisper == "inventory") then
-				ai:ChatSendInvToMaster(false);
+				ai:ChatSendInvToMaster(true);
 			end
 			goto continue;
 		end
