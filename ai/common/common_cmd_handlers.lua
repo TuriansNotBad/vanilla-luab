@@ -341,6 +341,27 @@ local function Cmd_TradeUpdate(ai, agent, goal, party, data, partyData)
 end
 
 --------------------------------------------------
+--                  CMD_LOOT
+--------------------------------------------------
+
+local function Cmd_LootOnBegin(ai, agent, goal, party, data, partyData)
+	local guid,itemid = ai:CmdArgs();
+	local target = GetUnitByGuid(agent, guid);
+	if (not (target and target:IsDead())) then
+		Command_Complete(ai, "CMD_LOOT failed, target not found - " .. tostring(guid));
+		return;
+	end
+	
+	goal:AddSubGoal(GOAL_COMMON_Loot, 30, guid, itemid);
+end
+
+local function Cmd_LootUpdate(ai, agent, goal, party, data, partyData)
+	if (goal:GetSubGoalNum() == 0) then
+		Command_Complete(ai, "CMD_LOOT finished");
+	end
+end
+
+--------------------------------------------------
 -- Set default handlers
 --------------------------------------------------
 function Cmd_InitDefaultHandlers()
@@ -353,4 +374,5 @@ function Cmd_InitDefaultHandlers()
 	Command_SetDefaultHandlers(CMD_PULL  , Cmd_PullOnBegin,      Cmd_PullUpdate,   nil);
 	Command_SetDefaultHandlers(CMD_HEAL  , Cmd_HealOnBeginOrEnd, Cmd_HealUpdate,   Cmd_HealOnBeginOrEnd);
 	Command_SetDefaultHandlers(CMD_TRADE , Cmd_TradeOnBegin,     Cmd_TradeUpdate,  nil);
+	Command_SetDefaultHandlers(CMD_LOOT ,  Cmd_LootOnBegin,      Cmd_LootUpdate,   nil);
 end

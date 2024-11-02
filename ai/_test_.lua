@@ -650,7 +650,6 @@ function Hive_OOCUpdate(hive, data)
 			if (healerScores[1] and healerScores[1][2] > 0.0) then
 				if (healerScores[1][1]:GetHealTarget() ~= target) then
 					Command_IssueHeal(healerScores[1][1], hive, target:GetGuid(), 1);
-					-- hive:CmdHeal(healerScores[1][1], target:GetGuid(), 1);
 				end
 			end
 		end
@@ -663,6 +662,13 @@ function Hive_OOCUpdate(hive, data)
 	
 	if (not data.owner) then
 		return;
+	end
+	
+	-- check for lootable corpses if not in free for all
+	local corpses;
+	if (data.owner:GetLootMode() ~= 0) then
+		corpses = GetUnitsAroundEx(data.owner, 20, 10, false, false, REP_NEUTRAL, 0, false, false);
+		if (#corpses == 0) then corpses = nil; end
 	end
 	
 	local leaderX,leaderY,leaderZ = data.owner:GetPosition();
@@ -679,6 +685,7 @@ function Hive_OOCUpdate(hive, data)
 		local agent = ai:GetPlayer();
 		if (agent:GetLevel() ~= data.owner:GetLevel()) then
 			ai:SetDesiredLevel(data.owner:GetLevel());
+			goto continue;
 		end
 		
 		local cmd = ai:CmdType();
@@ -693,8 +700,19 @@ function Hive_OOCUpdate(hive, data)
 		end
 		
 		-- do not interrupt these with follow
-		if (cmd == CMD_HEAL or cmd == CMD_BUFF or cmd == CMD_DISPEL or cmd == CMD_TRADE) then
+		if (cmd == CMD_HEAL or cmd == CMD_BUFF or cmd == CMD_DISPEL or cmd == CMD_TRADE or cmd == CMD_LOOT) then
 			goto continue;
+		end
+		
+		-- loot, corpse isn't actually guaranteed to be dead
+		if (corpses) then
+			for i = 1, #corpses do
+				if (agent:CanLootCorpse(corpses[i],0)) then
+					Command_IssueLoot(ai, hive, corpses[i], 0);
+					goto continue;
+					break;
+				end
+			end
 		end
 		
 		-- process chat

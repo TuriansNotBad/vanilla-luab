@@ -101,6 +101,7 @@ function RogueLevelDps_Activate(ai, goal)
 		(CMD_ENGAGE, nil, nil, nil, true)
 		(CMD_SCRIPT, nil, nil, nil, true)
 		(CMD_TRADE,  nil, nil, nil, true)
+		(CMD_LOOT,   nil, nil, nil, true)
 	;
 	-- agent:SetGameMaster(false);
 	-- agent:SetGameMaster(true);

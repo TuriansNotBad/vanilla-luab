@@ -223,6 +223,7 @@ function PriestLevelHeal_Activate(ai, goal)
 		(CMD_HEAL,   nil, nil, nil, true)
 		(CMD_SCRIPT, nil, nil, nil, true)
 		(CMD_TRADE,  nil, nil, nil, true)
+		(CMD_LOOT,   nil, nil, nil, true)
 	;
 	
 end

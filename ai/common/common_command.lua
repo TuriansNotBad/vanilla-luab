@@ -224,3 +224,9 @@ function Command_IssueTrade(ai, party, target, bag, slot)
 	party:CmdTrade(ai, target:GetGuid(), bag, slot);
 	Print("CommandMgr: CMD_TRADE to", ai:GetPlayer():GetName(), "for target", target:GetName(), "bag, slot", bag, slot);
 end
+
+function Command_IssueLoot(ai, party, target, itemid)
+	Command_ClearAll(ai, "New command");
+	party:CmdLoot(ai, target:GetGuid(), itemid);
+	Print("CommandMgr: CMD_LOOT to", ai:GetPlayer():GetName(), "for target", target, "itemid", itemid);
+end

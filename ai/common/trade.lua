@@ -11,12 +11,6 @@ local SN_BEGAN     = 3;
 local ST_PAUSE     = 0;
 
 --[[******************************************************
-	Goal start
-********************************************************]]
-function Trade_Activate(ai, goal)
-end
-
---[[******************************************************
 	Goal update
 ********************************************************]]
 function Trade_Update(ai, goal)
@@ -50,7 +44,8 @@ function Trade_Update(ai, goal)
 	end
 	
 	if (target:GetDistance(agent) > 2) then
-		if (agent:GetMotionType() ~= MOTION_FOLLOW) then
+		if (not ai:IsFollowing(target)) then
+			agent:ClearMotion();
 			agent:MoveFollow(target, 1, 0);
 		end
 	else
@@ -120,3 +115,4 @@ end
 --  If not handled, the interrupt is sent to the goal or logic part of the next layer above.
 ********************************************************]]
 function Trade_Interupt(ai, goal)	return false;end
+function Trade_Activate(ai, goal)	end
