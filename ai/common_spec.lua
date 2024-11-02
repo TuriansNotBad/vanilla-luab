@@ -313,6 +313,11 @@ end
 function AI_SpecEquipLoadoutOrRandom(ai, info, gsi, exceptSlot, disablePrint, loadout)
 	AI_SpecApplyLoadout(ai, loadout);
 	AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint, true);
+	-- 20 slot bags
+	ai:EquipItem(1977);
+	ai:EquipItem(1977);
+	ai:EquipItem(1977);
+	ai:EquipItem(1977);
 end
 
 --[[*****************************************************
