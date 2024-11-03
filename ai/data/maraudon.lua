@@ -478,7 +478,7 @@ t_dungeons[349].encounters = {
 	{
 		name = "Princess Theradras",
 		tpos = {29.709, 44.964, -125.933},
-		totemPos = {x = 29.709, y = 44.964, z = -125.933, d = 5.0, a = 4.66};
+		totemPos = {x = 29.709, y = 44.964, z = -125.933, d = 5.0, a = 4.66},
 		rchrpos = {x = 27.391, y = 13.286, z = -126.916, melee = "ignore"},
 		healmax = true,
 		fear = true,

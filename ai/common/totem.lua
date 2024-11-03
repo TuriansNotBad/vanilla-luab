@@ -59,11 +59,11 @@ function Totem_Update(ai, goal)
 		return GOAL_RESULT_Success;
 	end
 	
-	if (agent:GetDistance(target) <= goal:GetParam(3) + 1.0 and agent:GetMotionType() == MOTION_FOLLOW) then
+	if (agent:GetDistance(target) <= goal:GetParam(3) + 1.0 and (agent:GetMotionType() == MOTION_FOLLOW or agent:IsMoving())) then
 		agent:ClearMotion();
 	end
 	
-	if (0 == goal:GetNumber(SN_CAST) and false == agent:IsMoving() and false == target:IsMoving()) then
+	if (0 == goal:GetNumber(SN_CAST) and not agent:IsMoving()) then
 		if (CAST_OK == agent:CastSpell(agent, spell, true)) then
 			goal:SetNumber(SN_CAST, 1);
 			goal:SetTimer(SN_CAST, 0.5); -- for spell batching
@@ -80,6 +80,7 @@ end
 function Totem_Terminate(ai, goal)
 	local agent = ai:GetPlayer();
 	agent:ClearMotion();
+	Print("GOAL_COMMON_Totem", agent:GetName(), "terminated");
 end
 
 --[[******************************************************

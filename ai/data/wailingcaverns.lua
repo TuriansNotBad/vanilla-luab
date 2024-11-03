@@ -1,5 +1,4 @@
 -- face pull wherever possible
--- todo: Mutanus and Verdan would benefit from rchrpos/tpos
 
 t_dungeons[43] = {
 	-- Line 1
@@ -250,7 +249,13 @@ WailingCaverns.encounters = {
 	{name = "Lord Pythas"},
 	{name = "Skum"},
 	{name = "Lord Serpentis"},
-	{name = "Verdan the Everliving"},
+	{
+		name = "Verdan the Everliving",
+		tpos = {-89.742, 26.6626, -31.0772},
+		rchrpos = {x=-106.535,y=8.37556,z=-30.2231,melee="ignore"},
+		totemPos = {x=-102.939,y=10.5786,z=-30.5405,d=0,a=0},
+	},
+	{name = "Mutanus the Devourer", tpos = {112.158, 269.794, -99.8681}, rchrpos = {x=96.9593, y=254.332, z=-98.247, melee="ignore"}, sleep = true},
 	{
 		name               = "Global",
 		test               = function() return true; end,
