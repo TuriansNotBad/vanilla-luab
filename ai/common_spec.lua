@@ -176,7 +176,7 @@ function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint, onlyEmptyS
 	-- prevent combat interfering
 	agent:SetGameMaster(true);
 	if (not onlyEmptySlots) then
-		ai:EquipDestroyAll();
+		ai:EquipDestroyAll(true, false);
 	end
 	for i = 1, #itemList do
 	
@@ -279,7 +279,7 @@ function AI_SpecApplyLoadout(ai, loadout)
 	local agent = ai:GetPlayer();
 	local level = agent:GetLevel();
 	agent:SetGameMaster(true);
-	ai:EquipDestroyAll(ai:EquipHasGeneratedGear());
+	ai:EquipDestroyAll(true, false);
 	
 	if (not loadout) then
 		agent:SetGameMaster(false);
@@ -299,6 +299,11 @@ function AI_SpecApplyLoadout(ai, loadout)
 		end
 		
 	end
+	-- 20 slot bags
+	if (ai:EquipSlotEmpty(EquipSlot.Bag1)) then ai:EquipItem(1977); else Print(agent:GetName(), "already has bags"); end
+	if (ai:EquipSlotEmpty(EquipSlot.Bag2)) then ai:EquipItem(1977); end
+	if (ai:EquipSlotEmpty(EquipSlot.Bag3)) then ai:EquipItem(1977); end
+	if (ai:EquipSlotEmpty(EquipSlot.Bag4)) then ai:EquipItem(1977); end
 	agent:SetGameMaster(false);
 	agent:SetHealthPct(100.0);
 	agent:SetPowerPct(POWER_MANA, 100.0);
@@ -311,16 +316,8 @@ end
 	if too low level
 *******************************************************]]
 function AI_SpecEquipLoadoutOrRandom(ai, info, gsi, exceptSlot, disablePrint, loadout)
-	-- requested not to regenerate gear on this init
-	if (not ai:EquipShouldGenerate()) then Print("Skipped generating gear"); return; end
 	AI_SpecApplyLoadout(ai, loadout);
 	AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint, true);
-	-- 20 slot bags
-	ai:EquipItem(1977);
-	ai:EquipItem(1977);
-	ai:EquipItem(1977);
-	ai:EquipItem(1977);
-	ai:EquipSetHasGeneratedGear(true);
 end
 
 --[[*****************************************************

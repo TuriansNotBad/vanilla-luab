@@ -192,6 +192,10 @@ EquipSlot = {
 	MainHand     = 15,
 	OffHand      = 16,
 	Ranged       = 17,
+	Bag1         = 19,
+	Bag2         = 20,
+	Bag3         = 21,
+	Bag4         = 22,
 	Null         = 255,
 };
 

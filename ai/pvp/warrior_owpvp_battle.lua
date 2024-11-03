@@ -1,22 +1,4 @@
 --[[*******************************************************************************************
-	Instructs a bot to get in aggro range of N closest enemies.
-	Initial target is always first to be WarriorPvpOWed, ignoring all enemies in the way.
-	If initial target is not among N closest enemies it's added manually. The WarriorPvpOW will be a mess, though.
-	Success when all selected targets have threat > 0
-
-	Parameter 0  Initial target [Guid]
-	Parameter 1  How many enemies to WarriorPvpOW [m]	(1-5)
-	Parameter 2  Destination offset angle. Ccw from target's facing. [deg]	(0-360)
-
-	goal:SetNumber() usage.
-		0: Make distance to X coordinate
-		1: Make distance to Y coordinate
-		2: Make distance to Z coordinate
-		9: Flag to only add FollowIdle once
-
-	Example of use
-	-- Try to find 3 targets near victim, including victim, within 30 meters of target and bow-WarriorPvpOW all found.
-	goal:AddSubGoal(GOAL_COMMON_WarriorPvpOW, -1, victim:GetObjectGuid(), 3, 20);
 *********************************************************************************************]]
 
 -- GOAL_WARRIOR_OpenWorldPvp = 11000;
@@ -106,7 +88,7 @@ function WarriorPvpOW_Update(ai, goal)
 		local _closestDist = 9999999;
 		for i,attacker in ipairs(attackers) do
 			-- don't cheat against agents
-			if (attacker:IsPlayer() or attacker:GetLevel() - 5 > agent:GetLevel()) then
+			if (attacker:IsPlayer()) then
 				_allowCheat = false;
 			end
 			local dist = agent:GetDistance(attacker);
@@ -118,18 +100,18 @@ function WarriorPvpOW_Update(ai, goal)
 		
 		-- attack nearest guy
 		if (_closestTarget and _closestTarget ~= myTarget) then
+			agent:ClearMotion();
 			agent:Attack(_closestTarget);
 			agent:MoveChase(_closestTarget, 1, 5, 2, 0, math.pi * 2, true, false, false);
 		end
 		
 	end
 	
-	
 	-- wait for cast to finish
-	if (agent:IsNonMeleeSpellCasted()) then
-		
+	if (agent:IsNonMeleeSpellCasted() or agent:IsNextSwingSpellCasted()) then
 		return GOAL_RESULT_Continue;
 	end
+	
 	-- stance anyway
 	AI_ApplyAura(ai, agent, false, true, SPELL_WAR_BATTLE_STANCE);
 	
@@ -157,7 +139,10 @@ function WarriorPvpOW_Update(ai, goal)
 			end
 		end
 		
-		if (AI_DoAction(ai, t.actionTable, target)) then
+		if (goal:IsFinishTimer(0) and AI_DoAction(ai, t.actionTable, target)) then
+			if (not _allowCheat) then
+				goal:SetTimer(0, math.random(15, 40)/10);
+			end
 			return GOAL_RESULT_Continue;
 		end
 		
