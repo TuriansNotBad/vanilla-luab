@@ -115,7 +115,7 @@ function Healer_GetTargetList(tracked, targets)
 		for i = 1, #tracked do
 			
 			local target = tracked[i];
-			if (target:IsAlive() and target:GetHealthPct() < 95) then
+			if (target:IsAlive() and target:GetHealthPct() < 95 and target:IsTargetableByHeal()) then
 				table.insert(list, target);
 			end
 			
