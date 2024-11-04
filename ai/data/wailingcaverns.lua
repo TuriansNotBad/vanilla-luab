@@ -200,10 +200,10 @@ local _losTbl = Encounter_MakeLOSTbl()
 	.new 'GullyLHSPull' {-39.9750, 228.907, -94.4383} {-41.9783, 211.889, -96.2533}
 	.new 'GullyMidPull' {-64.2007, 207.012, -93.4169} {-78.1886, 216.448, -94.2676}
 	.new 'GullyRHSPull' {-51.1109, 203.632, -95.7985} {-64.1013, 207.136, -93.4086}
-	.new 'GullyFarMidR' {20.611, 174.182, -86.4906} {-4.30582, 137.582, -89.4311}
-	.new 'GullyFarMidL' {38.2517, 233.073, -86.3123} {29.5688, 260.907, -87.5573}
+	.new 'GullyFarMidR' {20.61100, 174.182, -86.4906} {-4.30582, 137.582, -89.4311}
+	.new 'GullyFarMidL' {38.25170, 233.073, -86.3123} {29.56880, 260.907, -87.5573}
 	.new 'GullyFarLHSL' {-28.7733, 319.143, -89.1877} {-42.5544, 319.731, -90.0092}
-	.new 'GullyFarLHSR' {27.5663, 213.239, -85.6666} {12.0107, 197.993, -84.4485}
+	.new 'GullyFarLHSR' {27.56630, 213.239, -85.6666} {12.01070, 197.993, -84.4485}
 	-- Pit of Fangs
 	.new 'PofZigZagHil' {28.106, 436.101, -83.5074} {32.3592, 456.907, -86.0233}
 	.new 'PofBigPull__' {30.623, 491.005, -62.9583} {42.2666, 475.067, -65.8934}
@@ -212,13 +212,13 @@ local _losTbl = Encounter_MakeLOSTbl()
 local _areaTbl = Encounter_MakeAreaTbl(_losTbl)
 	-- Gully
 	.new ('GullyLHSPull', SHAPE_POLYGON) {-30.0701, 245.761} {-43.3259, 305.629} {-87.3256, 284.127} {-65.8363, 238.833} ('GullyLHSPull', -90.00, 6.0)
-	.new ('GullyMidPull', SHAPE_POLYGON) {-26.708, 147.48} {-23.7712, 244.058} {-51.8611, 240.84} {-52.6316, 162.449} ('GullyMidPull', -90.00, 7.0)
+	.new ('GullyMidPull', SHAPE_POLYGON) {-26.7080, 147.480} {-23.7712, 244.058} {-51.8611, 240.840} {-52.6316, 162.449} ('GullyMidPull', -90.00, 7.0)
 	.new ('GullyRHSPull', SHAPE_POLYGON) {-23.1415, 157.096} {-67.8773, 81.1885} {-106.607, 106.449} {-65.2849, 165.782} ('GullyRHSPull', -90.00, 7.0)
-	.new ('GullyFarMid_', SHAPE_POLYGON) {74.9, 256.4} {74.9, 133.8} {1.13, 133.8} {1.13, 256.4} ('GullyFarMidR', -82.00, 12.0)
-	.new ('GullyFarLeft', SHAPE_POLYGON) {-25.3866, 338.118} {-0.580242, 253.455} {54.8366, 266.278} {8.50661, 338.14} ('GullyFarLHSL', -82.00, 12.0)
+	.new ('GullyFarMid_', SHAPE_POLYGON) {74.90000, 256.400} {74.90000, 133.800} {1.130000, 133.800} {1.130000, 256.400} ('GullyFarMidR', -82.00, 12.0)
+	.new ('GullyFarLeft', SHAPE_POLYGON) {-25.3866, 338.118} {-0.58024, 253.455} {54.83660, 266.278} {8.506610, 338.140} ('GullyFarLHSL', -82.00, 12.0)
 	-- Pit of Fangs
 	.new ('PofZigZagHil', SHAPE_POLYGON) {-50.5531, 395.181} {52.9274, 422.305} {17.8387, 484.091} {-33.515, 440.354} ('PofZigZagHil', -82.00, 100.0)
-	.new ('PofBigPull__', SHAPE_POLYGON) {-9.83604, 519.452} {22.018, 489.634} {50.1891, 496.386} {29.1308, 536.267} ('PofBigPull__', -61.00, 50.0)
+	.new ('PofBigPull__', SHAPE_POLYGON) {-9.83604, 519.452} {22.0180, 489.634} {50.1891, 496.386} {29.1308, 536.267} ('PofBigPull__', -61.00, 50.0)
 .endtbl();
 
 local NPC_RANGED_LIST = Encounter_NewRangedList();
