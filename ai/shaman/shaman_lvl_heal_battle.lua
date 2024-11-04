@@ -143,10 +143,12 @@ end
 function ShamanLevelHeal_Update(ai, goal)
 	
 	local agent = ai:GetPlayer();
-	if (AI_IsIncapacitated(agent)) then return GOAL_RESULT_Continue; end
-	ShamanTotems(ai, agent, goal, ai:GetData(), ai:GetPartyIntelligence():GetData());
-	if (goal:GetActiveSubGoalId() == GOAL_COMMON_TotemXYZ or goal:GetActiveSubGoalId() == GOAL_COMMON_Totem) then
-		return GOAL_RESULT_Continue;
+	
+	if (not AI_IsIncapacitated(agent)) then
+		ShamanTotems(ai, agent, goal, ai:GetData(), ai:GetPartyIntelligence():GetData());
+		if (goal:GetActiveSubGoalId() == GOAL_COMMON_TotemXYZ or goal:GetActiveSubGoalId() == GOAL_COMMON_Totem) then
+			return GOAL_RESULT_Continue;
+		end
 	end
 	
 	-- handle commands
