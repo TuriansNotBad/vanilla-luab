@@ -1,3 +1,6 @@
+-- Moonshrine Ruins and opening area do not attempt pulling enemies that are underwater.
+-- Cultist room, start on left side
+
 t_dungeons[48] = {
 	-- opening
 	{
@@ -176,7 +179,61 @@ t_dungeons[48] = {
 	},
 };
 
-t_dungeons[48].encounters = {
+local BlackfathomDeeps = t_dungeons[48];
+
+local _losTbl = Encounter_MakeLOSTbl()
+	-- turtle lake
+	.new 'TurtleBossRm' {-388.320, 166.681, -56.4142} {-373.009, 147.125, -51.8985}
+	.new 'TurtleBossUL' {-407.646, 160.725, -57.7420} {-383.273, 159.406, -56.1941}
+	.new 'TurtleBossU2' {-390.917, 154.992, -56.6724} {-371.937, 142.715, -51.6052}
+	.new 'TurtleBossUF' {-473.292, 222.758, -53.4199} {-428.467, 224.468, -53.0448}
+	.new 'TurtleBossLR' {-366.714, 269.398, -66.1520} {-383.109, 239.801, -62.9205}
+	-- caves
+	.new 'CaveForkNear' {-561.915, 5.37699, -46.4612} {-583.801, 16.4255, -48.9893}
+	.new 'CaveForkOpps' {-532.034, -10.963, -39.7404} {-555.212, -1.0797, -44.4533}
+	.new 'CaveForkMrgl' {-509.003, 20.1955, -45.5179} {-531.666, -9.0376, -40.1386}
+	-- maze
+	.new 'MazeEntrance' {-699.823, 27.97160, -30.384} {-679.528, 21.2751, -29.3080}
+	.new 'MazeLeftRoom' {-720.145, -17.1681, -37.756} {-721.466, 1.24422, -30.4367}
+	.new 'MazeForwRoom' {-726.951, -61.2826, -37.751} {-721.613, -37.916, -37.7350}
+	.new 'MazeStraight' {-732.007, 4.144850, -30.033} {-745.740, 16.1683, -29.8518}
+	.new 'MazeExitPar1' {-723.375, -51.9070, -37.734} {-721.199, -36.099, -37.7345}
+	.new 'MazeExitPar2' {-770.741, -49.2875, -29.930} {-746.826, -59.084, -30.0332}
+	-- ritual room
+	.new 'RitualRoomEn' {-812.837, -100.310, -25.791} {-815.792, -83.1094, -27.1814}
+.endtbl();
+
+local _areaTbl = Encounter_MakeAreaTbl(_losTbl)
+	-- turtle lake
+	.new ('TurtleBossRm', SHAPE_POLYGON) {-368.802, 179.249} {-411.120, 243.496} {-460.433, 250.852} {-492.602, 199.883} {-398.288, 137.877}
+		('TurtleBossRm', -50.00, 100.0)
+	.new ('TurtleBossUL', SHAPE_POLYGON) {-437.054, 137.900} {-512.365, 105.982} {-607.792, 131.887} {-510.053, 202.494} ('TurtleBossUL', -50.00, 100.0)
+	.new ('TurtleBossU1', SHAPE_POLYGON) {-384.779, 250.565} {-310.819, 226.621} {-303.683, 193.565} {-366.643, 176.193} ('TurtleBossU2', -50.00, 100.0)
+	.new ('TurtleBossU2', SHAPE_POLYGON) {-468.782, 266.012} {-422.359, 344.423} {-400.891, 348.862} {-386.508, 244.391} ('TurtleBossU2', -50.00, 100.0)
+	.new ('TurtleBossU3', SHAPE_POLYGON) {-400.325, 272.337} {-377.200, 247.084} {-325.395, 298.153} {-361.306, 317.695} ('TurtleBossLR', -50.00, 100.0)
+	.new ('TurtleBossUF', SHAPE_POLYGON) {-475.457, 292.791} {-484.095, 90.4066} {-576.000, 145.994} {-576.000, 286.999} ('TurtleBossUF', -50.00, 100.0)
+	.new ('TurtleBossLR', SHAPE_POLYGON) {-297.984, 303.770} {-362.842, 321.802} {-354.609, 376.924} {-252.861, 378.823} ('TurtleBossLR', -50.00, 100.0)
+	-- caves
+	.new ('CaveForkNear', SHAPE_POLYGON) {-533.821, -13.635} {-504.035, -21.783} {-494.828, 41.2079} {-538.379, 50.6315} ('CaveForkNear', -50.00, 100.0)
+	.new ('CaveForkOpps', SHAPE_POLYGON) {-447.400, -16.200} {-447.400, -90.200} {-585.600, -90.200} {-585.600, -16.200} ('CaveForkOpps', -50.00, 100.0)
+	.new ('CaveForkMrgl', SHAPE_POLYGON) {-396.800, 49.0000} {-396.800, -8.2000} {-478.500, -8.2000} {-478.500, 49.0000} ('CaveForkMrgl', -50.00, 100.0)
+	-- maze
+	.new ('MazeEntrance', SHAPE_POLYGON) {-759.193, 18.5603} {-720.282, 11.3948} {-715.872, -1.4190} {-766.978, -2.3473} ('MazeEntrance', -50.00, 100.0)
+	.new ('MazeLeftRoom', SHAPE_POLYGON) {-716.577, -24.486} {-689.355, -24.369} {-689.765, -48.638} {-699.556, -49.639} ('MazeLeftRoom', -50.00, 100.0)
+	.new ('MazeForwRoom', SHAPE_POLYGON) {-716.526, -70.098} {-715.934, -111.32} {-748.024, -110.70} {-748.122, -100.97} {-725.348, -68.725}
+		('MazeForwRoom', -50.00, 100.0)
+	.new ('MazeStraight', SHAPE_POLYGON) {-729.032, -69.342} {-728.462, -1.3581} {-714.874, -2.5334} {-714.465, -69.032} ('MazeStraight', -50.00, 100.0)
+	.new ('MazeExitPar1', SHAPE_POLYGON) {-785.834, -42.582} {-785.823, -73.339} {-744.939, -74.262} {-743.379, -42.023} ('MazeExitPar1', -29.70, 3.0)
+	.new ('MazeExitPar2', SHAPE_POLYGON) {-783.200, -43.664} {-829.617, -42.645} {-839.813, -102.26} {-784.319, -103.59} ('MazeExitPar2', -23.00, 7.0)
+	-- ritual room
+	.new ('RitualRoomEn', SHAPE_POLYGON) {-765.560, -113.56} {-765.560, -103.61} {-871.226, -103.61} {-871.226, -113.56} ('RitualRoomEn', -25.87, 4.0)
+	.new ('RitualRoomPr', SHAPE_POLYGON) {-765.560, -113.56} {-765.560, -199.93} {-871.226, -199.93} {-871.226, -113.56} ('RitualRoomEn', -25.87, 4.0)
+.endtbl();
+
+local NPC_RANGED_LIST = Encounter_NewRangedList();
+function NPC_RANGED_LIST.IsRanged() return true; end
+
+BlackfathomDeeps.encounters = {
 	{name = "Ghamoo-ra"},
 	{name = "Lady Sarevess"},
 	{name = "Gelihast"},
@@ -184,6 +241,12 @@ t_dungeons[48].encounters = {
 	{name = "Aku'mai Servant", tpos = {-818.897, -145.292, -25.870}, rchrpos = {x=-818.861, y=-120.905, z=-25.870}, healmax = true},
 	{name = "Old Serra'kis"},
 	{name = "Aku'mai", poison = true, dispelFocus = {Poison = true}},
+	{
+		name               = "Global",
+		test               = function() return true; end,
+		UseLosBreakForPull = true,
+		noboss             = true,
+	},
 	
 	dispelFilter = function(target, hive, data, agents, friendly)
 		if (not friendly) then return false; end
@@ -196,3 +259,7 @@ t_dungeons[48].encounters = {
 	end
 	
 };
+
+BlackfathomDeeps.encounters.LosTbl    = _losTbl;
+BlackfathomDeeps.encounters.AreaTbl   = _areaTbl;
+BlackfathomDeeps.encounters.RangedTbl = NPC_RANGED_LIST;
