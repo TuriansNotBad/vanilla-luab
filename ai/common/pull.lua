@@ -18,15 +18,16 @@
 -- GOAL_COMMON_Pull = 2;
 REGISTER_GOAL(GOAL_COMMON_Pull, "Pull");
 
-local SN_X    = 0; -- Make distance to X coordinate
-local SN_Y    = 1; -- Make distance to Y coordinate
-local SN_Z    = 2; -- Make distance to Z coordinate
-local SN_MX   = 3; -- Position agent started goal from
-local SN_MY   = 4; -- Position agent started goal from
-local SN_MZ   = 5; -- Position agent started goal from
-local SN_FAR  = 8; -- Flag to use far pull (usually caused by ranged enemies)
-local SN_FLAG = 9; -- Flag to only attempt distancing once
-local ST_AWAIT= 0; -- Timer after successful shot we wait this long
+local SN_X      = 0; -- Make distance to X coordinate
+local SN_Y      = 1; -- Make distance to Y coordinate
+local SN_Z      = 2; -- Make distance to Z coordinate
+local SN_MX     = 3; -- Position agent started goal from
+local SN_MY     = 4; -- Position agent started goal from
+local SN_MZ     = 5; -- Position agent started goal from
+local SN_FAR    = 8; -- Flag to use far pull (usually caused by ranged enemies)
+local SN_FLAG   = 9; -- Flag to only attempt distancing once
+local ST_AWAIT  = 0; -- Timer after successful shot we wait this long
+local ST_FOLLOW = 1; -- Timer after pulling we follow leader for (only when not in dungeons)
 
 --[[******************************************************
 	Goal start
@@ -120,51 +121,73 @@ function Pull_Update(ai, goal)
 	local y = goal:GetNumber(SN_Y); -- first target original Y coord
 	local z = goal:GetNumber(SN_Z); -- first target original Z coord
 	
-	-- give 1 chance for GOAL_COMMON_FollowCLineRev to create space
-	if (false == ai:IsCLineAvailable()) then
-		return GOAL_RESULT_Success;
-	end
-	
-	if (agent:GetAuraTypeTimeLeft(AURA_MOD_ROOT) > 3000) then
-		agent:CastSpell(agent, 24364, true);
-	end
-	
 	local partyData = ai:GetPartyIntelligence():GetData();
-	
-	-- ranged detection...
-	if (goal:GetNumber(SN_FAR) == 0) then
-		for i,attacker in ipairs(partyData.attackers) do
-			if (attacker:GetMotionType() == MOTION_IDLE) then
-				goal:SetNumber(SN_FAR, 1);
-				Print("Using far pull because of", attacker:GetName());
+	-- give 1 chance for GOAL_COMMON_FollowCLineRev to create space
+	if (agent:IsInDungeon()) then
+		
+		if (not ai:IsCLineAvailable()) then
+			return GOAL_RESULT_Success;
+		end
+		
+		if (agent:GetAuraTypeTimeLeft(AURA_MOD_ROOT) > 3000) then
+			if (CVER >= Builds["1.7.1"]) then
+				agent:CastSpell(agent, 24364, true);
 			end
 		end
-	end
-	
-	-- if (goal:GetParam(3) == nil) then
-		local pullDist = 50;
-		if (goal:GetNumber(8) == 1) then
-			pullDist = 80;
-		end
-		if (agent:GetDistance(x,y,z) < pullDist and target:GetVictim() == agent) then
-			if (0 == goal:GetNumber(SN_FLAG)) then
-				local mx,my,mz = goal:GetNumber(SN_MX), goal:GetNumber(SN_MY), goal:GetNumber(SN_MZ);
-				goal:AddSubGoal(GOAL_COMMON_FollowCLineRev, 15, goal:GetData().bReverse, mx,my,mz);
-				goal:SetNumber(SN_FLAG, 1);
+		
+		-- ranged detection...
+		if (goal:GetNumber(SN_FAR) == 0) then
+			for i,attacker in ipairs(partyData.attackers) do
+				if (attacker:GetMotionType() == MOTION_IDLE) then
+					goal:SetNumber(SN_FAR, 1);
+					Print("Using far pull because of", attacker:GetName());
+				end
 			end
-		else
-			-- distance reached, stop
-			goal:ClearSubGoal();
 		end
-	-- else
-		-- local x = goal:GetParam(3); -- tanking place X coord
-		-- local y = goal:GetParam(4); -- tanking place Y coord
-		-- local z = goal:GetParam(5); -- tanking place Z coord
-		-- if (0 == goal:GetNumber(9) and agent:GetDistance(x,y,z) > 3 and agent:DoesPathExist(x,y,z)) then
-			-- goal:AddSubGoal(GOAL_COMMON_MoveToSomewhere, 15, 0, 0, 1);
-			-- goal:SetNumber(9, 1);
+		
+		-- if (goal:GetParam(3) == nil) then
+			local pullDist = 50;
+			if (goal:GetNumber(8) == 1) then
+				pullDist = 80;
+			end
+			if (agent:GetDistance(x,y,z) < pullDist and target:GetVictim() == agent) then
+				if (0 == goal:GetNumber(SN_FLAG)) then
+					local mx,my,mz = goal:GetNumber(SN_MX), goal:GetNumber(SN_MY), goal:GetNumber(SN_MZ);
+					goal:AddSubGoal(GOAL_COMMON_FollowCLineRev, 15, goal:GetData().bReverse, mx,my,mz);
+					goal:SetNumber(SN_FLAG, 1);
+				end
+			else
+				-- distance reached, stop
+				goal:ClearSubGoal();
+			end
+		-- else
+			-- local x = goal:GetParam(3); -- tanking place X coord
+			-- local y = goal:GetParam(4); -- tanking place Y coord
+			-- local z = goal:GetParam(5); -- tanking place Z coord
+			-- if (0 == goal:GetNumber(9) and agent:GetDistance(x,y,z) > 3 and agent:DoesPathExist(x,y,z)) then
+				-- goal:AddSubGoal(GOAL_COMMON_MoveToSomewhere, 15, 0, 0, 1);
+				-- goal:SetNumber(9, 1);
+			-- end
 		-- end
-	-- end
+	
+	elseif (partyData.owner) then
+	
+		if (agent:GetDistance(leader) > 3) then
+		
+			if (0 == goal:GetNumber(SN_FLAG)) then
+				agent:MoveChase(partyData.owner, 1, 1, 1, 0, 1, false, false, false);
+				goal:SetNumber(SN_FLAG, 1);
+				goal:SetTimer(ST_FOLLOW, 10);
+				
+			elseif (goal:IsFinishTimer(ST_FOLLOW)) then
+				return GOAL_RESULT_Success;
+			end
+			
+		else
+			return GOAL_RESULT_Success;
+		end
+		
+	end
 	
 	-- once subgoal is done, we're done
 	if (goal:GetSubGoalNum() == 0) then

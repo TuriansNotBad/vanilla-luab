@@ -18,6 +18,11 @@ local t_agentInfo = {
 	-- {"Deepdip",LOGIC_ID_Party,"FeralLvlWeakDps"}, 	
 };
 
+if (Util_DoesFileOpenForReading '__botlist.txt') then
+	import '__botlist.txt';
+	t_agentInfo = t_botListInfo;
+end
+
 local Hive_FormationRectGetAngle;
 
 local function Hive_CanPullTarget(hive, data, target)
@@ -877,7 +882,7 @@ function Hive_CombatUpdate(hive, data)
 				local should, threatTarget = Tank_ShouldTankTarget(ai, target, tankTargets[j][1], tankTargets[j][2], 0);
 				if (should and not bSwapOnly) then
 					tankTargets[j][3] = nil; -- make sure no one else gets this
-					if (false == target:IsInCombat() and true == Hive_CanPullTarget(hive, data, target) and ai:GetPlayer():IsInDungeon()) then
+					if (false == target:IsInCombat() and true == Hive_CanPullTarget(hive, data, target)) then
 						if (ai:CmdType() ~= CMD_PULL) then
 							-- hive:CmdPull(ai, target:GetGuid());
 							Command_IssuePull(ai, hive, target);

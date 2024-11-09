@@ -141,3 +141,11 @@ function pointInArea(x,y,z,shape,checkZ)
 	end
 	return false;
 end
+
+--[[**************************************************************************
+	Returns true if file was able to be opened for reading.
+****************************************************************************]]
+function Util_DoesFileOpenForReading(name)
+	local f=io.open(name,"r");
+	if f~=nil then io.close(f) return true; else return false; end
+end
