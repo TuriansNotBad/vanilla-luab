@@ -159,6 +159,7 @@ function AI_SpecGenerateGear(ai, info, gsi, exceptSlot, disablePrint, onlyEmptyS
 		else
 			table.remove(itemList, n);
 		end
+		if (not exceptSlot) then exceptSlot = {dw = true}; end
 	else
 		AI_SpecGenerateGearSubTbl(ai, ItemWpnList, info.WeaponType, level, itemList, gsi, 1, EquipSlot.MainHand);
 		if (info.OffhandType) then
