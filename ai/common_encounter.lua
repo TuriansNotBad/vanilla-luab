@@ -302,7 +302,7 @@ function EncounterScript_LosBreakUpdateAgents(hive, data, areaTbl, bHasRangedEne
 					if (losPos and target and target:GetVictim()) then
 						goal:ClearSubGoal();
 						goal:AddSubGoal(GOAL_COMMON_MoveTo, 20.0, losPos.tpos[1], losPos.tpos[2], losPos.tpos[3]);
-						Print("Scholomance.Global.Update: redirecting pull", agent:GetName(), losPos.tpos[1], losPos.tpos[2], losPos.tpos[3]);
+						Print("EncounterScript_LosBreakUpdateAgents: redirecting pull", agent:GetName(), losPos.tpos[1], losPos.tpos[2], losPos.tpos[3]);
 					end
 				end
 			
