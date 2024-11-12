@@ -37,7 +37,7 @@ function MoveInPosToCast_Update(ai, goal)
 	
 		if (not ai:IsFollowing(target)) then
 			agent:ClearMotion();
-			agent:MoveFollow(target, 0.0, 0.0);
+			agent:MoveFollow(target, 0.1, 0.0);
 		end
 		return GOAL_RESULT_Continue;
 	
