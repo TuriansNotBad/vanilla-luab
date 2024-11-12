@@ -23,7 +23,7 @@ function Trade_Update(ai, goal)
 		return GOAL_RESULT_Success;
 	end
 
-	local guid,bag,slot = ai:CmdArgs();
+	local guid,bag,slot = goal:GetParam(0),goal:GetParam(1),goal:GetParam(2);
 	local target = GetPlayerByGuid(guid);
 	if (not target) then
 		Print("GOAL_COMMON_Trade failed, target not found -", guid);

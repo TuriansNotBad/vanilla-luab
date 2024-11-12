@@ -10,7 +10,7 @@ REGISTER_GOAL(GOAL_COMMON_Loot, "Loot");
 function Loot_Update(ai, goal)
 	
 	local agent = ai:GetPlayer();
-	local guid,itemid = ai:CmdArgs();
+	local guid,itemid = goal:GetParam(0),goal:GetParam(1);
 	local corpse = GetUnitByGuid(agent, guid);
 	
 	if (not (corpse and corpse:IsDead())) then
