@@ -201,7 +201,61 @@ t_dungeons[33] = {
 	},
 };
 
-t_dungeons[33].encounters = {
+local ShadowfangKeep = t_dungeons[33];
+
+local _losTbl = Encounter_MakeLOSTbl()
+	-- Opening, castle
+	.new 'CastleSidewalk' {-195.349, 2133.37, 81.5003} {-197.726, 2122.84, 81.5003}
+	.new 'CastleTopFloor' {-228.356, 2144.98, 90.6241} {-214.818, 2143.14, 90.6241}
+	.new 'Castle1stBoss_' {-238.627, 2141.00, 87.0129} {-234.820, 2150.39, 90.6241}
+	.new 'CastleEatRmStd' {-199.552, 2257.33, 76.2014} {-185.744, 2247.38, 76.2014}
+	.new 'CastleEatRmAlt' {-287.445, 2314.70, 93.1306} {-287.718, 2330.05, 95.8666}
+	.new 'CastleKtchnStd' {-186.108, 2217.03, 79.7525} {-197.868, 2206.02, 79.7624}
+	.new 'CastleKtchnAlt' {-225.764, 2278.29, 74.9994} {-239.959, 2289.51, 74.9994}
+	.new 'CastleStreets_' {-238.893, 2166.14, 89.0407} {-243.275, 2151.84, 90.5313}
+	.new 'CastleStables_' {-212.070, 2204.41, 79.7646} {-224.285, 2191.58, 79.7653}
+	-- Ramparts and end
+	.new 'RampsGhostRoom' {-282.229, 2277.97, 95.8666} {-296.025, 2282.25, 95.8666}
+	.new 'RampsOdosRoom_' {-254.697, 2153.44, 91.1029} {-266.595, 2149.85, 95.8234}
+	.new 'ArugalBossRoom' {-125.761, 2164.87, 155.679} {-144.110, 2171.72, 155.679}
+.endtbl();
+
+local _areaTbl = Encounter_MakeAreaTbl(_losTbl)
+	-- Opening, castle
+	.new ('CastleSidewalk', SHAPE_POLYGON) {-196.148, 2145.64} {-206.031, 2123.93} {-213.133, 2126.21} {-207.259, 2150.08} ('CastleSidewalk', 86.50, 2.0)
+	.new ('CastleTopFloor', SHAPE_POLYGON) {-223.258, 2140.42} {-238.544, 2107.65} {-252.237, 2113.26} {-241.728, 2142.40} ('CastleTopFloor', 87.00, 2.0)
+	.new ('Castle1stBoss_', SHAPE_POLYGON) {-251.987, 2142.72} {-262.156, 2116.91} {-251.300, 2113.19} {-241.631, 2137.94} ('Castle1stBoss_', 81.18, 5.0)
+	.new ('CastleDineRoom', SHAPE_POLYGON) {-222.258, 2264.20} {-279.998, 2286.95} {-271.461, 2308.58} {-213.733, 2285.84} ('CastleEatRmStd', 75.00, 10.0)
+	.new ('CastleKitchen_', SHAPE_POLYGON) {-208.463, 2276.37} {-172.915, 2231.87} {-184.742, 2228.82} {-218.544, 2253.36} ('CastleKtchnStd', 75.00, 10.0)
+	.new ('CastleStreets_', SHAPE_POLYGON) {-244.861, 2163.00} {-196.594, 2145.81} {-191.507, 2203.95} {-226.054, 2214.52} ('CastleStreets_', 79.70, 10.0)
+	.new ('CastleStables_', SHAPE_POLYGON) {-203.450, 2235.52} {-234.519, 2226.01} {-239.952, 2243.78} {-209.802, 2255.12} ('CastleStables_', 80.00, 10.0)
+	-- Ramparts and end
+	.new ('RampsGhostRoom', SHAPE_POLYGON) {-224.060, 2269.30} {-217.371, 2250.97} {-261.035, 2236.48} {-267.217, 2255.86} ('RampsGhostRoom', 103.00, 7.0)
+	.new ('RampsOdosRoom_', SHAPE_POLYGON) {-266.469, 2116.07} {-250.013, 2153.91} {-234.099, 2147.60} {-247.641, 2109.72} ('RampsOdosRoom_', 100.00, 2.0)
+	.new ('ArugalBossRoom', SHAPE_POLYGON) {-126.598, 2130.98} {-83.8432, 2114.14} {-68.7161, 2157.21} {-109.658, 2173.89} ('ArugalBossRoom', 144.00, 10.0)
+.endtbl();
+
+local NPC_RANGED_LIST = Encounter_NewRangedList();
+function NPC_RANGED_LIST.IsRanged() return true; end
+
+local function TriggerCircle_DoorToKitchen(unit, hive, data)
+	Print("TriggerCircle_DoorToKitchen");
+	Encounter_SetAreaLosPos("CastleDineRoom", data.dungeon.AreaTbl, data.dungeon.LosTbl, "CastleEatRmStd");
+	Encounter_SetAreaLosPos("CastleKitchen_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "CastleKtchnStd");
+end
+
+local function TriggerCircle_DoorToDineRoom(unit, hive, data)
+	Print("TriggerCircle_DoorToDineRoom");
+	Encounter_SetAreaLosPos("CastleDineRoom", data.dungeon.AreaTbl, data.dungeon.LosTbl, "CastleEatRmAlt");
+	Encounter_SetAreaLosPos("CastleKitchen_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "CastleKtchnAlt");
+end
+
+ShadowfangKeep.triggers = {
+	Encounter_NewTriggerCircle("DoorToKitchen",  -177.320,2217.78,79.7495,18,15, TriggerCircle_DoorToKitchen),
+	Encounter_NewTriggerCircle("DoorToDineRoom", -289.196,2316.64,93.6324,20,10, TriggerCircle_DoorToDineRoom),
+};
+
+ShadowfangKeep.encounters = {
 	{name = "Rethilgore"},
 	{name = "Razorclaw the Butcher"},
 	{name = "Baron Silverlaine"},
@@ -221,4 +275,14 @@ t_dungeons[33].encounters = {
 			-- dpspos = {x = -69.541, y = 2157.347, z = 155.830}
 		}
 	},
+	{
+		name               = "Global",
+		test               = function() return true; end,
+		UseLosBreakForPull = true,
+		noboss             = true,
+	},
 };
+
+ShadowfangKeep.encounters.LosTbl    = _losTbl;
+ShadowfangKeep.encounters.AreaTbl   = _areaTbl;
+ShadowfangKeep.encounters.RangedTbl = NPC_RANGED_LIST;
