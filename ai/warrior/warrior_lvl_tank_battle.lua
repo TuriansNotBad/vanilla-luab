@@ -244,6 +244,7 @@ function WarriorLevelTank_CmdEngageUpdate(ai, agent, goal, party, data, partyDat
 	-- movement
 	Movement_Process(ai, goal, party, target, false, bAllowThreatActions);
 	
+	local bSwap = partyData.encounter and partyData.encounter.tankswap and target:GetName() == partyData.encounter.name;
 	-- attacks
 	if (bAllowThreatActions) then
 		if (bSwap) then
