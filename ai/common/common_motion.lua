@@ -13,7 +13,7 @@ local function Movement_HandleHoldArea(ai, agent, goal, target, area, role)
 	
 	if (not target or not area) then return false; end
 	
-	if (area and false == AI_TargetInHoldingArea(target, area)) then
+	if (false == AI_TargetInHoldingArea(target, area)) then
 		
 		if (ROLE_TANK == role) then
 			if (ai:CmdType() == CMD_ENGAGE) then
@@ -39,9 +39,20 @@ local function Movement_HandleHoldArea(ai, agent, goal, target, area, role)
 		if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
 			goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
 		end
+		return true;
+		
+	else
+		
+		-- force going into the area asap for ranged
+		if (ROLE_RDPS == role or ROLE_HEALER == role) then
+			if (agent:GetDistance(area.dpspos.x, area.dpspos.y, area.dpspos.z) > 2.0) then
+				goal:AddSubGoal(GOAL_COMMON_MoveTo, 10.0, area.dpspos.x, area.dpspos.y, area.dpspos.z);
+				return true;
+			end
+		end
 		
 	end
-	return true;
+	return false;
 	
 end
 
@@ -136,11 +147,11 @@ function Movement_Process(ai, goal, party, target, bRanged, bAllowThreatActions)
 	local encounter   = partyData.encounter;
 	local holdarea    = Data_GetEncounterHoldArea(encounter);
 	local rchrpos     = Data_GetRchrpos(data, encounter);
-	local distancingR = Data_GetEncounterDistancingR(encounter, 5.0);
+	local distancingR = holdarea and -1.0 or Data_GetEncounterDistancingR(encounter, 5.0);
 	
 	-- active tanks only care about hold area
 	if (ai:CmdType() == CMD_TANK) then
-		if          (Movement_HandleHoldArea(ai, agent, goal, target, area, role))
+		if          (Movement_HandleHoldArea(ai, agent, goal, target, holdarea, role))
 		then elseif (Movement_HandleDefaultChase(ai, agent, goal, party, data, target, role, distancingR, bRanged, bAllowThreatActions))
 		then
 			return true;
@@ -149,7 +160,7 @@ function Movement_Process(ai, goal, party, target, bRanged, bAllowThreatActions)
 		return false;
 	end
 	
-	if          (Movement_HandleHoldArea(ai, agent, goal, target, area, role))
+	if          (Movement_HandleHoldArea(ai, agent, goal, target, holdarea, role))
 	then elseif (Movement_HandleRchrpos(ai, agent, goal, rchrpos, bRanged, bAllowThreatActions))
 	then elseif (Movement_HandleMoveInPosToCast(goal, data, rchrpos))
 	then elseif (Movement_HandleDefaultChase(ai, agent, goal, party, data, target, role, distancingR, bRanged, bAllowThreatActions))
