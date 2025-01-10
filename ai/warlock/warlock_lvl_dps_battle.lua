@@ -63,6 +63,8 @@ function WarlockLevelDps_Activate(ai, goal)
 	
 	local data = ai:GetData();
 	
+	Movement_Init(data);
+	
 	data.shadowbolt = ai:GetSpellOfRank(SPELL_WRL_SHADOW_BOLT, 9);
 	
 	data.curseote   = ai:GetSpellMaxRankForMe(SPELL_WRL_CURSE_OF_THE_ELEMENTS);

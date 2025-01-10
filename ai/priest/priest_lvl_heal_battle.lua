@@ -128,6 +128,8 @@ function PriestLevelHeal_Activate(ai, goal)
 	data.pain     = ai:GetSpellMaxRankForMe(SPELL_PRI_SHADOW_WORD_PAIN);
 	data.manaburn = ai:GetSpellMaxRankForMe(SPELL_PRI_MANA_BURN);
 	
+	data.shield   = ai:GetSpellMaxRankForMe(SPELL_PRI_POWER_WORD_SHIELD);
+	
 	data.fortitude = level >= 48 and data.aepwf or data.pwf;
 	
 	data.heals = {};

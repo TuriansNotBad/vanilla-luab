@@ -238,6 +238,126 @@ local _areaTbl = Encounter_MakeAreaTbl(_losTbl)
 local NPC_RANGED_LIST = Encounter_NewRangedList();
 function NPC_RANGED_LIST.IsRanged() return true; end
 
+-------------------------------------------------------------------------------
+--            SCRIPT
+-------------------------------------------------------------------------------
+ShadowfangKeep.Arugal =
+{
+	key   = "ShadowfangKeep.Arugal.OldRole",
+	Entry = 4275,
+};
+
+function ShadowfangKeep.Arugal:OnBegin(hive, data)
+	local function init_agent(ai, agent, aidata, data)
+		agent:CastSpell(agent, 7242, true); -- shadow protection
+	end
+	Encounter_PreprocessAgents(self.key, data, init_agent);
+end
+
+function ShadowfangKeep.Arugal:OnEnd(hive, data)
+	local function restore_agent(ai, agent, aidata, data)
+		aidata.attackmode = nil;
+		aidata.saveMana   = nil;
+	end
+	Encounter_RestoreAgents(self.key, data, restore_agent);
+end
+
+function ShadowfangKeep.Arugal:Update(hive, data)
+	
+	-- find who boss is attacking
+	local uai,uagent,arugal;
+	for i,target in ipairs(data.attackers) do
+		
+		if (target:GetEntry() == self.Entry) then
+			arugal = target;
+			uagent = target:GetVictim();
+			if (uagent) then
+				uai = uagent:GetAI();
+			end
+			break;
+		end
+		
+	end
+	
+	if (not arugal) then
+		return;
+	end
+	
+	local bAnyHurts,bTankCharmed = false,false;
+	local healer,healerAI;
+	for i,ai in ipairs(data.agents) do
+	
+		local agent = ai:GetPlayer();
+		-- todo: assuming dps priest will handle manadrain if ever implemented
+		if (agent:GetClass() == CLASS_WARLOCK or agent:GetClass() == CLASS_PRIEST) then
+			local aidata = ai:GetData();
+			aidata.attackmode = arugal:GetPowerPct(POWER_MANA) > 4.0 and "manadrain" or nil;
+		end
+		
+		if (agent:GetHealthPct() < 60.0) then
+			bAnyHurts = true;
+		end
+		
+		if (agent:GetClass() == CLASS_PRIEST and Encounter_GetRealRole(ai, self.key) == ROLE_HEALER) then
+			healer,healerAI = agent,ai;
+		end
+		
+		if (ai:GetRole() == ROLE_TANK) then
+			bTankCharmed = agent:HasAuraType(AURA_MOD_CHARM);
+		end
+		
+	end
+	
+	if (healerAI) then
+		
+		local bAllowDrain = not bTankCharmed and not bAnyHurts and arugal:GetPowerPct(POWER_MANA) > 4.0 and healer:GetDistance(-83.749, 2151.337, 155.634) < 2.0;
+		
+		if (bAllowDrain) then
+			
+			if (healerAI:GetRole() ~= ROLE_SCRIPT) then
+				Encounter_ChangeRole(healerAI, self.key, ROLE_SCRIPT);
+				Command_ClearAll(healerAI, self.key .. " claiming agent");
+				Print(self.key, "taking over", healer:GetName());
+			end
+			
+			local spellid = healerAI:GetData().manaburn;
+			if (not spellid) then
+				Print("ShadowfangKeep.Arugal.Update:", healer:GetName(), "priest healer does not define data key 'manaburn'");
+				error("Mana Burn spell id not defined");
+			end
+			
+			if (healer:IsNonMeleeSpellCasted() or healer:IsInPositionToCast(arugal, spellid, 2.0) ~= CAST_OK) then
+				return;
+			end
+			healer:CastSpell(arugal, spellid, false);
+		
+		else
+			
+			if (healerAI:GetRole() ~= Encounter_GetRealRole(healerAI, self.key)) then
+				Encounter_RestoreRole(healerAI, self.key);
+			end
+			
+			local aidata = healerAI:GetData();
+			if (bTankCharmed and AI_IsAvailableToCast(healerAI, healer, uagent, aidata.shield)) then
+				
+				if (not uagent:HasAura(SPELL_PRI_WEAKENED_SOUL) and healer:IsInPositionToCast(uagent, aidata.shield, 2.0) == CAST_OK) then
+					if (healer:IsNonMeleeSpellCasted()) then
+						healer:InterruptSpell(CURRENT_GENERIC_SPELL);
+					end
+					healer:CastSpell(uagent, aidata.shield, true);
+				end
+				
+			end
+			
+		end
+		
+	end
+	
+end
+-------------------------------------------------------------------------------
+--            BOSS/TRIGGER DATA
+-------------------------------------------------------------------------------
+
 local function TriggerCircle_DoorToKitchen(unit, hive, data)
 	Print("TriggerCircle_DoorToKitchen");
 	Encounter_SetAreaLosPos("CastleDineRoom", data.dungeon.AreaTbl, data.dungeon.LosTbl, "CastleEatRmStd");
@@ -272,8 +392,12 @@ ShadowfangKeep.encounters = {
 			r = 10.0,
 			pos = {x = -80.303, y = 2153.950, z = 155.677},
 			dpspos = {x = -83.749, y = 2151.337, z = 155.634}
-			-- dpspos = {x = -69.541, y = 2157.347, z = 155.830}
-		}
+		},
+		script = ShadowfangKeep.Arugal,
+		healmax = true,
+		isNoCc = true,
+		defensepot = 7242,
+		tankPot    = 7242,
 	},
 	{
 		name               = "Global",

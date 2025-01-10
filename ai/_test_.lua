@@ -6,8 +6,8 @@ local t_agentInfo = {
 	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
-	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
-	{"Kanda",LOGIC_ID_Party,"LvlHeal"}, -- shaman
+	{"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
+	-- {"Kanda",LOGIC_ID_Party,"LvlHeal"}, -- shaman
 	-- {"Man",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
 	-- {"Zakom",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Ahc",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
@@ -567,7 +567,7 @@ end
 local function IssueDispelCommands(hive, data, agents, friendly, nonCombat)
 	
 	if (data.bAnyRangedOutOfLos or (data.threatGrpMax and data.threatGrpMax < 20)) then
-		Print("Dispel is blocked", data.bAnyRangedOutOfLos, data.threatGrpMax);
+		-- Print("Dispel is blocked", data.bAnyRangedOutOfLos, data.threatGrpMax);
 		return;
 	end
 	
@@ -775,6 +775,7 @@ function Hive_CombatUpdate(hive, data)
 	end
 	
 	local encounter = data.encounter;
+	local isNoCc = encounter and encounter.isNoCc;
 	local isForcedCc = encounter and encounter.useForcedCc;
 	local isFearAllowed = encounter and encounter.allowFearCc;
 	
@@ -788,7 +789,7 @@ function Hive_CombatUpdate(hive, data)
 	
 	local minTargetsForCC = 2;
 	local ccVsAoeCheck = #data.attackers < 6 and not data.aoe;
-	if (isForcedCc or ccVsAoeCheck) then
+	if (not isNoCc and (isForcedCc or ccVsAoeCheck)) then
 		for i = #data.ccAgents, 1, -1 do
 			if (#data.attackers - num_cc_now <= 1) then break; end
 			local guid, spellid, isfear = data.ccAgents[i][1], data.ccAgents[i][2], data.ccAgents[i].isfear;
