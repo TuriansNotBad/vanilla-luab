@@ -172,7 +172,7 @@ function Pull_Update(ai, goal)
 	
 	elseif (partyData.owner) then
 	
-		if (agent:GetDistance(leader) > 3) then
+		if (agent:GetDistance(partyData.owner) > 3) then
 		
 			if (0 == goal:GetNumber(SN_FLAG)) then
 				agent:MoveChase(partyData.owner, 1, 1, 1, 0, 1, false, false, false);
