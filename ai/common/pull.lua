@@ -186,6 +186,7 @@ function Pull_Update(ai, goal)
 		else
 			return GOAL_RESULT_Success;
 		end
+		return GOAL_RESULT_Continue;
 		
 	end
 	
