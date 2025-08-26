@@ -215,7 +215,13 @@ function Tank_IsWaitingOnLosPull(goal, partyData)
 end
 
 function Tank_CombatMovement(ai, agent, goal, target, data, partyData)
-	if (Tank_BringTargetToPos(ai, agent, target, ai:GetPosForTanking(target))) then
+	local x,y,z;
+	if (nil == data._tankpos) then
+		x,y,z = ai:GetPosForTanking(target);
+	else
+		x,y,z = data._tankpos[1], data._tankpos[2], data._tankpos[3];
+	end
+	if (Tank_BringTargetToPos(ai, agent, target, x,y,z)) then
 		Tank_Chase(ai, agent, goal, target, data, partyData);
 	end
 end
