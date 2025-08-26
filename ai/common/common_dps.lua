@@ -6,6 +6,7 @@
 
 local t_ignoreThreatEntryList = {
 	[10411] = true, -- Eye of Naxxramas
+	[7849]  = true, -- Mobile Alert System (Gnomeregan)
 };
 
 function Dps_GetFirstTargetInMeleeRange(agent, party, targets)

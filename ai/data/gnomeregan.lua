@@ -1,8 +1,28 @@
 
+import 'ai/common_encounter.lua'
+
 -----------------------------------------------------------------------------------------------
+-- Tested at level 30, with a priest healer, 2 tanks (1 LvlTankSwapOnly), mage dps
+-- 
 -- When going from Workshop Key route tank is very likely to pick the wrong pull direction
 -- when just entering the Engineering labs, pulling unintionally other mobs and likely wiping.
 -- Best to face pull.
+--
+-- There are some issues in the room with many windows in walls with enemeis in them,
+-- especially upper rooms if you try to pull there can be pathfinding trouble.
+--
+-- In the Hall of Gears bots aren't aware of ground dot from Irradiated enemies.
+-- Not a problem so long as you don't stack too many in once place.
+--
+-- Engineering Labs going counterclockwise is quite janky on a pull right after boss.
+-- Bottom of Engineering Labs have horrendous navmesh. Don't step on the metal plates
+-- near the center of the area.
+--
+-- Going through the top part of the clean zone from backdoor entrance:
+-- last pull before you enter the very first corridor (that has path to Grubis)
+-- should be face pulled. Further, pulls near path to Grubis from backdoor
+-- direction will try to utilize a pillar for los that doesn't actually break LoS.
+
 
 t_dungeons[90] = {
 	-- Line 1: Dead end path, not from start
@@ -232,16 +252,31 @@ t_dungeons[90] = {
 	},
 	-- Line 23: Bottom sidewalk to launch bay and RHS semi circle
 	{
-		{-426.959, 193.152, -211.545, -1000, 2}, -- 1
-		{-428.939, 238.553, -211.544, -1000, 2}, -- 2
-		{-441.35, 266.426, -211.542, -1000, 2}, -- 3
-		{-468.505, 278.532, -211.541, -1000, 2}, -- 4
-		{-515.373, 280.508, -211.543, -1000, 2}, -- 5
-		{-534.135, 291.969, -211.547, -1000, 2}, -- 6
-		{-538.977, 301.984, -213.754, -1000, 2}, -- 7
-		{-540.254, 308.432, -216.979, -1000, 2}, -- 8
-		{-540.638, 311.533, -216.972, -1000, 2}, -- 9
-		{-540.124, 355.145, -231.405, -1000, 2}, -- 10
+		-- {-426.959, 193.152, -211.545, -1000, 2}, -- 1
+		-- {-428.939, 238.553, -211.544, -1000, 2}, -- 2
+		-- {-441.35, 266.426, -211.542, -1000, 2}, -- 3
+		-- {-468.505, 278.532, -211.541, -1000, 2}, -- 4
+		-- {-515.373, 280.508, -211.543, -1000, 2}, -- 5
+		-- {-534.135, 291.969, -211.547, -1000, 2}, -- 6
+		-- {-538.977, 301.984, -213.754, -1000, 2}, -- 7
+		-- {-540.254, 308.432, -216.979, -1000, 2}, -- 8
+		-- {-540.638, 311.533, -216.972, -1000, 2}, -- 9
+		-- {-540.124, 355.145, -231.405, -1000, 2}, -- 10
+		-- {-533.352, 408.696, -230.6, -1000, 2}, -- 11
+		-- {-488.149, 435.315, -230.6, -1000, 2}, -- 12
+		-- {-458.814, 481.716, -230.6, -1000, 2}, -- 13
+		-- {-462.166, 550.592, -230.6, -1000, 2}, -- 14
+		-- {-509.543, 589.437, -230.6, -1000, 2}, -- 15
+		{-433.767, 195.779, -211.537, -1000, 2}, -- 1
+		{-432.183, 237.997, -211.539, -1000, 2}, -- 2
+		{-444.411, 265.221, -211.537, -1000, 2}, -- 3
+		{-468.139, 275.756, -211.536, -1000, 2}, -- 4
+		{-514.308, 278.496, -211.54, -1000, 2}, -- 5
+		{-536.623, 287.988, -211.54, -1000, 2}, -- 6
+		{-542.554, 299.858, -213.973, -1000, 2}, -- 7
+		{-545.764, 307.295, -216.547, -1000, 2}, -- 8
+		{-546.529, 315.45, -218.328, -1000, 2}, -- 9
+		{-544.795, 352.315, -231.162, -1000, 2}, -- 10
 		{-533.352, 408.696, -230.6, -1000, 2}, -- 11
 		{-488.149, 435.315, -230.6, -1000, 2}, -- 12
 		{-458.814, 481.716, -230.6, -1000, 2}, -- 13
@@ -730,6 +765,7 @@ function Gnomeregan.Blastmaster:PreprocessAgents(data)
 		if (nil == data["Gnomeregan.Blastmaster.OldRole"]) then
 			data["Gnomeregan.Blastmaster.OldRole"] = ai:GetRole();
 		end
+		data._tankpos = nil;
 	end
 end
 
@@ -742,6 +778,7 @@ function Gnomeregan.Blastmaster:RestoreAgents(data)
 			ai:SetRole(data["Gnomeregan.Blastmaster.OldRole"]);
 			data["Gnomeregan.Blastmaster.OldRole"] = nil;
 		end
+		data._tankpos = nil;
 	end
 end
 
@@ -778,7 +815,7 @@ function Gnomeregan.Blastmaster:OnBegin(hive, data)
 	
 end
 
-function Gnomeregan.Blastmaster:UpdateAgents(data, x, y, z, numAttackers, forTank)
+function Gnomeregan.Blastmaster:UpdateAgents(data, x, y, z, numAttackers, forTank, bSetTpos)
 	for i,ai in ipairs(data.agents) do
 		
 		local agent = ai:GetPlayer();
@@ -793,6 +830,11 @@ function Gnomeregan.Blastmaster:UpdateAgents(data, x, y, z, numAttackers, forTan
 				self:RestoreRole(ai);
 			end
 			
+		end
+		
+		-- so we don't get crushed by explosives
+		if (forTank and bSetTpos and role == ROLE_TANK) then
+			ai:GetData()._tankpos = {self.OutsideWaitPos.x, self.OutsideWaitPos.y, self.OutsideWaitPos.z}
 		end
 		
 		if ((forTank and role == ROLE_TANK) or not forTank) then
@@ -822,8 +864,8 @@ function Gnomeregan.Blastmaster:Update(hive, data)
 	
 local NPC_CAVERNDEEP_BURROWER = 6206;
 local NPC_CAVERNDEEP_AMBUSHER = 6207;
-local NPC_GRUBBIS             = 7361;
-local NPC_CHOMPER             = 6215;
+local NPC_GRUBBIS            = 7361;
+local NPC_CHOMPER            = 6215;
 	
 	local player = data.owner or (data.agents[1] and data.agents[1]:GetPlayer());
 	if (not player or self.Phase > 5) then
@@ -897,6 +939,7 @@ local NPC_CHOMPER             = 6215;
 			-- Print("Phase", self.Phase, "Tank should camp the Northern Cave");
 			self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true);
 		else
+			local bSetPos = false;
 			if (false == self.GrubbisDead) then
 				-- Print("Phase", self.Phase, "Tank should wait in anticipation of Grubbis");
 				local x,y,z = player:GetPosition();
@@ -908,11 +951,12 @@ local NPC_CHOMPER             = 6215;
 					if (false == (grubbisAlive or chomperAlive)) then
 						self.GrubbisDead = true;
 					end
+					bSetPos = true
 				end
 				if (grubbisAlive) then numAttackers = numAttackers + 1; table.insert(data.attackers, grubbis); end
 				if (chomperAlive) then numAttackers = numAttackers + 1; table.insert(data.attackers, chomper); end
 			end
-			self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true);
+			self:UpdateAgents(data, wPos.x, wPos.y, wPos.z, numAttackers, true, bSetPos);
 		end
 		
 	elseif (self.Phase == 5) then
@@ -934,12 +978,418 @@ function Gnomeregan.Blastmaster:OnEnd(hive, data)
 	
 end
 
+local _losTbl = Encounter_MakeLOSTbl()
+	.new 'EntranceRght' {-365.674, 49.2264, -156.509} {-353.682, 32.5599, -156.491}
+	.new 'EntranceLeft' {-393.569, 33.2120, -154.776} {-367.121, 18.5819, -153.393}
+	.new 'EntranceLefA' {-483.075, 44.9885, -156.501} {-493.391, 67.1573, -154.798}
+	.new 'EntranceEvnt' {-480.682, 40.7545, -154.734} {-447.988, 35.9755, -154.743}
+	.new 'EntranceEvnA' {-499.957, 90.9679, -154.025} {-511.345, 106.053, -154.743}
+	-- .new 'EntranceEvnA' {-508.809, 71.0358, -154.799} {-512.036, 88.8923, -154.743}
+	.new 'EntranceNext' {-499.403, 85.1052, -154.024} {-509.556, 69.6253, -154.799}
+	.new 'EntranceNexA' {-497.760, 160.150, -154.699} {-493.593, 173.569, -154.697}
+	.new 'EntranceFork' {-502.214, 155.491, -154.696} {-512.008, 124.440, -154.742}
+	.new 'EntranceForA' {-488.865, 189.829, -155.687} {-484.08, 206.01, -161.987}
+	.new 'EntranceDend' {-436.129, 134.157, -158.132} {-428.431, 159.432, -155.704}
+	-- Dormitory
+	.new 'DormEntrTopL' {-496.863, 161.709, -154.698} {-486.195, 152.569, -154.737}
+	.new 'DormEntrTpLA' {-535.222, 216.262, -155.345} {-550.57, 222.874, -158.114}
+	
+	.new 'DormEntrTopC' {-540.55, 201.489, -155.241} {-550.247, 177.479, -155.238}
+	.new 'DormEntrTpCA' {-585.315, 204.509, -165.693} {-604.872, 193.599, -172.004}
+	
+	.new 'DormEntTopC2' {-560.217, 222.13, -159.237} {-540.492, 213.789, -155.695}
+	.new 'DormEntTpC2A' {-631.054, 155.699, -183.92} {-641.175, 139.693, -183.876}
+	
+	.new 'DormTopRoomM' {-627.235, 163.775, -181.358} {-616.157, 185.559, -176.285}
+	.new 'DormTopRoomA' {-622.579, 138.051, -172.963} {-624.358, 150.628, -171.364}
+	
+	.new 'DormEntrBotL' {-499.418, 222.530, -173.433} {-483.857, 210.917, -162.627}
+	.new 'DormEntrBot2' {-568.541, 159.109, -202.15} {-581.177, 142.17, -202.137}
+	
+	.new 'DormSludgeRm' {-536.652, 156.502, -193.74} {-527.629, 151.066, -193.74} -- from lower
+	.new 'DormSludgeRA' {-623.462, 136.216, -183.884} {-641.89, 116.056, -183.875} -- from upper
+	.new 'DormSludgeRB' {-514.082, 121.994, -207.892} {-501.207, 128.89, -208.932} -- reverse path
+	-- Dormitory Small Rooms
+	.new 'DormSludgRB1' {-596.319, 150.936, -197.376} {-584.391, 159.098, -202.137}
+	.new 'DormSludgRB2' {-595.526, 117.233, -198.138} {-602.434, 126.103, -191.693}
+	.new 'DormSludgRB3' {-594.703, 87.4169, -198.905} {-602.359, 95.2485, -191.763}
+	.new 'DormSludgRB4' {-581.58, 59.8837, -197.241} {-593.095, 55.6048, -193.778}
+	.new 'DormSludgRB5' {-549.235, 60.7422, -197.972} {-559.594, 51.6688, -189.937}
+	.new 'DormSludgRU1' {-565.394, 41.2993, -181.147} {-570.874, 31.941, -172.468}
+	.new 'DormSludgRU2' {-596.562, 39.5714, -179.253} {-615.12, 34.8023, -174.056}
+	.new 'DormSludgRU3' {-613.279, 86.0382, -181.576} {-622.949, 66.3565, -172.582}
+	-- Hall of Gears
+	.new 'HallOfGears_' {-532.573, 118.726, -204.514} {-544.951, 127.012, -202.862}
+	.new 'HallOfGearsA' {-451.363, 195.059, -207.907} {-439.311, 195.139, -207.906}
+	.new 'HogTransSeg1' {-451.238, 190.936, -207.906} {-451.676, 173.751, -208.873}
+	.new 'HogTransSeg2' {-453.711, 236.411, -207.906} {-447.136, 212.585, -207.906}
+	.new 'HogTransSeg3' {-468.319, 268.256, -207.954} {-460.659, 251.569, -207.907}
+	.new 'HogTransSgBt' {-438.058, 235.579, -211.532} {-430.673, 202.421, -211.54}
+	.new 'HogTransSeg4' {-542.923, 354.057, -231.332} {-544.309, 337.815, -226.116}
+	.new 'HogTransSg4A' {-570.915, 395.63, -230.6} {-555.065, 421.619, -230.602}
+	-- Launch Bay Top
+	-- Normal entrance to loop, first segment of the loop
+	.new 'LbayTopLSeg1' {-522.73, 385.938, -231.679} {-523.048, 364.293, -231.678} -- from 1st entrance
+	.new 'LbayTopLSg1A' {-584.889, 404.844, -230.601} {-603.8, 424.368, -230.601} -- ccw
+	.new 'LbayTopLSg1B' {-480.218, 426.193, -230.601} {-481.567, 456.656, -230.602} -- cw
+	-- Loop clockwise second segment (also contains the path down)
+	.new 'LbayTopLSeg2' {-566.822, 400.322, -230.601} {-555.986, 379.863, -231.674} -- cw
+	.new 'LbayTopLSg2A' {-654.785, 433.382, -230.622} {-644.054, 400.623, -232.574} -- from 2nd entrance
+	.new 'LbayTopLSg2B' {-627.814, 478.163, -230.601} {-643.144, 491.555, -230.601} -- ccw
+	-- Loop clockwise third segment
+	.new 'LbayTopLSeg3' {-642.205, 454.226, -230.601} {-615.458, 442.84, -230.601} -- cw
+	.new 'LbayTopLSg3A' {-641.418, 560.111, -230.601} {-627.847, 575.583, -230.601} -- ccw
+	-- Loop clockwise fourth segment, adjacent to boss segment
+	.new 'LbayTopLSeg4' {-651.028, 544.51, -230.601} {-646.116, 524.092, -230.601} -- cw
+	.new 'LbayTopLSg4A' {-564.62, 611.332, -230.601} {-536.841, 592.221, -230.601} -- ccw
+	-- Loop clockwise fifth segment, contains boss' bridge
+	.new 'LbayTopLSeg5' {-582.239, 606.542, -230.601} {-597.505, 578.826, -230.601} -- cw
+	.new 'LbayTopLSg5A' {-472.801, 579.258, -230.601} {-463.592, 554.463, -230.601} -- ccw
+	-- Loop clockwise sixth segment, adjacent to boss segment
+	.new 'LbayTopLSeg6' {-489.42, 592.846, -230.601} {-514.479, 587.085, -230.601} -- cw
+	.new 'LbayTopLSg6A' {-444.583, 494.934, -230.601} {-462.476, 476.622, -230.601} -- ccw
+	-- Loop clockwise seventh segment
+	.new 'LbayTopLSeg7' {-443.274, 513.939, -230.601} {-457.726, 533.803, -230.601} -- cw
+	.new 'LbayTopLSg7A' {-491.5, 415.312, -230.602} {-515.072, 413.079, -230.602} -- ccw
+	-- Launch Bay bottom floor T-hall
+	.new 'LbayBotCorr1' {-634.785, 365.408, -253.333} {-617.56, 365.557, -247.26} -- original
+	.new 'LbayBotCor1A' {-727.014, 430.802, -273.062} {-746, 423.037, -273.063} -- from engi labs
+	.new 'LbayBotCor1B' {-654.821, 407.313, -273.064} {-649.949, 426.631, -273.064} -- from launch bay bottom
+	.new 'LbayBotCorr2' {-657.094, 396.256, -273.063} {-668.362, 383.779, -273.063}
+	.new 'LbayBotCor2A' {-608.533, 472.213, -273.083} {-587.83, 477.345, -273.076}
+	.new 'LbayBotLevel' {-625.461, 460.655, -273.061} {-640.589, 437.851, -273.064}
+	.new 'LbayBotLeveA' {-638.722, 507.925, -273.063} {-648.506, 515.107, -273.062}
+	-- End Transition
+	.new 'EndTransSeg1' {-655.886, 507.529, -273.061} {-625.803, 517.096, -273.061} -- original
+	.new 'EndTransSg1A' {-794.038, 540.99, -294.406} {-807.511, 527.833, -298.884} -- reverse
+	.new 'EndTransSeg2' {-777.789, 558.142, -291.125} {-784.037, 545.168, -291.15}
+	-- Engineering labs
+	.new 'EngiLabsBotm' {-793.504, 340.344, -316.426} {-785.989, 328.165, -316.425} -- normal
+	.new 'EngiLabsBotR' {-859.966, 415.376, -315.598} {-843.982, 433.852, -312.282} -- reverse
+	-- Loop clockwise first segment, normal entrance
+	.new 'EngiLabsSeg1' {-744.024, 423.983, -273.064} {-732.67, 435.253, -273.062} -- cw
+	.new 'EngiLabsSg1A' {-782.597, 300.896, -272.596} {-798.745, 308.126, -272.596} -- ccw
+	-- Loop clockwise second segment, has elevator and second entrance
+	.new 'EngiLabsSeg2' {-789.775, 298.629, -272.598} {-802.062, 307.987, -272.598} -- 2nd entrance, cw
+	.new 'EngiLabsSg2A' {-903.571, 318.141, -272.596} {-900.542, 334.933, -272.596} -- ccw
+	-- Loop clockwise third segment, has boss
+	.new 'EngiLabsSeg3' {-888.259, 299.231, -272.596} {-870.466, 293.775, -272.596} -- cw
+	.new 'EngiLabsSg3A' {-842.33, 418.295, -272.596} {-816.86, 417.795, -272.596} -- ccw
+	-- Loop clockwise fourth segment, last segment
+	.new 'EngiLabsSeg4' {-889.93, 416.105, -272.596} {-897.04, 396.576, -272.596} -- cw
+	.new 'EngiLabsSg4A' {-754.063, 421.779, -272.827} {-736.109, 434.752, -273.064} -- ccw
+.endtbl();
+
+local _areaTbl = Encounter_MakeAreaTbl(_losTbl)
+	-- .new ('EntranceRght', SHAPE_POLYGON) {-369.149, 65.8552} {-358.711, 76.1337} {-358.563, 139.548} {-377.887, 132.478} {-380.839, 73.5181}
+		-- ('EntranceRght', -154.734, 10)
+	-- .new ('EntranceLeft', SHAPE_POLYGON) {-387.690, 48.7254} {-397.691, 57.5594} {-461.332, 49.4711} {-469.170, 29.9544} {-405.352, 29.9290}
+		-- ('EntranceLeft', -154.793, 10)
+	-- .new ('EntranceEvnt', SHAPE_POLYGON) {-464.682, 44.3998} {-502.434, 81.4365} {-543.863, 33.8118} {-558.17, -1.16476} {-523.69, -19.7411} {-471.315, 31.2503}
+		-- ('EntranceEvnt', -154.743, 10)
+	-- .new ('EntranceNext', SHAPE_POLYGON) {-512.964, 65.0225} {-516.145, 141.504} {-497.832, 158.483} {-489.433, 147.605} {-495.453, 75.4881}
+		-- ('EntranceNext', -154.776, 10)
+	-- .new ('EntranceNext', SHAPE_POLYGON) {-489.749, 147.869} {-502.231, 155.443} {-516.115, 141.59} {-516.52, 87.6571} {-496.187, 90.3592}
+		-- ('EntranceNext', -154.776, 10)
+	.new ('EntranceRght', SHAPE_POLYGON) {-334.33, 24.2761} {-358.373, 140.279} {-378.323, 133.2} {-384.041, 70.6401} ('EntranceRght', -154.734, 10)
+	.new ('EntranceLeft', SHAPE_POLYGON) {-513.471, 9.87187} {-462.002, 66.5453} {-383.843, 69.7655} {-327.303, 5.15931} ('EntranceLeft', -154.793, 10)
+	.new ('EntranceNext', SHAPE_POLYGON) {-489.749, 147.869} {-502.231, 155.443} {-570.171, 87.6571} {-496.187, 90.3592} ('EntranceNext', -154.776, 10)
+	.new ('EntranceFork', SHAPE_POLYGON) {-490.466, 147.206} {-525.112, 173.32} {-500.045, 198.299} {-408.337, 188.127} {-414.24, 169.011}
+		('EntranceFork', -154.741, 10)
+	.new ('EntranceDend', SHAPE_POLYGON) {-429.817, 153.053} {-400.893, 102.22} {-437.415, 67.8135} {-482.322, 110.703} ('EntranceDend', -157.023, 15)
+	.new ('EntranceEvnt', SHAPE_POLYGON) {-500.578, 134.752} {-413.716, 49.3857} {-519.727, -22.2177} {-558.353, -1.16564} ('EntranceEvnt', -154.49, 10)
+	-- Dormitory
+	.new ('DormEntrTopL', SHAPE_POLYGON) {-511.336, 166.714} {-529.785, 151.39} {-573.34, 169.559} {-526.03, 216.734} {-517.869, 205.877}
+		('DormEntrTopL', -155.155, 10)
+	.new ('DormEntrTopC', SHAPE_POLYGON) {-540.35, 202.416} {-531.194, 211.394} {-567.88, 243.154} {-578.396, 232.512} ('DormEntrTopC', -155.241, 10)
+	.new ('DormEntTopC2', SHAPE_POLYGON) {-575.174, 235.846} {-640.583, 170.22} {-629.868, 159.644} {-562.894, 221.339} ('DormEntTopC2', -158.546, 25)
+	-- WIP: Need Trigger
+	.new ('DormTopRoom_', SHAPE_POLYGON) {-629.847, 159.693} {-619.074, 142.57} {-619.074, 112.9} {-646.437, 112.902} {-646.408, 155.788}
+		('DormTopRoomM', -182.833, 5)
+	.new ('DormEntrBotL', SHAPE_POLYGON) {-573.835, 169.76} {-573.582, 186.138} {-520.426, 239.864} {-497.02, 234.134} {-486.554, 225.213} {-482.583, 196.357}
+		{-528.084, 150.61} ('DormEntrBotL', -193.74, 10)
+	-- WIP: Need Trigger
+	.new ('DormSludgeRm', SHAPE_POLYGON) {-530.689, 145.33} {-532.896, 62.4914} {-596.31, 64.7623} {-597.693, 158.437} ('DormSludgeRm', -202.151, 10)
+	-- Dormitory Small Rooms
+	.new ('DormSludgRB1', SHAPE_POLYGON) {-602.046, 135.081} {-625.183, 135.09} {-625.185, 159.048} {-602.081, 159.048} ('DormSludgRB1', -199.661, 5)
+	.new ('DormSludgRB2', SHAPE_POLYGON) {-611.257, 124.933} {-648.385, 124.923} {-648.496, 90.3551} {-611.256, 90.3549} ('DormSludgRB2', -199.655, 10)
+	.new ('DormSludgRB3', SHAPE_POLYGON) {-611.256, 83.9632} {-648.355, 83.9643} {-648.479, 49.3867} {-611.256, 49.3869} ('DormSludgRB3', -199.655, 10)
+	.new ('DormSludgRB4', SHAPE_POLYGON) {-562.137, 51.4158} {-560.864, 30.2082} {-584.005, 25.8398} {-584.004, 52.3324} ('DormSludgRB4', -198.31, 5)
+	.new ('DormSludgRB5', SHAPE_POLYGON) {-531.47, 53.1685} {-531.457, 26.6906} {-554.269, 30.5367} {-554.278, 52.7488} ('DormSludgRB5', -198.845, 5)
+	.new ('DormSludgRU1', SHAPE_POLYGON) {-567.332, 30.8933} {-562.759, 8.89044} {-539.045, 8.83152} {-539.236, 31.5967} ('DormSludgRU1', -179.741, 5)
+	.new ('DormSludgRU2', SHAPE_POLYGON) {-577.188, 30.0155} {-582.157, 8.86148} {-605.696, 8.8167} {-605.831, 31.5462} ('DormSludgRU2', -179.684, 5)
+	.new ('DormSludgRU3', SHAPE_POLYGON) {-628.813, 99.5491} {-665.971, 99.549} {-666.024, 64.9726} {-628.814, 64.9714} ('DormSludgRU3', -173.2, 11)
+	-- Hall of Gears
+	.new ('HallOfGears_', SHAPE_POLYGON) {-530.756, 145.574} {-533.089, 61.9363} {-464.301, 29.8771} {-400.455, 33.9235} {-364.548, 77.7575}
+		{-362.023, 145.629} {-400.779, 183.259} {-473.77, 184.07} ('HallOfGears_', -202.151, 10)
+	-- .new ('HogTransSeg1', SHAPE_POLYGON) {-454.79, 188.023} {-454.203, 240.673} {-421.964, 248.946} {-414.267, 188.024} ('HogTransSeg1', -207.908, 10)
+	-- .new ('HogTransSeg1', SHAPE_POLYGON) {-454.791, 188.024} {-438.061, 190.699} {-442.424, 246.294} {-455.167, 242.834} ('HogTransSeg1', -207.908, 10)
+	-- .new ('HogTransSeg2', SHAPE_POLYGON) {-454.268, 236.41} {-478.734, 254.713} {-478.014, 270.941} {-468.184, 270.683} {-448.397, 262.413}
+		-- {-438.643, 236.203} ('HogTransSeg2', -207.906, 10)
+	-- .new ('HogTransSeg3', SHAPE_POLYGON) {-468.145, 254.949} {-516.5, 255.021} {-554.715, 272.75} {-569.624, 311.688} {-581.135, 358.037}
+		-- {-516.565, 356.905} {-464.004, 288.608} ('HogTransSeg3', -207.989, 30)
+	-- .new ('HogTransSgBt', SHAPE_POLYGON) {-473.77, 184.069} {-375.104, 160.938} {-433.631, 275.355} {-469.815, 290.758} {-514.676, 290.758}
+		-- {-516.5, 255.021} ('HogTransSgBt', -207.908, 10)
+	.new ('HogTransSeg4', SHAPE_POLYGON) {-516.566, 356.906} {-581.425, 358.039} {-580.465, 383.724} {-516.116, 382.606} ('HogTransSeg4', -231.679, 10)
+	-- Launch Bay Top
+	.new ('LbayTopLSeg1', SHAPE_POLYGON) {-516.116, 382.603} {-489.74, 412.501} {-507.09, 440.776} {-578.076, 431.965} {-585.142, 399.02}
+		{-580.976, 383.737} ('LbayTopLSeg1', -231.698, 10)
+	.new ('LbayTopLSeg2', SHAPE_POLYGON) {-585.136, 399.02} {-628.118, 424.515} {-648.8, 452.008} {-619.297, 468.941} {-573.542, 430.812}
+		('LbayTopLSeg2', -230.601, 10)
+	.new ('LbayTopLSeg3', SHAPE_POLYGON) {-645.575, 447.255} {-664.03, 506.744} {-653.315, 548.417} {-622.07, 535.904} {-617.162, 465.082}
+		('LbayTopLSeg3', -230.601, 10)
+	.new ('LbayTopLSeg4', SHAPE_POLYGON) {-655.17, 542.858} {-619.756, 594.553} {-580.808, 611.957} {-571.092, 579.393} {-623.746, 530.422}
+		('LbayTopLSeg4', -230.601, 10)
+	.new ('LbayTopLSeg5', SHAPE_POLYGON) {-586.292, 609.833} {-523.857, 614.45} {-486.093, 594.855} {-505.267, 566.858} {-577.554, 576.451}
+		('LbayTopLSeg5', -230.601, 10)
+	.new ('LbayTopLSeg6', SHAPE_POLYGON) {-492.102, 598.34} {-448.581, 551.962} {-440.153, 509.833} {-474.262, 507.571} {-509.443, 569.447}
+		('LbayTopLSeg6', -230.601, 10)
+	.new ('LbayTopLSeg7', SHAPE_POLYGON) {-440.769, 514.641} {-450.584, 453.734} {-478.001, 421.438} {-501.002, 446.471} {-475.303, 514.896}
+		('LbayTopLSeg7', -230.601, 10)
+	-- Launch Bay bottom
+	.new ('LbayBotCorr1', SHAPE_POLYGON) --[[{-653.057, 392.308}]] {-646.625, 396.755} {-680.165, 440.659} {-710.083, 467.633} {-730.903, 451.6}
+		{-673.853, 376.347} ('LbayBotCorr1', -273.061, 10)
+	.new ('LbayBotCorr2', SHAPE_POLYGON) {-653.003, 392.348} {-588.828, 444.672} {-619.669, 486.806} {-683.078, 438.607} ('LbayBotCorr2', -273.063, 10)
+	.new ('LbayBotLevel', SHAPE_POLYGON) {-630.159, 469.534} {-615.902, 537.735} {-565.56, 576.068} {-504.255, 559.998} {-478.778, 503.236}
+		{-506.516, 447.852} {-568.769, 434.408} {-605.948, 437.508} ('LbayBotLevel', -273.062, 10)
+	.new ('EndTransSeg1', SHAPE_POLYGON, true) {-616.136, 474.017} {-783.228, 555.229} {-764.29, 568.956} {-756.388, 555.752} {-743.554, 546.124}
+		{-658.935, 525.469} {-645.972, 549.109} {-595.571, 562.237} ('EndTransSeg1', -273.064, 30)
+	.new ('EndTransSeg2', SHAPE_POLYGON, true) {-781.255, 542.76} {-771.451, 609.889} {-762.716, 605.257} {-766.965, 586.704} {-764.899, 569.898}
+		{-758.606, 559.636} ('EndTransSeg2', -291.15, 30)
+	-- Engineering labs
+	.new ('EngiLabsBotm', SHAPE_POLYGON) {-779.996, 330.52} {-775.054, 369.641} {-805.353, 409.345} {-844.04, 414.552} {-883.883, 384.315}
+		{-889.492, 345.282} {-859.249, 305.612} {-820.178, 299.924} ('EngiLabsBotR', -316.431, 10)
+	.new ('EngiLabsSeg1', SHAPE_POLYGON) {-758.623, 422.245} {-771.615, 410.877} {-779.302, 328.778} {-755.987, 328.912} {-735.334, 424.396}
+		('EngiLabsSeg1', -272.581, 10)
+	.new ('EngiLabsSeg2', SHAPE_POLYGON) {-782.057, 332.442} {-755.987, 328.912} {-765.895, 268.973} {-860.864, 281.184} {-857.287, 307.466}
+		('EngiLabsSeg2', -272.596, 10)
+	.new ('EngiLabsSeg3', SHAPE_POLYGON) --[[{-857.31, 307.468}]] {-860.866, 281.179} {-893.684, 292.282} {-907.105, 301.231} {-912.165, 313.463}
+		{-913.496, 350.095} {-908.671, 385.779} {-897.178, 419.888} {-886.418, 434.188} {-873.043, 436.212} {-843.075, 435.898} {-842.975, 412.22}
+		('EngiLabsSeg3', -272.596, 10)
+	.new ('EngiLabsSeg4', SHAPE_POLYGON) {-842.972, 412.244} {-839.412, 438.616} {-758.623, 422.247} {-771.614, 410.878} {-807.26, 407.617}
+		('EngiLabsSeg4', -272.596, 10)
+.endtbl();
+
+local NPC_RANGED_LIST = Encounter_NewRangedList();
+function NPC_RANGED_LIST.IsRanged() return true; end
+
+local function TriggerCircle_DormUpperNorm(unit, hive, data)
+	Print("TriggerCircle_DormUpperNorm");
+	Encounter_SetAreaLosPos("DormEntrBotL", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrBotL");
+	Encounter_SetAreaLosPos("DormSludgeRm", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormSludgeRm");
+	-- upper path rooms will have alt pts on nrm path
+	Encounter_SetAreaLosPos("DormTopRoom_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormTopRoomA");
+	Encounter_SetAreaLosPos("DormEntrTopL", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrTpLA");
+	Encounter_SetAreaLosPos("DormEntrTopC", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrTpCA");
+	Encounter_SetAreaLosPos("DormEntTopC2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntTpC2A");
+end
+
+local function TriggerCircle_DormUpperAltr(unit, hive, data)
+	Print("TriggerCircle_DormUpperAltr");
+	Encounter_SetAreaLosPos("DormEntrBotL", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrBot2");
+	Encounter_SetAreaLosPos("DormSludgeRm", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormSludgeRA");
+	-- upper path rooms will have normal pts on alt path
+	Encounter_SetAreaLosPos("DormTopRoom_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormTopRoomM");
+	Encounter_SetAreaLosPos("DormEntrTopL", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrTopL");
+	Encounter_SetAreaLosPos("DormEntrTopC", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrTopC");
+	Encounter_SetAreaLosPos("DormEntTopC2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntTopC2");
+end
+
+local function TriggerCircle_LaunchBayTopA(unit, hive, data)
+	Print("TriggerCircle_LaunchBayTopA");
+	-- go clockwise
+	if (not data.dungeon.TC_LaunchBayTopA_enabled) then
+		return;
+	end
+	Encounter_SetAreaLosPos("LbayTopLSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg1B");
+	Encounter_SetAreaLosPos("LbayTopLSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg2");
+	Encounter_SetAreaLosPos("LbayTopLSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg3");
+	Encounter_SetAreaLosPos("LbayTopLSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg4");
+	Encounter_SetAreaLosPos("LbayTopLSeg5", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg5");
+	Encounter_SetAreaLosPos("LbayTopLSeg6", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg6");
+	Encounter_SetAreaLosPos("LbayTopLSeg7", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg7");
+end
+
+local function TriggerCircle_LaunchBayTopB(unit, hive, data)
+	Print("TriggerCircle_LaunchBayTopB");
+	-- go counterclockwise
+	if (not data.dungeon.TC_LaunchBayTopB_enabled) then
+		return;
+	end
+	Encounter_SetAreaLosPos("LbayTopLSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg1A");
+	Encounter_SetAreaLosPos("LbayTopLSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg2B");
+	Encounter_SetAreaLosPos("LbayTopLSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg3A");
+	Encounter_SetAreaLosPos("LbayTopLSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg4A");
+	Encounter_SetAreaLosPos("LbayTopLSeg5", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg5A");
+	Encounter_SetAreaLosPos("LbayTopLSeg6", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg6A");
+	Encounter_SetAreaLosPos("LbayTopLSeg7", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg7A");
+end
+
+local function TriggerCircle_LaunchBayTopC(unit, hive, data)
+	Print("TriggerCircle_LaunchBayTopC");
+	-- go clockwise
+	if (not data.dungeon.TC_LaunchBayTopC_enabled) then
+		return;
+	end
+	Encounter_SetAreaLosPos("LbayTopLSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg1B");
+	Encounter_SetAreaLosPos("LbayTopLSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg2");
+	Encounter_SetAreaLosPos("LbayTopLSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg3");
+	Encounter_SetAreaLosPos("LbayTopLSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg4");
+	Encounter_SetAreaLosPos("LbayTopLSeg5", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg5");
+	Encounter_SetAreaLosPos("LbayTopLSeg6", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg6");
+	Encounter_SetAreaLosPos("LbayTopLSeg7", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSeg7");
+end
+
+local function TriggerCircle_LaunchBayTopD(unit, hive, data)
+	Print("TriggerCircle_LaunchBayTopD");
+	-- go counterclockwise
+	if (not data.dungeon.TC_LaunchBayTopD_enabled) then
+		return;
+	end
+	Encounter_SetAreaLosPos("LbayTopLSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg1A");
+	Encounter_SetAreaLosPos("LbayTopLSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg2B");
+	Encounter_SetAreaLosPos("LbayTopLSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg3A");
+	Encounter_SetAreaLosPos("LbayTopLSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg4A");
+	Encounter_SetAreaLosPos("LbayTopLSeg5", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg5A");
+	Encounter_SetAreaLosPos("LbayTopLSeg6", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg6A");
+	Encounter_SetAreaLosPos("LbayTopLSeg7", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg7A");
+end
+
+local function TriggerCircle_EndTransPass1(unit, hive, data)
+	Print("TriggerCircle_EndTransPass1");
+	Encounter_SetAreaLosPos("EndTransSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EndTransSg1A");
+	Encounter_SetAreaLosPos("EngiLabsBotm", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsBotm");
+	Encounter_SetAreaLosPos("LbayBotLevel", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotLeveA");
+	Encounter_SetAreaLosPos("LbayBotCorr2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotCor2A");
+	Encounter_SetAreaLosPos("LbayBotCorr1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotCor1B");
+	data.dungeon.TC_EngiLabsMain1_enabled = true;
+	data.dungeon.TC_EngiLabsMain2_enabled = true;
+	data.dungeon.TC_EngiLabsMain3_enabled = false;
+	data.dungeon.TC_EngiLabsMain4_enabled = false;
+end
+
+local function TriggerCircle_EndTransPass2(unit, hive, data)
+	Print("TriggerCircle_EndTransPass2");
+	Encounter_SetAreaLosPos("EndTransSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EndTransSeg1");
+	Encounter_SetAreaLosPos("EngiLabsBotm", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsBotR");
+	Encounter_SetAreaLosPos("LbayBotLevel", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotLevel");
+	Encounter_SetAreaLosPos("LbayBotCorr2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotCorr2");
+	Encounter_SetAreaLosPos("LbayBotCorr1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotCor1A");
+	data.dungeon.TC_EngiLabsMain1_enabled = false;
+	data.dungeon.TC_EngiLabsMain2_enabled = false;
+	data.dungeon.TC_EngiLabsMain3_enabled = true;
+	data.dungeon.TC_EngiLabsMain4_enabled = true;
+end
+
+local function TriggerCircle_EngiLabsMain1(unit, hive, data)
+	Print("TriggerCircle_EngiLabsMain1");
+	if (not data.dungeon.TC_EngiLabsMain1_enabled) then return; end
+	Encounter_SetAreaLosPos("EngiLabsSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg1");
+	Encounter_SetAreaLosPos("EngiLabsSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg2");
+	Encounter_SetAreaLosPos("EngiLabsSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg3");
+	Encounter_SetAreaLosPos("EngiLabsSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg4");
+end
+
+local function TriggerCircle_EngiLabsMain2(unit, hive, data)
+	Print("TriggerCircle_EngiLabsMain2");
+	if (not data.dungeon.TC_EngiLabsMain2_enabled) then return; end
+	Encounter_SetAreaLosPos("EngiLabsSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg1A");
+	Encounter_SetAreaLosPos("EngiLabsSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg2A");
+	Encounter_SetAreaLosPos("EngiLabsSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg3A");
+	Encounter_SetAreaLosPos("EngiLabsSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg4A");
+end
+
+local function TriggerCircle_EngiLabsMain3(unit, hive, data)
+	Print("TriggerCircle_EngiLabsMain3");
+	if (not data.dungeon.TC_EngiLabsMain3_enabled) then return; end
+	Encounter_SetAreaLosPos("EngiLabsSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg1");
+	Encounter_SetAreaLosPos("EngiLabsSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg2");
+	Encounter_SetAreaLosPos("EngiLabsSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg3");
+	Encounter_SetAreaLosPos("EngiLabsSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSeg4");
+end
+
+local function TriggerCircle_EngiLabsMain4(unit, hive, data)
+	Print("TriggerCircle_EngiLabsMain4");
+	if (not data.dungeon.TC_EngiLabsMain4_enabled) then return; end
+	Encounter_SetAreaLosPos("EngiLabsSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg1A");
+	Encounter_SetAreaLosPos("EngiLabsSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg2A");
+	Encounter_SetAreaLosPos("EngiLabsSeg3", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg3A");
+	Encounter_SetAreaLosPos("EngiLabsSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsSg4A");
+end
+
+local function TriggerCircle_BackdoorEntra(unit, hive, data)
+	Print("TriggerCircle_BackdoorEntra");
+	
+	-- Switch to backdoor triggers
+	data.dungeon.TC_LaunchBayTopA_enabled = false;
+	data.dungeon.TC_LaunchBayTopB_enabled = false;
+	data.dungeon.TC_LaunchBayTopC_enabled = true;
+	data.dungeon.TC_LaunchBayTopD_enabled = true;
+	
+	data.dungeon.TC_EngiLabsMain1_enabled = false;
+	data.dungeon.TC_EngiLabsMain2_enabled = false;
+	data.dungeon.TC_EngiLabsMain3_enabled = true;
+	data.dungeon.TC_EngiLabsMain4_enabled = true;
+	
+	-- default is reverse, other way is handled with triggers TriggerCircle_EndTransPass1 and TriggerCircle_EndTransPass2
+	-- which are located in the corridor connecting launch bay and engineering labs next to each other
+	Encounter_SetAreaLosPos("EndTransSeg1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EndTransSg1A");
+	Encounter_SetAreaLosPos("EngiLabsBotm", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EngiLabsBotm");
+	Encounter_SetAreaLosPos("LbayBotLevel", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotLeveA");
+	Encounter_SetAreaLosPos("LbayBotCorr2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotCor2A");
+	Encounter_SetAreaLosPos("LbayBotCorr1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotCor1B");
+	
+	-- Launch bay loop entrance change
+	Encounter_SetAreaLosPos("LbayTopLSeg2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayTopLSg2A");
+	
+	-- Engineering labs approach is covered by TriggerCircle_EndTransPass1/2 triggers
+	-- This covers launch bay approach
+	Encounter_SetAreaLosPos("LbayBotCorr1", data.dungeon.AreaTbl, data.dungeon.LosTbl, "LbayBotCor1B");
+	
+	-- set up Dormitory
+	Encounter_SetAreaLosPos("DormSludgeRm", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormSludgeRB");
+	Encounter_SetAreaLosPos("DormEntrBotL", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrBot2");
+	Encounter_SetAreaLosPos("EntranceFork", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EntranceForA");
+	Encounter_SetAreaLosPos("DormEntrTopL", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrTpLA");
+	Encounter_SetAreaLosPos("DormEntrTopC", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntrTpCA");
+	Encounter_SetAreaLosPos("DormEntTopC2", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormEntTpC2A");
+	Encounter_SetAreaLosPos("DormTopRoom_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "DormTopRoomA");
+	
+	-- set static things to default to reverse path
+	Encounter_SetAreaLosPos("HogTransSeg4", data.dungeon.AreaTbl, data.dungeon.LosTbl, "HogTransSg4A");
+	Encounter_SetAreaLosPos("HallOfGears_", data.dungeon.AreaTbl, data.dungeon.LosTbl, "HallOfGearsA");
+	Encounter_SetAreaLosPos("EntranceLeft", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EntranceLefA");
+	Encounter_SetAreaLosPos("EntranceEvnt", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EntranceEvnA");
+	Encounter_SetAreaLosPos("EntranceNext", data.dungeon.AreaTbl, data.dungeon.LosTbl, "EntranceNexA");
+	
+end
+
+Gnomeregan.triggers = {
+	Encounter_NewTriggerCircle("DormUpperNorm", -495.695, 194.592, -155.236,10,10, TriggerCircle_DormUpperNorm),
+	Encounter_NewTriggerCircle("DormUpperAltr", -519.400, 171.007, -155.236,10,10, TriggerCircle_DormUpperAltr),
+	
+	Encounter_NewTriggerCircle("LaunchBayTopA", -560.466, 412.614, -230.600,9.5,10, TriggerCircle_LaunchBayTopA),
+	Encounter_NewTriggerCircle("LaunchBayTopB", -512.954, 416.820, -230.600,24,10, TriggerCircle_LaunchBayTopB),
+	Encounter_NewTriggerCircle("LaunchBayTopC", -631.553, 458.818, -230.601,7,10, TriggerCircle_LaunchBayTopC),
+	Encounter_NewTriggerCircle("LaunchBayTopD", -583.504, 418.043, -230.601,8,10, TriggerCircle_LaunchBayTopD),
+	
+	Encounter_NewTriggerCircle("EndTransPass1", -743.957, 424.935, -273.064,10,10, TriggerCircle_EndTransPass1),
+	Encounter_NewTriggerCircle("EndTransPass2", -728.883, 437.020, -273.063,10,10, TriggerCircle_EndTransPass2),
+	
+	Encounter_NewTriggerCircle("EngiLabsMain1", -758.898, 398.291, -272.580,6,10, TriggerCircle_EngiLabsMain1),
+	Encounter_NewTriggerCircle("EngiLabsMain2", -773.492, 418.194, -272.580,6,10, TriggerCircle_EngiLabsMain2),
+	Encounter_NewTriggerCircle("EngiLabsMain3", -794.704, 283.228, -272.598,6,10, TriggerCircle_EngiLabsMain3),
+	Encounter_NewTriggerCircle("EngiLabsMain4", -770.964, 301.264, -272.598,6,10, TriggerCircle_EngiLabsMain4),
+	
+	Encounter_NewTriggerCircle("BackdoorEntra", -749.004, 2.74334, -252.218,10,10, TriggerCircle_BackdoorEntra),
+};
+
 t_dungeons[90].encounters = {
+	-- {name = "Mobile Alert System", entry = 7849, 
 	{name = "Grubbis", script = Gnomeregan.Blastmaster, test = Gnomeregan.Blastmaster.Test},
-	-- {name = "Grubbis"},
 	{name = "Viscous Fallout"},
 	{name = "Electrocutioner 6000", tpos = {-552.048, 502.902, -216.727}, rchrpos = {x=-545.596, y=528.996, z=-216.279, melee = "ignore"}, healmax = true},
-	{name = "Crowd Pummeler 9-60", tpos = {-902.155, 361.340, -272.596}},
+	{name = "Crowd Pummeler 9-60", tpos = {-902.155, 361.340, -272.596}, enemyPrio = {[7849] = 10}},
 	{name = "Mekgineer Thermaplugg", script = Gnomeregan.Mekgineer, tpos = {-531.448, 670.266, -325.268}, tankswap = true},
 	OnLoad = Gnomeregan_OnLoad,
 	Ids =
@@ -949,4 +1399,27 @@ t_dungeons[90].encounters = {
 		CaveInSouth      = nil,
 		CaveInNorth      = nil,
 	},
+	{
+		name               = "Global",
+		test               = function() return true; end,
+		UseLosBreakForPull = true,
+		noboss             = true,
+		enemyPrio = {
+			[7849] = 10, -- Mobile Alert System
+		},
+	},
+	
+	TC_LaunchBayTopA_enabled = true,
+	TC_LaunchBayTopB_enabled = true,
+	TC_LaunchBayTopC_enabled = false,
+	TC_LaunchBayTopD_enabled = false,
+	
+	TC_EngiLabsMain1_enabled = false,
+	TC_EngiLabsMain2_enabled = false,
+	TC_EngiLabsMain3_enabled = true,
+	TC_EngiLabsMain4_enabled = true,
 };
+
+Gnomeregan.encounters.LosTbl    = _losTbl;
+Gnomeregan.encounters.AreaTbl   = _areaTbl;
+Gnomeregan.encounters.RangedTbl = NPC_RANGED_LIST;

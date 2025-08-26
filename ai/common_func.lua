@@ -305,17 +305,21 @@ function AI_IsAllianceRace(race)
 	return race == RACE_HUMAN or race == RACE_DWARF or race == RACE_NIGHTELF or race == RACE_GNOME;
 end
 
-function GetDungeon(map)
+function GetDungeon(map, currentData)
+	if (currentData and currentData.mapId == map) then
+		return currentData;
+	end
 	local data = t_dungeons[map];
 	if (nil == data) then
 		return;
 	end
-	return data.encounters;
+	data = table_deepclone(data.encounters);
+	data.mapId = map;
+	return data;
 end
 
-function GetEncounter(map, party, partyData)
+function GetEncounter(data, party, partyData)
 
-	local data = GetDungeon(map);
 	if (nil == data) then
 		return;
 	end

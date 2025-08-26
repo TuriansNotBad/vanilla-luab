@@ -1,12 +1,12 @@
 local t_agentInfo = {
 	{"Cha",LOGIC_ID_Party,"LvlTank"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
-	-- {"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
+	{"Pri",LOGIC_ID_Party,"LvlHeal"}, -- priest healer
 	-- {"Ahc",LOGIC_ID_Party,"LvlTankSwapOnly"}, -- warrior tank (human/orc, others untested, will likely have no melee weapon)
 	{"Gert",LOGIC_ID_Party,"LvlDps"}, -- mage
 	{"Mokaz",LOGIC_ID_Party,"LvlDps"}, -- rogue
 	-- {"Fawarrie",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
 	-- {"Thia",LOGIC_ID_Party,"FeralLvlDps"}, -- cat
-	{"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
+	-- {"Kanda",LOGIC_ID_Party,"LvlDps"}, -- shaman
 	-- {"Kanda",LOGIC_ID_Party,"LvlHeal"}, -- shaman
 	-- {"Man",LOGIC_ID_Party,"LvlTank"}, -- warrior tank
 	-- {"Zakom",LOGIC_ID_Party,"LvlDps"}, -- rogue
@@ -18,15 +18,20 @@ local t_agentInfo = {
 	-- {"Deepdip",LOGIC_ID_Party,"FeralLvlWeakDps"}, 	
 };
 
-if (Util_DoesFileOpenForReading '__botlist.txt') then
-	import '__botlist.txt';
-	t_agentInfo = t_botListInfo;
-end
+-- if (Util_DoesFileOpenForReading '__botlist.txt') then
+	-- import '__botlist.txt';
+	-- t_agentInfo = t_botListInfo;
+-- end
 
 local Hive_FormationRectGetAngle;
 
+local _t_noPullTargets = {
+	[7849]  = true, -- Gnomeregan: Mobile Alert System
+	[10411] = true, -- Stratholme: Eye of Naxxramas
+};
+
 local function Hive_CanPullTarget(hive, data, target)
-	if (data.disablePull) then
+	if (data.disablePull or target:IsPlayer() or _t_noPullTargets[target:GetEntry()]) then
 		return false;
 	end
 	if (data.encounter and data.encounter.pull) then
@@ -389,6 +394,11 @@ function Hive_Update(hive)
 			-- fmtprint("%.3f, %.3f, %.3f", x, y, z);
 			-- Debug_PrintTable(GetObjectsNear(data.owner, x,y,z,5,true))
 			-- Print(data.owner:GetCurrentSpellId(3));
+			-- if (data.dungeon) then
+				-- local area = Encounter_GetAreaForTargetPos(x,y,z,data.dungeon.AreaTbl)
+				-- local str = area and (area.name .. "\t" .. area.los.name) or "None"
+				-- Print(str)
+			-- end
 			if (not data.attackers[1]) then
 				-- odd bug with owner victim being stuck on ally due to gnomeregan irradiated status
 				if (ownerVictim and ownerVictim:GetReactionTo(data.owner) < REP_FRIENDLY) then
@@ -422,8 +432,8 @@ function Hive_Update(hive)
 			Hive_UpdateMapInfo(hive, data);
 			FillTrackedForMap(agent, data.tracked);
 			FillTrackedAttackers(data.attackers, data.tracked);
-			data.dungeon = GetDungeon(agent:GetMapId());
-			local encounter = GetEncounter(agent:GetMapId(), party, data);
+			data.dungeon = GetDungeon(agent:GetMapId(), data.dungeon);
+			local encounter = GetEncounter(data.dungeon, party, data);
 			-- data.encounter = GetEncounter(agent:GetMapId(), data.attackers);
 			
 			local function encounter_changed(old, new)
@@ -514,7 +524,7 @@ function Hive_Update(hive)
 	-- Print"";
 	
 	EncounterScript_UpdatePostAgentProcess(data.encounter, hive, data);
-	
+	-- if true then return end
 	if (#data.attackers == 0 and not data.forceCombatUpdate) then
 		Hive_OOCUpdate(hive, data);
 	else
