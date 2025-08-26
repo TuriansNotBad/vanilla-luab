@@ -179,6 +179,11 @@ CURRENT_CHANNELED_SPELL         = 3;
 SHAPE_CIRCLE  = 0;
 SHAPE_POLYGON = 1;
 
+-- Polygon types
+POLYGON_CONVEX  = 0;
+POLYGON_CONCAVE = 1;
+POLYGON_COMPLEX = 2;
+
 -- Spell School Mask
 SpellSchoolMask = {
 	Nature = 8,

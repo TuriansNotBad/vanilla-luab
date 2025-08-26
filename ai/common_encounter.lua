@@ -93,6 +93,7 @@ function Encounter_MakeAreaTbl(losInfo)
 	local self = {};
 	local tempPts;
 	local curName;
+	local isconcave = false;
 	
 	local function _find_los(lostbl, losname)
 		for i,v in ipairs(lostbl) do
@@ -112,15 +113,18 @@ function Encounter_MakeAreaTbl(losInfo)
 			end
 			local los = _find_los(losInfo, a);
 			assert(los, "Couldn't find LOS info with name " .. tostring(a) .. " for area with name " .. tostring(curName));
-			table.insert(self, {name=curName, shape=makePolygonArea(tempPts,b,c,d), los=los});
-			curName,tempPts = nil,nil;
+			table.insert(self, {name=curName, shape=makePolygonArea(tempPts,b,c,d), los=los, concave = isconcave});
+			curName,tempPts,isconcave = nil,nil,false;
 			return self;
 		end
 	end
 	
-	local function _new_area(name, tp)
+	local function _new_area(name, tp, bIsconcave)
 		tempPts = {};
 		curName = name;
+		if (bIsconcave == true) then
+			isconcave = bIsconcave;
+		end
 		if (tp == SHAPE_POLYGON) then
 			return _new_shape_pt;
 		end
@@ -169,7 +173,7 @@ function Encounter_NewRangedList()
 end
 
 function Encounter_PointInArea(x,y,z,area)
-	return pointInArea(x,y,z,area.shape,true);
+	return pointInArea(x,y,z,area.shape,area.concave,true);
 end
 
 function Encounter_GetAreaForTargetPos(x,y,z,areaTbl)
