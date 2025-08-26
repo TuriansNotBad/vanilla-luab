@@ -1,6 +1,8 @@
 -- Moonshrine Ruins and opening area do not attempt pulling enemies that are underwater.
 -- Cultist room, start on left side
 
+import 'ai/common_encounter.lua'
+
 t_dungeons[48] = {
 	-- opening
 	{
